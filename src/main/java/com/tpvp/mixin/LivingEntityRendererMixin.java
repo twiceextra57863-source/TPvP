@@ -1,7 +1,6 @@
 package com.tpvp.mixin;
 
 import net.minecraft.client.render.entity.LivingEntityRenderer;
-import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.render.entity.state.LivingEntityRenderState;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -16,13 +15,14 @@ public class LivingEntityRendererMixin<T extends LivingEntity, S extends LivingE
     
     @Inject(method = "updateRenderState", at = @At("TAIL"))
     private void onUpdateState(T entity, S state, float tickDelta, CallbackInfo ci) {
-        EntityRenderStateMixin stateAccess = (EntityRenderStateMixin) (Object) state;
-        stateAccess.tpvp$health = entity.getHealth();
-        stateAccess.tpvp$maxHealth = entity.getMaxHealth();
-        
-        var player = MinecraftClient.getInstance().player;
-        if (player != null) {
-            stateAccess.tpvp$attackDamage = player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
+        if (state instanceof IEntityRenderState access) {
+            access.tpvp$setHealth(entity.getHealth());
+            access.tpvp$setMaxHealth(entity.getMaxHealth());
+            
+            var player = MinecraftClient.getInstance().player;
+            if (player != null) {
+                access.tpvp$setAttackDamage(player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE));
+            }
         }
     }
 }
