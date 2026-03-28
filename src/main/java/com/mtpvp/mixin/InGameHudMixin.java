@@ -6,7 +6,6 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
 import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.hit.EntityHitResult;
@@ -20,55 +19,48 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class InGameHudMixin {
 
     @Inject(method = "render", at = @At("TAIL"))
-    private void renderTargetHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        if (!MtpvpDashboard.heartEnabled) return;
-
+    private void onRender(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.crosshairTarget != null && client.crosshairTarget.getType() == HitResult.Type.ENTITY) {
-            Entity entity = ((EntityHitResult) client.crosshairTarget).getEntity();
-            
-            if (entity instanceof PlayerEntity target) {
-                int screenWidth = client.getWindow().getScaledWidth();
-                TextRenderer tr = client.textRenderer;
-                
-                String name = target.getName().getString();
-                String hpText = (int)target.getHealth() + " HP";
-                float distance = client.player.distanceTo(target);
-                String distText = String.format("%.1f blocks", distance);
-                
-                int boxWidth = 140;
-                int boxX = screenWidth / 2 - (boxWidth / 2);
-                int boxY = 25;
+        if (client.world == null || client.player == null) return;
+        TextRenderer tr = client.textRenderer;
 
-                // --- Background Panel ---
-                context.fill(boxX, boxY, boxX + boxWidth, boxY + 52, 0xCC121212); 
-                context.fill(boxX, boxY, boxX + boxWidth, boxY + 1, 0xFF00AAFF); 
+        // --- 1. TARGET HUD LOGIC ---
+        if (MtpvpDashboard.hudEnabled && client.crosshairTarget != null && client.crosshairTarget.getType() == HitResult.Type.ENTITY) {
+            if (((EntityHitResult) client.crosshairTarget).getEntity() instanceof PlayerEntity target) {
+                renderTargetBox(context, client, target, tr);
+            }
+        }
+    }
 
-                // Name & Stats
-                context.drawText(tr, name, screenWidth / 2 - (tr.getWidth(name) / 2), boxY + 5, 0xFFFFFF, true);
-                context.drawText(tr, hpText + " | " + distText, screenWidth / 2 - (tr.getWidth(hpText + " | " + distText) / 2), boxY + 16, 0x00FF00, false);
+    private void renderTargetBox(DrawContext context, MinecraftClient client, PlayerEntity target, TextRenderer tr) {
+        int sw = client.getWindow().getScaledWidth();
+        float hp = target.getHealth();
+        
+        // Dynamic Info based on Style
+        String info = switch (MtpvpDashboard.styleIndex) {
+            case 1 -> "Hits: " + (int) Math.ceil(hp / 3.5f);
+            case 2 -> (int)hp + " HP";
+            default -> "❤ " + (int)hp;
+        };
 
-                // --- Armor Display Fix ---
-                int armorX = boxX + 25;
-                int armorY = boxY + 28;
-                
-                // 1.21.4 Compatible Item Rendering
-                ItemStack[] items = {
-                    target.getInventory().getArmorStack(3), // Helmet
-                    target.getInventory().getArmorStack(2), // Chest
-                    target.getInventory().getArmorStack(1), // Legs
-                    target.getInventory().getArmorStack(0), // Boots
-                    target.getMainHandStack()               // Main Hand
-                };
+        int bx = sw / 2 - 70;
+        int by = 20;
+        
+        // UI Box
+        context.fill(bx, by, bx + 140, by + 50, 0xCC121212);
+        context.fill(bx, by, bx + 140, by + 1, 0xFF00AAFF);
+        
+        context.drawText(tr, target.getName().getString(), sw/2 - tr.getWidth(target.getName().getString())/2, by + 5, 0xFFFFFF, true);
+        context.drawText(tr, info + " | " + String.format("%.1f blocks", client.player.distanceTo(target)), sw/2 - tr.getWidth(info + " | 0.0 blocks")/2, by + 16, 0x00FF00, false);
 
-                for (ItemStack stack : items) {
-                    if (!stack.isEmpty()) {
-                        context.drawItem(stack, armorX, armorY);
-                        // Is method se durability bar aur stack count (agar arrow hai) dikhega
-                        context.drawStackOverlay(tr, stack, armorX, armorY);
-                        armorX += 20;
-                    }
-                }
+        // Armor
+        int ax = bx + 25;
+        for (int i = 3; i >= 0; i--) {
+            ItemStack stack = target.getInventory().getArmorStack(i);
+            if (!stack.isEmpty()) {
+                context.drawItem(stack, ax, by + 28);
+                context.drawStackOverlay(tr, stack, ax, by + 28);
+                ax += 20;
             }
         }
     }
