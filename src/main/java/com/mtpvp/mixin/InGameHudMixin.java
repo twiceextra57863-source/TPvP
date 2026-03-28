@@ -2,6 +2,7 @@ package com.mtpvp.mixin;
 
 import com.mtpvp.gui.MtpvpDashboard;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
 import net.minecraft.client.render.RenderTickCounter;
@@ -28,6 +29,7 @@ public class InGameHudMixin {
             
             if (entity instanceof PlayerEntity target) {
                 int screenWidth = client.getWindow().getScaledWidth();
+                TextRenderer tr = client.textRenderer;
                 
                 String name = target.getName().getString();
                 String hpText = (int)target.getHealth() + " HP";
@@ -38,33 +40,33 @@ public class InGameHudMixin {
                 int boxX = screenWidth / 2 - (boxWidth / 2);
                 int boxY = 25;
 
-                // --- Modern Web Panel UI ---
-                context.fill(boxX, boxY, boxX + boxWidth, boxY + 50, 0xCC121212); // Main BG
-                context.fill(boxX, boxY, boxX + boxWidth, boxY + 1, 0xFF00AAFF); // Top Glow
+                // --- Background Panel ---
+                context.fill(boxX, boxY, boxX + boxWidth, boxY + 52, 0xCC121212); 
+                context.fill(boxX, boxY, boxX + boxWidth, boxY + 1, 0xFF00AAFF); 
 
-                // Name & HP
-                context.drawText(client.textRenderer, name, screenWidth / 2 - (client.textRenderer.getWidth(name) / 2), boxY + 5, 0xFFFFFF, true);
-                context.drawText(client.textRenderer, hpText + " | " + distText, screenWidth / 2 - (client.textRenderer.getWidth(hpText + " | " + distText) / 2), boxY + 16, 0x00FF00, false);
+                // Name & Stats
+                context.drawText(tr, name, screenWidth / 2 - (tr.getWidth(name) / 2), boxY + 5, 0xFFFFFF, true);
+                context.drawText(tr, hpText + " | " + distText, screenWidth / 2 - (tr.getWidth(hpText + " | " + distText) / 2), boxY + 16, 0x00FF00, false);
 
-                // --- Armor Display ---
-                int armorX = boxX + 30;
+                // --- Armor Display Fix ---
+                int armorX = boxX + 25;
                 int armorY = boxY + 28;
                 
-                // Helmet, Chest, Legs, Boots + Hand Item
-                ItemStack[] armor = {
-                    target.getInventory().getArmorStack(3),
-                    target.getInventory().getArmorStack(2),
-                    target.getInventory().getArmorStack(1),
-                    target.getInventory().getArmorStack(0),
-                    target.getMainHandStack()
+                // 1.21.4 Compatible Item Rendering
+                ItemStack[] items = {
+                    target.getInventory().getArmorStack(3), // Helmet
+                    target.getInventory().getArmorStack(2), // Chest
+                    target.getInventory().getArmorStack(1), // Legs
+                    target.getInventory().getArmorStack(0), // Boots
+                    target.getMainHandStack()               // Main Hand
                 };
 
-                for (ItemStack stack : armor) {
+                for (ItemStack stack : items) {
                     if (!stack.isEmpty()) {
                         context.drawItem(stack, armorX, armorY);
-                        // Armor durability color bar (Minecraft default logic)
-                        context.drawItemInGui(client.textRenderer, stack, armorX, armorY);
-                        armorX += 18;
+                        // Is method se durability bar aur stack count (agar arrow hai) dikhega
+                        context.drawStackOverlay(tr, stack, armorX, armorY);
+                        armorX += 20;
                     }
                 }
             }
