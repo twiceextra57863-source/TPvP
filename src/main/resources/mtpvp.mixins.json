@@ -2,12 +2,13 @@
   "required": true,
   "package": "com.tpvp.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [
+"mixins": [
     "EntityNameTagMixin",
     "LivingEntityRendererMixin",
     "EntityRenderStateMixin",
-    "GameMenuScreenMixin"
-  ],
+    "GameMenuScreenMixin",
+    "TitleScreenMixin"
+],
   "injectors": {
     "defaultRequire": 1
   }
