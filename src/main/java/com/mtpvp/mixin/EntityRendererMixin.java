@@ -4,11 +4,8 @@ import com.mtpvp.gui.MtpvpDashboard;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.EntityRenderDispatcher;
-import net.minecraft.client.render.entity.state.EntityRenderState;
-import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
+import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,46 +13,55 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(EntityRenderDispatcher.class)
-public abstract class EntityRendererMixin {
+@Mixin(WorldRenderer.class)
+public class EntityRendererMixin {
 
-    // 1.21.4 Descriptor: (Entity, double, double, double, float, MatrixStack, VertexConsumerProvider, int)
-    @Inject(method = "render", at = @At("TAIL"))
-    private <E extends Entity, S extends EntityRenderState> void renderMtpvpIndicator(E entity, double x, double y, double z, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
+    @Inject(method = "render", at = @At("RETURN"))
+    private void onRenderWorld(RenderTickCounter tickCounter, boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer, LightmapTextureManager lightmapTextureManager, Matrix4f positionMatrix, Matrix4f projectionMatrix, CallbackInfo ci) {
         if (!MtpvpDashboard.heartEnabled) return;
 
-        if (entity instanceof PlayerEntity target && target != MinecraftClient.getInstance().player) {
-            if (target.isInvisible() || !target.isAlive()) return;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.world == null || client.player == null) return;
+
+        TextRenderer tr = client.textRenderer;
+        MatrixStack matrices = new MatrixStack();
+        VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
+
+        for (PlayerEntity target : client.world.getPlayers()) {
+            // Apne upar mat dikhao, aur invisible/dead players par bhi nahi
+            if (target == client.player || target.isInvisible() || !target.isAlive()) continue;
+
+            // Distance check (32 blocks tak dikhega)
+            double dist = client.cameraEntity.squaredDistanceTo(target);
+            if (dist > 1024) continue;
 
             float hp = target.getHealth();
-            int hits = (int) Math.ceil(hp / 3.5f);
+            String info = switch (MtpvpDashboard.styleIndex) {
+                case 1 -> "Hits: " + (int) Math.ceil(hp / 3.5f);
+                case 2 -> (int)hp + " HP | " + target.getName().getString();
+                default -> "❤ " + (int)hp;
+            };
+
+            int color = (hp > 10) ? 0x55FF55 : 0xFF5555; // 10 HP se upar green, neeche red
 
             matrices.push();
-            // Sir ke upar positioning
-            matrices.translate(x, y + entity.getHeight() + 0.55, z);
-            matrices.multiply(MinecraftClient.getInstance().getEntityRenderDispatcher().getRotation());
-            
-            // Indicator size (thoda bada kiya hai visibility ke liye)
-            matrices.scale(-0.030F, -0.030F, 0.030F);
+            // Player ki exact position calculation
+            double x = target.prevX + (target.getX() - target.prevX) * tickCounter.getTickDelta(true) - client.getEntityRenderDispatcher().camera.getPos().x;
+            double y = target.prevY + (target.getY() - target.prevY) * tickCounter.getTickDelta(true) - client.getEntityRenderDispatcher().camera.getPos().y;
+            double z = target.prevZ + (target.getZ() - target.prevZ) * tickCounter.getTickDelta(true) - client.getEntityRenderDispatcher().camera.getPos().z;
+
+            matrices.translate(x, y + target.getHeight() + 0.5, z);
+            matrices.multiply(client.getEntityRenderDispatcher().getRotation());
+            matrices.scale(-0.025f, -0.025f, 0.025f);
 
             Matrix4f matrix = matrices.peek().getPositionMatrix();
-            TextRenderer tr = MinecraftClient.getInstance().textRenderer;
+            float xOffset = (float) (-tr.getWidth(info) / 2);
 
-            String info = "";
-            int color = 0xFFFFFF;
-
-            switch (MtpvpDashboard.styleIndex) {
-                case 0 -> { info = "❤ " + (int)hp; color = 0xFF5555; }
-                case 1 -> { info = "Hits: " + hits; color = 0xFFAA00; }
-                case 2 -> { info = (int)hp + " HP | " + target.getName().getString(); color = 0x55FFFF; }
-            }
-
-            float xOffset = (float)(-tr.getWidth(info) / 2);
-
-            // LayerType.SEE_THROUGH ensures visibility through walls/nametags
-            tr.draw(info, xOffset, 0, color, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0x80000000, light);
-
+            // Text Draw
+            tr.draw(info, xOffset, 0, color, false, matrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, 15728880);
+            
             matrices.pop();
         }
+        immediate.draw();
     }
 }
