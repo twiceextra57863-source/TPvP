@@ -4,7 +4,7 @@ import com.mtpvp.gui.MtpvpDashboard;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.EntityRenderer;
+import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
@@ -16,33 +16,22 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(EntityRenderer.class)
-public abstract class EntityRendererMixin<S extends EntityRenderState> {
+@Mixin(EntityRenderDispatcher.class)
+public abstract class EntityRendererMixin {
 
-    @Inject(method = "render", at = @At("HEAD"))
-    private void renderStyledIndicator(S state, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
+    @Inject(method = "render", at = @At("TAIL"))
+    private <E extends net.minecraft.entity.Entity, S extends EntityRenderState> void renderIndicator(E entity, double x, double y, double z, float yaw, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
         if (!MtpvpDashboard.heartEnabled) return;
 
-        // 1.21.4 uses PlayerEntityRenderState for players
-        if (state instanceof PlayerEntityRenderState playerState) {
-            
-            // Player ko find karne ka safe tarika display name se (1.21.4 compatible)
-            String name = playerState.displayName != null ? playerState.displayName.getString() : "";
-            PlayerEntity target = MinecraftClient.getInstance().world.getPlayers().stream()
-                    .filter(p -> p.getName().getString().equals(name))
-                    .findFirst()
-                    .orElse(null);
-
-            // Apne upar render mat karo aur check target exists
-            if (target == null || target == MinecraftClient.getInstance().player || target.isInvisible()) return;
+        if (entity instanceof PlayerEntity target && target != MinecraftClient.getInstance().player) {
+            if (target.isInvisible() || !target.isAlive()) return;
 
             float hp = target.getHealth();
-            int hits = (int) Math.ceil(hp / 4.0f); 
+            String name = target.getName().getString();
             
             matrices.push();
-            // Naye state system mein height variable use hota hai
-            float renderHeight = playerState.height + 0.5F;
-            matrices.translate(0.0D, renderHeight, 0.0D);
+            // Player ke sir ke upar position
+            matrices.translate(x, y + entity.getHeight() + 0.5, z);
             matrices.multiply(MinecraftClient.getInstance().getEntityRenderDispatcher().getRotation());
             matrices.scale(-0.025F, -0.025F, 0.025F);
 
@@ -52,27 +41,19 @@ public abstract class EntityRendererMixin<S extends EntityRenderState> {
             String displayText = "";
             int color = 0xFFFFFF;
 
-            // Dashboard style selection
+            // Styles
             switch (MtpvpDashboard.styleIndex) {
-                case 0: // Status Bar
-                    displayText = "[||||||||||] " + (int)hp + " HP";
-                    color = (hp > 10) ? 0x00FF00 : 0xFF0000;
-                    break;
-                case 1: // Classic Hearts
-                    displayText = "❤ " + (int)hp;
-                    color = 0xFF5555;
-                    break;
-                case 2: // Player Head + Hits
-                    displayText = "Hits: " + hits + " | " + name;
-                    color = 0xFFAA00;
-                    break;
+                case 0 -> { displayText = "❤ " + (int)hp + " HP"; color = 0xFF5555; }
+                case 1 -> { displayText = "[HITS: " + (int)Math.ceil(hp/4.0) + "]"; color = 0xFFAA00; }
+                case 2 -> { displayText = name + " | " + (int)hp; color = 0x55FFFF; }
             }
 
-            float x = (float)(-tr.getWidth(displayText) / 2);
+            float textWidth = (float)(-tr.getWidth(displayText) / 2);
             
-            // Draw logic (1.21.4 compatible)
-            tr.draw(displayText, x, 0, 0x20FFFFFF, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0x80000000, light);
-            tr.draw(displayText, x, 0, color, false, matrix, vertexConsumers, TextRenderer.TextLayerType.NORMAL, 0, light);
+            // Modern Bordered Background (No PNG)
+            int bgWidth = tr.getWidth(displayText);
+            // context.fill() ki jagah direct tr.draw backup color use karenge
+            tr.draw(displayText, textWidth, 0, color, false, matrix, vertexConsumers, TextRenderer.TextLayerType.NORMAL, 0, light);
 
             matrices.pop();
         }
