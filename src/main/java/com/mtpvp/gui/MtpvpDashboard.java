@@ -7,9 +7,15 @@ import net.minecraft.text.Text;
 
 public class MtpvpDashboard extends Screen {
     private final Screen parent;
+    
+    // Global Settings (Mixins use these)
     public static boolean heartEnabled = true;
     public static int styleIndex = 0;
-    private final String[] styles = {"Hearts Style", "Hits Style", "HP Bar Style"};
+    
+    // UI Constants
+    private final String[] styles = {"Hearts Style", "Hits Style", "Name + HP"};
+    private final int primaryColor = 0xFF00AAFF; // Neon Blue
+    private final int bgColor = 0xFF121212;      // Deep Black
 
     public MtpvpDashboard(Screen parent) {
         super(Text.literal("MTPVP DASHBOARD"));
@@ -18,53 +24,72 @@ public class MtpvpDashboard extends Screen {
 
     @Override
     protected void init() {
-        int contentX = width / 2 - 50;
-        int contentY = height / 2 - 60;
+        int centerX = width / 2;
+        int centerY = height / 2;
+        
+        // Right Side Content Area Buttons
+        int buttonX = centerX - 40; 
+        int buttonY = centerY - 50;
 
-        // Button 1: Toggle
+        // 1. Toggle Button
         this.addDrawableChild(ButtonWidget.builder(
-            Text.literal("Status: " + (heartEnabled ? "ENABLED" : "DISABLED")), 
-            (b) -> {
+            Text.literal("Indicator: " + (heartEnabled ? "ON" : "OFF")), 
+            (button) -> {
                 heartEnabled = !heartEnabled;
-                b.setMessage(Text.literal("Status: " + (heartEnabled ? "ENABLED" : "DISABLED")));
+                button.setMessage(Text.literal("Indicator: " + (heartEnabled ? "ON" : "OFF")));
             }
-        ).dimensions(contentX, contentY + 20, 140, 20).build());
+        ).dimensions(buttonX, buttonY, 180, 20).build());
 
-        // Button 2: Style
+        // 2. Style Cycle Button
         this.addDrawableChild(ButtonWidget.builder(
-            Text.literal("Mode: " + styles[styleIndex]), 
-            (b) -> {
+            Text.literal("Current Style: " + styles[styleIndex]), 
+            (button) -> {
                 styleIndex = (styleIndex + 1) % styles.length;
-                b.setMessage(Text.literal("Mode: " + styles[styleIndex]));
+                button.setMessage(Text.literal("Current Style: " + styles[styleIndex]));
             }
-        ).dimensions(contentX, contentY + 50, 140, 20).build());
+        ).dimensions(buttonX, buttonY + 30, 180, 20).build());
 
-        // Button 3: Exit
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("DONE"), (b) -> this.client.setScreen(parent))
-            .dimensions(contentX, contentY + 90, 140, 20).build());
+        // 3. Save & Exit
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("SAVE SETTINGS"), (button) -> {
+            this.client.setScreen(this.parent);
+        }).dimensions(buttonX, buttonY + 80, 180, 20).build());
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        // Darkened background
+        // Darkened Background (Blur effect jaisa look)
         context.fill(0, 0, width, height, 0xAA000000);
 
-        int x1 = width / 2 - 160, y1 = height / 2 - 100;
+        // Dashboard Dimensions
+        int x1 = width / 2 - 160, y1 = height / 2 - 110;
         int x2 = width / 2 + 160, y2 = height / 2 + 100;
 
-        // Main Web-Panel Design
-        context.fill(x1, y1, x2, y2, 0xFF121212); // Deep Black BG
-        context.fill(x1, y1, x1 + 90, y2, 0xFF1E1E1E); // Side Sidebar
-        context.fill(x1, y1, x2, y1 + 2, 0xFF00AAFF); // Neon Blue Top border
+        // --- MAIN BOX DESIGN ---
+        context.fill(x1, y1, x2, y2, bgColor);           // Main Body
+        context.fill(x1, y1, x1 + 90, y2, 0xFF1A1A1A);  // Sidebar Background
+        context.fill(x1, y1, x2, y1 + 2, primaryColor); // Top Accent Bar
 
-        // Sidebar Text
-        context.drawText(this.textRenderer, "MTPVP", x1 + 20, y1 + 15, 0x00AAFF, true);
-        context.drawText(this.textRenderer, "v1.0", x1 + 35, y2 - 15, 0x555555, false);
+        // --- SIDEBAR TEXT ---
+        context.drawText(this.textRenderer, "MTPVP", x1 + 20, y1 + 15, primaryColor, true);
+        
+        // Sidebar Category Items (Non-clickable just for UI)
+        int sideY = y1 + 50;
+        context.drawText(this.textRenderer, "> Combat", x1 + 15, sideY, 0xFFFFFFFF, false);
+        context.drawText(this.textRenderer, "  Visuals", x1 + 15, sideY + 20, 0x777777, false);
+        context.drawText(this.textRenderer, "  Misc", x1 + 15, sideY + 40, 0x777777, false);
 
-        // Header Title
-        context.drawText(this.textRenderer, "CONTROL PANEL / COMBAT", x1 + 105, y1 + 15, 0xFFFFFF, false);
-        context.fill(x1 + 100, y1 + 30, x2 - 10, y1 + 31, 0xFF333333); // Header line
+        // --- HEADER ---
+        context.drawText(this.textRenderer, "PvP Settings / Health Indicator", x1 + 100, y1 + 15, 0xFFFFFF, false);
+        context.fill(x1 + 100, y1 + 30, x2 - 10, y1 + 31, 0xFF333333); // Divider
+
+        // --- HINT TEXT ---
+        context.drawText(this.textRenderer, "Select your preferred layout", x1 + 100, y2 - 20, 0x555555, false);
 
         super.render(context, mouseX, mouseY, delta);
+    }
+
+    @Override
+    public void close() {
+        this.client.setScreen(parent);
     }
 }
