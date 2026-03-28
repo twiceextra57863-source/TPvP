@@ -18,14 +18,9 @@ public abstract class MenuMixin extends Screen {
 
     @Inject(at = @At("TAIL"), method = "init")
     private void addMtpvpButton(CallbackInfo ci) {
-        // Design like Lunar/Feather - Top Left corner
-        int x = 10;
-        int y = 10;
-        int width = 50;
-        int height = 20;
-
+        // Lunar style placement: Top-Left
         this.addDrawableChild(ButtonWidget.builder(Text.literal("MTPVP"), (button) -> {
             MinecraftClient.getInstance().setScreen(new MtpvpDashboard(this));
-        }).dimensions(x, y, width, height).build());
+        }).dimensions(10, 10, 60, 20).build());
     }
 }
