@@ -1,4 +1,3 @@
-// File: src/main/java/com/mtpvp/mixin/MenuMixin.java
 package com.mtpvp.mixin;
 
 import com.mtpvp.gui.MtpvpDashboard;
@@ -19,11 +18,14 @@ public abstract class MenuMixin extends Screen {
 
     @Inject(at = @At("TAIL"), method = "init")
     private void addMtpvpButton(CallbackInfo ci) {
-        int x = 10; // Alag area (Top Left)
+        // Design like Lunar/Feather - Top Left corner
+        int x = 10;
         int y = 10;
+        int width = 50;
+        int height = 20;
 
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Mtpvp"), (button) -> {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("MTPVP"), (button) -> {
             MinecraftClient.getInstance().setScreen(new MtpvpDashboard(this));
-        }).dimensions(x, y, 60, 20).build());
+        }).dimensions(x, y, width, height).build());
     }
 }
