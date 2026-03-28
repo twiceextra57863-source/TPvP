@@ -14,6 +14,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -21,59 +22,57 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(EntityRenderer.class)
 public abstract class EntityNameTagMixin<S extends EntityRenderState> {
 
-    // Variable to store animated health for smooth transition
-    private float animatedHp = -1f;
+    @Unique private float animatedHp = -1f;
 
-    @Inject(method = "renderLabelIfPresent", at = @At("HEAD"))
+    @Inject(method = "renderLabelIfPresent", at = @At("HEAD"), cancellable = true)
     private void onRenderLabel(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
-        if (!MtpvpDashboard.headEnabled || !(state instanceof PlayerEntityRenderState playerState)) return;
+        // --- FEATURE: Player can turn this ON/OFF from Menu ---
+        if (!MtpvpDashboard.headEnabled) return; 
+        
+        // Sirf Players ke liye indicator show hoga
+        if (!(state instanceof PlayerEntityRenderState playerState)) return;
 
         if (state instanceof IEntityRenderState data) {
             float actualHp = data.tpvp$getHealth();
             float maxHp = data.tpvp$getMaxHealth();
             
-            // --- SMOOTH ANIMATION LOGIC ---
+            // Smooth Animation Interpolation
             if (animatedHp < 0) animatedHp = actualHp; 
-            // 0.1f speed se bar slide karega (isey change karke speed badha sakte ho)
-            animatedHp = MathHelper.lerp(0.1f, animatedHp, actualHp); 
+            animatedHp = MathHelper.lerp(0.15f, animatedHp, actualHp); 
 
-            // Dynamic Color Logic (Green -> Yellow -> Red)
+            // Health based colors
             int healthColor = (actualHp > 14) ? 0xFF55FF55 : (actualHp > 7 ? 0xFFFFFF55 : 0xFFFF5555);
 
             matrices.push();
-            // Position Fix: Sir ke upar 360 view ke liye
+            // Position: NameTag ke upar (High visibility)
             matrices.translate(0, 2.6f, 0); 
             matrices.scale(-0.025f, -0.025f, 0.025f);
             
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
             Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-            // --- STYLE 1: 10 HEARTS (With Black Empty Hearts) ---
+            // STYLE 1: 10 HEARTS (Red + Black Empty)
             if (MtpvpDashboard.styleIndex == 0) {
                 int fullHearts = (int) Math.ceil(actualHp / 2);
                 int emptyHearts = 10 - fullHearts;
-                // §c = Red, §8 = Dark Gray (Black feel)
-                String heartText = "§c" + "❤".repeat(fullHearts) + "§8" + "❤".repeat(Math.max(0, emptyHearts));
+                String heartText = "§c" + "❤".repeat(Math.max(0, fullHearts)) + "§8" + "❤".repeat(Math.max(0, emptyHearts));
                 
                 float x = -tr.getWidth(heartText.replaceAll("§[0-9a-fk-or]", ""))/2f;
                 tr.draw(heartText, x, 0, 0xFFFFFF, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             } 
             
-            // --- STYLE 2: STATUS BAR (Smooth + Borders) ---
+            // STYLE 2: SMOOTH STATUS BAR (With Borders)
             else if (MtpvpDashboard.styleIndex == 1) {
                 float w = 50f;
                 float h = 4f;
-                float progress = (animatedHp / maxHp) * w; // Use animatedHp here
+                float progress = (animatedHp / maxHp) * w;
                 
-                // 1. Black Border Outline
-                drawRect(matrices, vertexConsumers, -w/2 - 1, -1, w/2 + 1, h + 1, 0xFF000000); 
-                // 2. Dark Background
-                drawRect(matrices, vertexConsumers, -w/2, 0, w/2, h, 0xAA333333); 
-                // 3. Smooth Health Fill
-                drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + progress, h, healthColor);
+                drawRect(matrices, vertexConsumers, -w/2 - 1, -1, w/2 + 1, h + 1, 0xFF000000); // Border
+                drawRect(matrices, vertexConsumers, -w/2, 0, w/2, h, 0xAA333333); // BG
+                drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + progress, h, healthColor); // Smooth Fill
             }
             
-            // --- STYLE 3: PRO FACE + SMOOTH HITS ---
+            // STYLE 3: PRO FACE + HITS
             else if (MtpvpDashboard.styleIndex == 2) {
                 double dmg = data.tpvp$getAttackDamage();
                 int hits = (int) Math.ceil(actualHp / (dmg <= 0 ? 1.5 : dmg));
