@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "tpvp",
+  "version": "${version}",
+  "name": "TPvP Client",
+  "description": "Best PvP Client for Skill Improvement",
+  "authors": [
+    "YourName"
+  ],
+  "contact": {
+    "homepage": "https://fabricmc.net/",
+    "sources": "https://github.com/fabricmc/fabric-example-mod"
+  },
+  "license": "MIT",
+  "icon": "assets/tpvp/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.tpvp.TPvPClient"
+    ]
+  },
+  "mixins": [
+    "tpvp.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "~1.21",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
