@@ -12,21 +12,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(GameMenuScreen.class)
 public abstract class GameMenuScreenMixin extends Screen {
-    protected GameMenuScreenMixin(Text title) {
-        super(title);
-    }
+    protected GameMenuScreenMixin(Text title) { super(title); }
 
     @Inject(method = "initWidgets", at = @At("TAIL"))
     private void addMtpvpSettingsButton(CallbackInfo ci) {
-        // Button ki position (X, Y, Width, Height)
-        // Isko "Options" aur "Quit Game" ke beech mein set kiya hai
+        // Disconnect button se thoda upar shift kiya hai (Y position change)
         int x = this.width / 2 - 102;
-        int y = this.height / 4 + 104; 
+        int y = this.height / 4 + 80; 
 
         this.addDrawableChild(ButtonWidget.builder(Text.literal("§b§lMTPVP SETTINGS"), (button) -> {
-            if (this.client != null) {
-                this.client.setScreen(new MtpvpDashboard(this));
-            }
+            this.client.setScreen(new MtpvpDashboard(this));
         }).dimensions(x, y, 204, 20).build());
     }
 }
