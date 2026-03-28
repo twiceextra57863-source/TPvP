@@ -9,69 +9,61 @@ public class MtpvpDashboard extends Screen {
     private final Screen parent;
     public static boolean heartEnabled = true;
     public static int styleIndex = 0;
-    private final String[] styles = {"Classic Hearts", "Hits Indicator", "Tag Style"};
+    private final String[] styles = {"Hearts Style", "Hits Style", "HP Bar Style"};
 
     public MtpvpDashboard(Screen parent) {
-        super(Text.literal("Mtpvp Web Dashboard"));
+        super(Text.literal("MTPVP DASHBOARD"));
         this.parent = parent;
     }
 
     @Override
     protected void init() {
-        int xStart = width / 2 - 150;
-        int yStart = height / 2 - 100;
+        int contentX = width / 2 - 50;
+        int contentY = height / 2 - 60;
 
-        // Sidebar Buttons (Left Side)
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("General"), (b) -> {})
-            .dimensions(xStart + 10, yStart + 40, 70, 20).build());
-        
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Combat"), (b) -> {})
-            .dimensions(xStart + 10, yStart + 65, 70, 20).build());
-
-        // Main Toggle (Content Area - Right Side)
+        // Button 1: Toggle
         this.addDrawableChild(ButtonWidget.builder(
-            Text.literal("Indicator: " + (heartEnabled ? "ON" : "OFF")), 
-            (button) -> {
+            Text.literal("Status: " + (heartEnabled ? "ENABLED" : "DISABLED")), 
+            (b) -> {
                 heartEnabled = !heartEnabled;
-                button.setMessage(Text.literal("Indicator: " + (heartEnabled ? "ON" : "OFF")));
+                b.setMessage(Text.literal("Status: " + (heartEnabled ? "ENABLED" : "DISABLED")));
             }
-        ).dimensions(xStart + 100, yStart + 40, 180, 20).build());
+        ).dimensions(contentX, contentY + 20, 140, 20).build());
 
-        // Style Switcher
+        // Button 2: Style
         this.addDrawableChild(ButtonWidget.builder(
-            Text.literal("Style: " + styles[styleIndex]), 
-            (button) -> {
+            Text.literal("Mode: " + styles[styleIndex]), 
+            (b) -> {
                 styleIndex = (styleIndex + 1) % styles.length;
-                button.setMessage(Text.literal("Style: " + styles[styleIndex]));
+                b.setMessage(Text.literal("Mode: " + styles[styleIndex]));
             }
-        ).dimensions(xStart + 100, yStart + 70, 180, 20).build());
+        ).dimensions(contentX, contentY + 50, 140, 20).build());
 
-        // Exit Button
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("SAVE & EXIT"), (b) -> this.client.setScreen(parent))
-            .dimensions(xStart + 100, yStart + 160, 180, 20).build());
+        // Button 3: Exit
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("DONE"), (b) -> this.client.setScreen(parent))
+            .dimensions(contentX, contentY + 90, 140, 20).build());
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        // Blur background
-        context.fill(0, 0, width, height, 0x88000000);
+        // Darkened background
+        context.fill(0, 0, width, height, 0xAA000000);
 
-        int x1 = width / 2 - 160, y1 = height / 2 - 110;
+        int x1 = width / 2 - 160, y1 = height / 2 - 100;
         int x2 = width / 2 + 160, y2 = height / 2 + 100;
 
-        // Main Container (Web Style)
-        context.fill(x1, y1, x2, y2, 0xFF181818); // Dark Body
-        context.fill(x1, y1, x1 + 90, y2, 0xFF121212); // Sidebar Background
-        context.fill(x1, y1, x2, y1 + 2, 0xFF00AAFF); // Top Blue Accent Bar (Glow)
+        // Main Web-Panel Design
+        context.fill(x1, y1, x2, y2, 0xFF121212); // Deep Black BG
+        context.fill(x1, y1, x1 + 90, y2, 0xFF1E1E1E); // Side Sidebar
+        context.fill(x1, y1, x2, y1 + 2, 0xFF00AAFF); // Neon Blue Top border
 
         // Sidebar Text
-        context.drawText(this.textRenderer, "MTPVP", x1 + 15, y1 + 15, 0x00AAFF, true);
-        
-        // Header
-        context.drawText(this.textRenderer, "PvP Settings > Indicators", x1 + 105, y1 + 15, 0xAAAAAA, false);
+        context.drawText(this.textRenderer, "MTPVP", x1 + 20, y1 + 15, 0x00AAFF, true);
+        context.drawText(this.textRenderer, "v1.0", x1 + 35, y2 - 15, 0x555555, false);
 
-        // UI Separator Line
-        context.fill(x1 + 90, y1 + 30, x2 - 10, y1 + 31, 0xFF252525);
+        // Header Title
+        context.drawText(this.textRenderer, "CONTROL PANEL / COMBAT", x1 + 105, y1 + 15, 0xFFFFFF, false);
+        context.fill(x1 + 100, y1 + 30, x2 - 10, y1 + 31, 0xFF333333); // Header line
 
         super.render(context, mouseX, mouseY, delta);
     }
