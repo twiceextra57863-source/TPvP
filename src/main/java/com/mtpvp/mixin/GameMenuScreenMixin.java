@@ -16,9 +16,9 @@ public abstract class GameMenuScreenMixin extends Screen {
 
     @Inject(method = "initWidgets", at = @At("TAIL"))
     private void addMtpvpSettingsButton(CallbackInfo ci) {
-        // Disconnect button se thoda upar shift kiya hai (Y position change)
+        // Positioned higher to avoid overlapping Disconnect button
         int x = this.width / 2 - 102;
-        int y = this.height / 4 + 80; 
+        int y = this.height / 4 + 48; // Adjusted from 80/104 to 48 (Safe spot)
 
         this.addDrawableChild(ButtonWidget.builder(Text.literal("§b§lMTPVP SETTINGS"), (button) -> {
             this.client.setScreen(new MtpvpDashboard(this));
