@@ -5,10 +5,8 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.EntityRenderer;
+import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.text.Text;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,45 +15,37 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(EntityRenderer.class)
-public abstract class EntityNameTagMixin<T extends Entity> {
+public abstract class EntityNameTagMixin<S extends EntityRenderState> {
 
     @Inject(method = "renderLabelIfPresent", at = @At("HEAD"))
-    private void onRenderLabel(T entity, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
+    private void onRenderLabel(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
         if (!TPvPConfig.heartIndicatorEnabled) return;
 
-        // Sirf Living Entities (Players/Mobs) ke liye
-        if (entity instanceof LivingEntity target) {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.player == null || target == client.player) return;
+        EntityRenderStateMixin data = (EntityRenderStateMixin) (Object) state;
+        
+        // Agar HP 0 se zyada hai (taaki sirf living entities par dikhe)
+        if (data.tpvp$maxHealth > 0) {
+            float health = data.tpvp$health;
+            int hitsToKill = (int) Math.ceil(health / (data.tpvp$attackDamage <= 0 ? 1 : data.tpvp$attackDamage));
 
-            float health = target.getHealth();
-            float maxHealth = target.getMaxHealth();
+            int color = 0x55FF55; // Green
+            if (health < data.tpvp$maxHealth * 0.5) color = 0xFFFF55; // Yellow
+            if (health < data.tpvp$maxHealth * 0.25) color = 0xFF5555; // Red
+
+            String info = String.format("%.0f HP | %d Hits", health, hitsToKill);
             
-            // Damage calculation
-            double attackDamage = client.player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
-            int hitsToKill = (int) Math.ceil(health / (attackDamage <= 0 ? 1 : attackDamage));
-
-            // Color logic
-            int color = 0x00FF00; // Green
-            if (health < maxHealth * 0.5) color = 0xFFFF00; // Yellow
-            if (health < maxHealth * 0.2) color = 0xFF0000; // Red
-
-            String info = String.format("%.1f HP | %d Hits", health, hitsToKill);
-            
-            // Text render karne ki position (Name ke thoda upar)
             matrices.push();
-            matrices.translate(0, 0.25f, 0); // Name tag se 0.25 block upar
-            
-            TextRenderer textRenderer = client.textRenderer;
-            float backgroundOpacity = client.options.getTextBackgroundOpacity(0.25f);
-            int backgroundColor = (int)(backgroundOpacity * 255.0f) << 24;
-            
+            matrices.translate(0, 0.4f, 0); 
+            matrices.scale(0.7f, 0.7f, 0.7f);
+
+            TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
             float xPos = (float)(-textRenderer.getWidth(info) / 2);
             Matrix4f matrix4f = matrices.peek().getPositionMatrix();
-            
-            // Text draw karna
-            textRenderer.draw(info, xPos, 0, color, false, matrix4f, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, backgroundColor, light);
-            
+            int backgroundColor = (int)(0.25f * 255.0f) << 24;
+
+            textRenderer.draw(info, xPos, 0, color, false, matrix4f, vertexConsumers, 
+                TextRenderer.TextLayerType.SEE_THROUGH, backgroundColor, light);
+
             matrices.pop();
         }
     }
