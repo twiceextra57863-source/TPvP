@@ -4,10 +4,11 @@ import com.mtpvp.gui.MtpvpDashboard;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.EntityRenderer;
+import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
 import org.joml.Matrix4f;
@@ -16,49 +17,46 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(EntityRenderer.class)
-public abstract class EntityRendererMixin<S extends EntityRenderState> {
+@Mixin(EntityRenderDispatcher.class)
+public abstract class EntityRendererMixin {
 
-    @Inject(method = "renderLabelIfPresent", at = @At("HEAD"))
-    private void renderMtpvpLabel(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
+    @Inject(method = "render", at = @At("TAIL"))
+    private <E extends Entity, S extends EntityRenderState> void renderMtpvpIndicator(E entity, double x, double y, double z, float yaw, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
         if (!MtpvpDashboard.heartEnabled) return;
 
-        // Sirf players ke liye check karein
-        if (state instanceof PlayerEntityRenderState playerState) {
-            String name = playerState.displayName.getString();
-            
-            // Player data fetch karna health ke liye
-            PlayerEntity target = MinecraftClient.getInstance().world.getPlayers().stream()
-                    .filter(p -> p.getName().getString().equals(name))
-                    .findFirst().orElse(null);
-
-            if (target == null || target == MinecraftClient.getInstance().player || target.isInvisible()) return;
+        // Sirf dusre players ke liye
+        if (entity instanceof PlayerEntity target && target != MinecraftClient.getInstance().player) {
+            if (target.isInvisible() || !target.isAlive()) return;
 
             float hp = target.getHealth();
-            int hits = (int) Math.ceil(hp / 3.5f); // 3.5 average damage consider kiya hai
+            // Calculation based on target's health
+            int hits = (int) Math.ceil(hp / 3.5f);
 
             matrices.push();
-            // Nametag ke thoda upar (Minecraft standard label height)
-            matrices.translate(0.0D, 0.25D, 0.0D); 
+            // Position: Player ke sir ke upar (y + height + offset)
+            matrices.translate(x, y + entity.getHeight() + 0.5, z);
+            
+            // Player ki taraf rotate karna
+            matrices.multiply(MinecraftClient.getInstance().getEntityRenderDispatcher().getRotation());
+            matrices.scale(-0.025F, -0.025F, 0.025F);
 
             Matrix4f matrix = matrices.peek().getPositionMatrix();
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
 
-            String infoText = "";
+            String info = "";
             int color = 0xFFFFFF;
 
+            // Style Logic from Dashboard
             switch (MtpvpDashboard.styleIndex) {
-                case 0 -> { infoText = "❤ " + (int)hp; color = 0xFF5555; }
-                case 1 -> { infoText = "Hits: " + hits; color = 0xFFAA00; }
-                case 2 -> { infoText = "[" + (int)hp + " HP]"; color = 0x55FFFF; }
+                case 0 -> { info = "❤ " + (int)hp; color = 0xFF5555; }
+                case 1 -> { info = "Hits: " + hits; color = 0xFFAA00; }
+                case 2 -> { info = "HP: " + (int)hp + " | " + target.getName().getString(); color = 0x55FFFF; }
             }
 
-            float xPos = (float)(-tr.getWidth(infoText) / 2);
+            float xOffset = (float)(-tr.getWidth(info) / 2);
 
-            // Shadow layer
-            tr.draw(infoText, xPos, 0, 0x20FFFFFF, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0x80000000, light);
-            // Main layer
-            tr.draw(infoText, xPos, 0, color, false, matrix, vertexConsumers, TextRenderer.TextLayerType.NORMAL, 0, light);
+            // DRAWING (SEE_THROUGH layer ensures it shows up even with server-side custom nametags)
+            tr.draw(info, xOffset, 0, color, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
 
             matrices.pop();
         }
