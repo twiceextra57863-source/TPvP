@@ -21,32 +21,35 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
     private void onRenderLabel(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
         if (!TPvPConfig.heartIndicatorEnabled) return;
 
-        EntityRenderStateMixin data = (EntityRenderStateMixin) (Object) state;
-        
-        // Agar HP 0 se zyada hai (taaki sirf living entities par dikhe)
-        if (data.tpvp$maxHealth > 0) {
-            float health = data.tpvp$health;
-            int hitsToKill = (int) Math.ceil(health / (data.tpvp$attackDamage <= 0 ? 1 : data.tpvp$attackDamage));
+        // Ab hum interface use kar rahe hain, Mixin class nahi!
+        if (state instanceof IEntityRenderState data) {
+            float health = data.tpvp$getHealth();
+            float maxHealth = data.tpvp$getMaxHealth();
 
-            int color = 0x55FF55; // Green
-            if (health < data.tpvp$maxHealth * 0.5) color = 0xFFFF55; // Yellow
-            if (health < data.tpvp$maxHealth * 0.25) color = 0xFF5555; // Red
+            if (maxHealth > 0) {
+                double damage = data.tpvp$getAttackDamage();
+                int hitsToKill = (int) Math.ceil(health / (damage <= 0 ? 1 : damage));
 
-            String info = String.format("%.0f HP | %d Hits", health, hitsToKill);
-            
-            matrices.push();
-            matrices.translate(0, 0.4f, 0); 
-            matrices.scale(0.7f, 0.7f, 0.7f);
+                int color = 0x55FF55; // Green
+                if (health < maxHealth * 0.5) color = 0xFFFF55; // Yellow
+                if (health < maxHealth * 0.2) color = 0xFF5555; // Red
 
-            TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
-            float xPos = (float)(-textRenderer.getWidth(info) / 2);
-            Matrix4f matrix4f = matrices.peek().getPositionMatrix();
-            int backgroundColor = (int)(0.25f * 255.0f) << 24;
+                String info = String.format("%.0f HP | %d Hits", health, hitsToKill);
+                
+                matrices.push();
+                matrices.translate(0, 0.4f, 0); 
+                matrices.scale(0.7f, 0.7f, 0.7f);
 
-            textRenderer.draw(info, xPos, 0, color, false, matrix4f, vertexConsumers, 
-                TextRenderer.TextLayerType.SEE_THROUGH, backgroundColor, light);
+                TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
+                float xPos = (float)(-textRenderer.getWidth(info) / 2);
+                Matrix4f matrix4f = matrices.peek().getPositionMatrix();
+                int backgroundColor = (int)(0.25f * 255.0f) << 24;
 
-            matrices.pop();
+                textRenderer.draw(info, xPos, 0, color, false, matrix4f, vertexConsumers, 
+                    TextRenderer.TextLayerType.SEE_THROUGH, backgroundColor, light);
+
+                matrices.pop();
+            }
         }
     }
 }
