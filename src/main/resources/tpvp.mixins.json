@@ -3,7 +3,8 @@
   "package": "com.tpvp.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "TitleScreenMixin"
+    "TitleScreenMixin",
+    "EntityNameTagMixin"
   ],
   "injectors": {
     "defaultRequire": 1
