@@ -4,13 +4,13 @@ import com.mtpvp.gui.MtpvpDashboard;
 import com.tpvp.accessor.IEntityRenderState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.PlayerSkinDrawer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -29,34 +29,51 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
             float maxHp = data.tpvp$getMaxHealth();
 
             matrices.push();
-            // --- FIX: Positioned above Nametag (0.7f - 0.9f is the sweet spot) ---
+            // --- POSITION: Sir ke upar (Legs se Head par shift) ---
             matrices.translate(0, 0.85f, 0); 
             matrices.scale(-0.025f, -0.025f, 0.025f);
             
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
             Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-            if (MtpvpDashboard.styleIndex == 0) { // 10 Hearts
+            if (MtpvpDashboard.styleIndex == 0) { // STYLE 1: 10 Hearts
                 String hearts = "❤".repeat((int)Math.ceil(health / 2));
                 tr.draw(hearts, -tr.getWidth(hearts)/2f, 0, 0xFF5555, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             } 
-            else if (MtpvpDashboard.styleIndex == 1) { // Status Bar
+            else if (MtpvpDashboard.styleIndex == 1) { // STYLE 2: Status Bar
                 float w = 40f;
                 float progress = (health / maxHp) * w;
                 int color = (health > 14) ? 0xFF55FF55 : (health > 7 ? 0xFFFFFF55 : 0xFFFF5555);
-                drawRect(matrices, vertexConsumers, -w/2, 0, w/2, 4, 0xAA000000); // BG
-                drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + progress, 3, color); // Fill
+                drawRect(matrices, vertexConsumers, -w/2, 0, w/2, 4, 0xAA000000); // Background
+                drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + progress, 3, color); // Health
             }
-            else if (MtpvpDashboard.styleIndex == 2) { // PRO STYLE: Head + Hits
-                int hits = (int) Math.ceil(health / (data.tpvp$getAttackDamage() <= 0 ? 1.0 : data.tpvp$getAttackDamage()));
-                String info = "⚔ " + hits;
+            else if (MtpvpDashboard.styleIndex == 2) { // STYLE 3: PRO (Face + Hits)
+                int hits = (int) Math.ceil(health / (data.tpvp$getAttackDamage() <= 0 ? 1.5 : data.tpvp$getAttackDamage()));
+                String info = "⚔ " + hits + " Hits";
                 
-                // Draw Player Face (High Coding)
-                PlayerSkinDrawer.draw(matrices, -15, -5, 12, true, false); 
-                tr.draw(info, 2, -2, 0xFFAA00, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                // --- Manual Face Rendering (Bypassing DrawContext Error) ---
+                Identifier skin = playerState.skinTextures.texture();
+                drawFace(matrices, vertexConsumers, skin, -15, -5, 10, light);
+                
+                tr.draw(info, 0, -2, 0xFFAA00, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
             matrices.pop();
         }
+    }
+
+    // Manual Face Rendering Logic (UV Mapping for 1.21.4)
+    private void drawFace(MatrixStack matrices, VertexConsumerProvider vcp, Identifier skin, float x, float y, float size, int light) {
+        Matrix4f matrix = matrices.peek().getPositionMatrix();
+        var buffer = vcp.getBuffer(net.minecraft.client.render.RenderLayer.getEntityCutoutNoCull(skin));
+        
+        // Face texture coordinates (8, 8 to 16, 16 in the skin file)
+        float u1 = 8f / 64f, v1 = 8f / 64f;
+        float u2 = 16f / 64f, v2 = 16f / 64f;
+
+        buffer.vertex(matrix, x, y + size, 0).color(1f, 1f, 1f, 1f).texture(u1, v2).light(light).next();
+        buffer.vertex(matrix, x + size, y + size, 0).color(1f, 1f, 1f, 1f).texture(u2, v2).light(light).next();
+        buffer.vertex(matrix, x + size, y, 0).color(1f, 1f, 1f, 1f).texture(u2, v1).light(light).next();
+        buffer.vertex(matrix, x, y, 0).color(1f, 1f, 1f, 1f).texture(u1, v1).light(light).next();
     }
 
     private void drawRect(MatrixStack m, VertexConsumerProvider v, float x1, float y1, float x2, float y2, int c) {
