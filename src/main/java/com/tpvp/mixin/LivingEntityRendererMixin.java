@@ -1,5 +1,6 @@
 package com.tpvp.mixin;
 
+import com.tpvp.accessor.IEntityRenderState; // Import naya package
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.state.LivingEntityRenderState;
 import net.minecraft.entity.LivingEntity;
