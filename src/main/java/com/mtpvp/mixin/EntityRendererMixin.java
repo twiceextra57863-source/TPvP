@@ -23,12 +23,15 @@ public abstract class EntityRendererMixin<S extends EntityRenderState> {
     private void renderMtpvpIndicator(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
         if (!MtpvpDashboard.heartEnabled) return;
 
-        // Sirf Players ke liye render karein
         if (state instanceof PlayerEntityRenderState playerState) {
             MinecraftClient client = MinecraftClient.getInstance();
-            
-            // Player data fetch karna UUID se (1.21.4 optimized)
-            PlayerEntity target = client.world.getPlayerByUuid(playerState.uuid);
+            if (client.world == null) return;
+
+            // Player ko name se find karna (1.21.4 compatible way)
+            String targetName = playerState.displayName.getString();
+            PlayerEntity target = client.world.getPlayers().stream()
+                    .filter(p -> p.getName().getString().equals(targetName))
+                    .findFirst().orElse(null);
 
             if (target == null || target == client.player || target.isInvisible()) return;
 
@@ -42,14 +45,13 @@ public abstract class EntityRendererMixin<S extends EntityRenderState> {
             int color = (hp > 10) ? 0x55FF55 : 0xFF5555;
 
             matrices.push();
-            // Nametag ke thoda upar position set karna
             matrices.translate(0.0D, 0.35D, 0.0D); 
 
             Matrix4f matrix = matrices.peek().getPositionMatrix();
             TextRenderer tr = client.textRenderer;
             float xOffset = (float)(-tr.getWidth(info) / 2);
 
-            // SEE_THROUGH layer ensures it is visible through blocks/walls
+            // Text Rendering with Shadow
             tr.draw(info, xOffset, 0, color, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0x80000000, light);
 
             matrices.pop();
