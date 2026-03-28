@@ -1,30 +1,30 @@
 {
   "schemaVersion": 1,
-  "id": "tpvp",
+  "id": "mtpvp",
   "version": "${version}",
-  "name": "TPvP Client",
-  "description": "Best PvP Client for Skill Improvement",
+  "name": "Mtpvp Client",
+  "description": "A professional PvP utility mod with Heart Indicators and Advanced Dashboard.",
   "authors": [
     "YourName"
   ],
   "contact": {
     "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/fabricmc/fabric-example-mod"
+    "sources": "https://github.com/yourname/mtpvp"
   },
   "license": "MIT",
-  "icon": "assets/tpvp/icon.png",
+  "icon": "assets/mtpvp/icon.png",
   "environment": "client",
   "entrypoints": {
     "client": [
-      "com.tpvp.TPvPClient"
+      "com.mtpvp.Mtpvp"
     ]
   },
   "mixins": [
-    "tpvp.mixins.json"
+    "mtpvp.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.15.0",
-    "minecraft": "~1.21",
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.4",
     "java": ">=21",
     "fabric-api": "*"
   }
