@@ -1,6 +1,7 @@
 package com.tpvp.mixin;
 
 import com.tpvp.TPvPConfig;
+import com.tpvp.accessor.IEntityRenderState; // Import naya package
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -21,7 +22,6 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
     private void onRenderLabel(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
         if (!TPvPConfig.heartIndicatorEnabled) return;
 
-        // Ab hum interface use kar rahe hain, Mixin class nahi!
         if (state instanceof IEntityRenderState data) {
             float health = data.tpvp$getHealth();
             float maxHealth = data.tpvp$getMaxHealth();
@@ -43,10 +43,10 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
                 TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
                 float xPos = (float)(-textRenderer.getWidth(info) / 2);
                 Matrix4f matrix4f = matrices.peek().getPositionMatrix();
-                int backgroundColor = (int)(0.25f * 255.0f) << 24;
-
+                
+                // Color formatting fix for 1.21
                 textRenderer.draw(info, xPos, 0, color, false, matrix4f, vertexConsumers, 
-                    TextRenderer.TextLayerType.SEE_THROUGH, backgroundColor, light);
+                    TextRenderer.TextLayerType.SEE_THROUGH, 0x40000000, light);
 
                 matrices.pop();
             }
