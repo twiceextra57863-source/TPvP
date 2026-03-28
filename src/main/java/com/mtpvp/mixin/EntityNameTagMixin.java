@@ -29,8 +29,8 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
             float maxHp = data.tpvp$getMaxHealth();
 
             matrices.push();
-            // Position: NameTag ke upar (0.85f is perfect)
-            matrices.translate(0, 0.85f, 0); 
+            // FIX: Position changed to 2.4f (This is above player name tag)
+            matrices.translate(0, 2.4f, 0); 
             matrices.scale(-0.025f, -0.025f, 0.025f);
             
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
@@ -47,39 +47,38 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
                 drawRect(matrices, vertexConsumers, -w/2, 0, w/2, 4, 0xAA000000);
                 drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + progress, 3, color);
             }
-            else if (MtpvpDashboard.styleIndex == 2) { // STYLE 3: PRO (Face + Hits)
+            else if (MtpvpDashboard.styleIndex == 2) { // STYLE 3: Face + Hits (Crash Fixed)
                 int hits = (int) Math.ceil(health / (data.tpvp$getAttackDamage() <= 0 ? 1.5 : data.tpvp$getAttackDamage()));
-                String info = "⚔ " + hits + " Hits";
+                String info = "⚔ " + hits;
                 
+                // Drawing Face with GUI layer to prevent world-space crash
                 Identifier skin = playerState.skinTextures.texture();
-                // Draw Face logic with No .next()
-                drawFace(matrices, vertexConsumers, skin, -18, -2, 12, light);
+                drawFace(matrices, vertexConsumers, skin, -18, -2, 12);
                 
-                tr.draw(info, 0, 0, 0xFFAA00, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                tr.draw(info, 2, 0, 0xFFAA00, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
             matrices.pop();
         }
     }
 
-    private void drawFace(MatrixStack matrices, VertexConsumerProvider vcp, Identifier skin, float x, float y, float size, int light) {
+    private void drawFace(MatrixStack matrices, VertexConsumerProvider vcp, Identifier skin, float x, float y, float size) {
         Matrix4f matrix = matrices.peek().getPositionMatrix();
-        var buffer = vcp.getBuffer(net.minecraft.client.render.RenderLayer.getEntityCutoutNoCull(skin));
+        // Changed to RenderLayer.getGui to avoid light-related crashes
+        var buffer = vcp.getBuffer(net.minecraft.client.render.RenderLayer.getGuiTextured(skin));
         
         float u1 = 8f / 64f, v1 = 8f / 64f;
         float u2 = 16f / 64f, v2 = 16f / 64f;
 
-        // FIXED: Removed .next() for 1.21.4 compatibility
-        buffer.vertex(matrix, x, y + size, 0).color(1f, 1f, 1f, 1f).texture(u1, v2).light(light);
-        buffer.vertex(matrix, x + size, y + size, 0).color(1f, 1f, 1f, 1f).texture(u2, v2).light(light);
-        buffer.vertex(matrix, x + size, y, 0).color(1f, 1f, 1f, 1f).texture(u2, v1).light(light);
-        buffer.vertex(matrix, x, y, 0).color(1f, 1f, 1f, 1f).texture(u1, v1).light(light);
+        buffer.vertex(matrix, x, y + size, 0).color(1f, 1f, 1f, 1f).texture(u1, v2);
+        buffer.vertex(matrix, x + size, y + size, 0).color(1f, 1f, 1f, 1f).texture(u2, v2);
+        buffer.vertex(matrix, x + size, y, 0).color(1f, 1f, 1f, 1f).texture(u2, v1);
+        buffer.vertex(matrix, x, y, 0).color(1f, 1f, 1f, 1f).texture(u1, v1);
     }
 
     private void drawRect(MatrixStack m, VertexConsumerProvider v, float x1, float y1, float x2, float y2, int c) {
         Matrix4f mat = m.peek().getPositionMatrix();
         float a = (c >> 24 & 255) / 255f, r = (c >> 16 & 255) / 255f, g = (c >> 8 & 255) / 255f, b = (c & 255) / 255f;
         var buffer = v.getBuffer(net.minecraft.client.render.RenderLayer.getGuiOverlay());
-        
         buffer.vertex(mat, x1, y1, 0).color(r, g, b, a);
         buffer.vertex(mat, x1, y2, 0).color(r, g, b, a);
         buffer.vertex(mat, x2, y2, 0).color(r, g, b, a);
