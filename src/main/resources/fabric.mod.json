@@ -1,18 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "mtpvp",
-  "version": "${version}",
+  "version": "1.0.0", 
   "name": "Mtpvp Client",
-  "description": "A professional PvP utility mod with Heart Indicators and Advanced Dashboard.",
-  "authors": [
-    "YourName"
-  ],
-  "contact": {
-    "homepage": "https://fabricmc.net/",
-    "sources": "https://github.com/yourname/mtpvp"
-  },
-  "license": "MIT",
-  "icon": "assets/mtpvp/icon.png",
+  "description": "Advanced PvP Heart Indicators",
+  "authors": ["Twicefear"],
   "environment": "client",
   "entrypoints": {
     "client": [
@@ -24,7 +16,7 @@
   ],
   "depends": {
     "fabricloader": ">=0.16.0",
-    "minecraft": "~1.21.4",
+    "minecraft": "1.21.4",
     "java": ">=21",
     "fabric-api": "*"
   }
