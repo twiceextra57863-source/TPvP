@@ -9,29 +9,6 @@ import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.MathHelper;
-import org.joml.Matrix4f;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-@Mixin(EntityRenderer.class)
-package com.mtpvp.mixin;
-
-import com.mtpvp.gui.MtpvpDashboard;
-import com.tpvp.accessor.IEntityRenderState;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.EntityRenderer;
-import net.minecraft.client.render.entity.state.EntityRenderState;
-import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
@@ -50,17 +27,15 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
 
     @Inject(method = "renderLabelIfPresent", at = @At("HEAD"))
     private void onRenderLabel(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
-        // Toggle Check
         if (!MtpvpDashboard.headEnabled || !(state instanceof PlayerEntityRenderState playerState)) return;
 
         if (state instanceof IEntityRenderState data) {
             float hp = data.tpvp$getHealth();
             float maxHp = data.tpvp$getMaxHealth();
             
-            // Feature: Smooth Animation
+            // --- FEATURE: SMOOTH HP ---
             if (animatedHp < 0) animatedHp = hp;
             animatedHp = MathHelper.lerp(0.12f, animatedHp, hp);
-
             int healthColor = (hp > 14) ? 0xFF55FF55 : (hp > 7 ? 0xFFFFFF55 : 0xFFFF5555);
 
             matrices.push();
@@ -70,25 +45,25 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
             Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-            // --- FEATURE: DISTANCE (Manual calculation to fix "Symbol Not Found") ---
+            // --- FEATURE: DISTANCE (Safe Manual Calculation) ---
             if (MtpvpDashboard.showDistance) {
-                var cameraPos = MinecraftClient.getInstance().gameRenderer.getCamera().getPos();
-                double dx = playerState.x - cameraPos.x;
-                double dy = playerState.y - cameraPos.y;
-                double dz = playerState.z - cameraPos.z;
+                var camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+                double dx = playerState.x - camera.getPos().x;
+                double dy = playerState.y - camera.getPos().y;
+                double dz = playerState.z - camera.getPos().z;
                 float dist = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
                 
                 String distText = String.format("§e%.1fm", dist);
                 tr.draw(distText, -tr.getWidth(distText)/2f, -14, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
 
-            // --- FEATURE: STYLE 0 - HEARTS ---
+            // --- STYLE 0: HEARTS ---
             if (MtpvpDashboard.styleIndex == 0) {
                 int full = (int) Math.ceil(hp / 2);
                 String heartText = "§c" + "❤".repeat(Math.max(0, full)) + "§8" + "❤".repeat(Math.max(0, 10 - full));
                 tr.draw(heartText, -tr.getWidth(heartText.replaceAll("§.", ""))/2f, 0, 0xFFFFFF, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             } 
-            // --- FEATURE: STYLE 1 - SMOOTH BAR ---
+            // --- STYLE 1: SMOOTH BAR ---
             else if (MtpvpDashboard.styleIndex == 1) {
                 float w = 50f;
                 float progress = (animatedHp / maxHp) * w;
@@ -96,7 +71,7 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
                 drawRect(matrices, vertexConsumers, -w/2, 0, w/2, 4, 0xAA333333); 
                 drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + progress, 4, healthColor);
             }
-            // --- FEATURE: STYLE 2 - PRO FACE ---
+            // --- STYLE 2: PRO FACE ---
             else if (MtpvpDashboard.styleIndex == 2) {
                 int hits = (int) Math.ceil(hp / (data.tpvp$getAttackDamage() <= 0 ? 1.5 : data.tpvp$getAttackDamage()));
                 Identifier skin = playerState.skinTextures.texture();
@@ -106,7 +81,7 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
 
             // --- FEATURE: ARMOR ICON ---
             if (MtpvpDashboard.showAdvancedInfo) {
-                drawIcon(matrices, vertexConsumers, 34, 9, 9, 9, -5, 12); // Armor Shield Icon
+                drawIcon(matrices, vertexConsumers, 34, 9, 9, 9, -5, 12); 
             }
 
             matrices.pop();
@@ -145,4 +120,4 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
         buf.vertex(mat, x2, y2, 0).color(r, g, b, a);
         buf.vertex(mat, x2, y1, 0).color(r, g, b, a);
     }
-                                           }
+}
