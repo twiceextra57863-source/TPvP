@@ -6,7 +6,7 @@ import net.fabricmc.api.ClientModInitializer;
 public class MtpvpMod implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
-        MtpvpConfig.load();
-        System.out.println("Mtpvp Client with Mixin Rendering Loaded!");
+        MtpvpConfig.load(); // Ab error nahi dega
+        System.out.println("Mtpvp Client Mod Initialized Successfully!");
     }
 }
