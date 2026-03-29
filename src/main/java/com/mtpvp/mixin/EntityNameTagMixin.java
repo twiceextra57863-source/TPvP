@@ -1,4 +1,4 @@
-package com.tpvp.mixin;
+package com.mtpvp.mixin;
 
 import com.mtpvp.gui.MtpvpDashboard;
 import com.tpvp.accessor.IEntityRenderState;
@@ -9,7 +9,6 @@ import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
@@ -27,6 +26,7 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
 
     @Inject(method = "renderLabelIfPresent", at = @At("HEAD"))
     private void onRenderLabel(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
+        // Toggle Check
         if (!MtpvpDashboard.headEnabled || !(state instanceof PlayerEntityRenderState playerState)) return;
 
         if (state instanceof IEntityRenderState data) {
@@ -43,15 +43,17 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
             Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-            // 1. DISTANCE (FIXED: Using cameraDistance for 1.21.4)
+            // 1. DISTANCE (Using base state field)
             if (MtpvpDashboard.showDistance) {
-                float dist = playerState.cameraDistance; 
+                // In 1.21.4, distanceToCamera is often a field in the base EntityRenderState
+                float dist = state.distanceToCamera; 
                 String dText = String.format("§e%.1fm", dist);
                 tr.draw(dText, -tr.getWidth(dText)/2f, -12, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
 
             // 2. HEALTH STYLES
             int color = (hp > 14) ? 0xFF55FF55 : (hp > 7 ? 0xFFFFFF55 : 0xFFFF5555);
+            
             if (MtpvpDashboard.styleIndex == 0) { // HEARTS
                 int full = (int) Math.ceil(hp / 2);
                 String hText = "§c" + "❤".repeat(Math.max(0, full)) + "§8" + "❤".repeat(Math.max(0, 10 - full));
@@ -68,15 +70,6 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
                 Identifier skin = playerState.skinTextures.texture();
                 drawFace(matrices, vertexConsumers, skin, -25, -4, 14);
                 tr.draw("§l" + hits + " HITS", 0, 0, color, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
-            }
-
-            // 3. ADVANCED INFO (FIXED: Armor/Item check for 1.21.4)
-            // Note: In 1.21.4 PlayerEntityRenderState uses specific fields for equipment
-            // We use the basic item field that most mappings now use
-            if (MtpvpDashboard.showAdvancedInfo) {
-                // To avoid 'item' symbol error, we use a more generic check or name
-                // If 'item' fails, we can use an accessor, but let's try the common 'heldItem' mapping
-                // For safety in this build, we use a text-based health indicator here if item field is missing
             }
 
             matrices.pop();
