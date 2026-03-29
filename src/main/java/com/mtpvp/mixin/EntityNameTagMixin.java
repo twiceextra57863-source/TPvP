@@ -27,69 +27,59 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
 
     @Inject(method = "renderLabelIfPresent", at = @At("HEAD"), cancellable = true)
     private void onRenderLabel(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
-        // --- BASE TOGGLE & PLAYER CHECK ---
         if (!MtpvpDashboard.headEnabled || !(state instanceof PlayerEntityRenderState playerState)) return;
 
         if (state instanceof IEntityRenderState data) {
             float hp = data.tpvp$getHealth();
             float maxHp = data.tpvp$getMaxHealth();
-            String name = playerState.name.getString();
-            
-            // --- SMOOTH HP CALCULATION ---
+            String name = playerState.name; // 1.21.4 Direct String
+
+            // --- SMOOTH HP SYSTEM ---
             if (animatedHp < 0) animatedHp = hp;
             animatedHp = MathHelper.lerp(0.12f, animatedHp, hp);
             int healthColor = (hp > 14) ? 0xFF55FF55 : (hp > 7 ? 0xFFFFFF55 : 0xFFFF5555);
 
             matrices.push();
             
-            // --- FIX: BILLBOARD ROTATION (Always face camera even from back) ---
+            // --- BILLBOARDING (Always Face Camera) ---
             var camera = MinecraftClient.getInstance().gameRenderer.getCamera();
             matrices.multiply(camera.getRotation()); 
-
-            // Position adjustment: Elevated above head
             matrices.translate(0, 0.45f, 0); 
             matrices.scale(-0.025f, -0.025f, 0.025f);
             
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
             Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-            // --- FEATURE: DISTANCE (Manual Math for 1.21.4 compatibility) ---
+            // --- DISTANCE CALCULATION ---
             double dx = playerState.x - camera.getPos().x;
             double dy = playerState.y - camera.getPos().y;
             double dz = playerState.z - camera.getPos().z;
             float dist = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
 
             if (MtpvpDashboard.showDistance) {
-                String distText = String.format("§e%.1fm", dist);
-                tr.draw(distText, -tr.getWidth(distText)/2f, -14, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                String dText = String.format("§e%.1fm", dist);
+                tr.draw(dText, -tr.getWidth(dText)/2f, -14, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
 
-            // --- FEATURE: TARGET TRACKER (5 PRESETS + AUTO SCALING) ---
+            // --- FEATURE: 5 TARGET PRESETS + SCALING ---
             boolean isTarget = name.equals(MtpvpDashboard.targetPlayerName) || (MtpvpDashboard.autoTargetLowHp && hp <= 6.0f);
-            
             if (isTarget) {
                 matrices.push();
+                float tScale = Math.max(1.0f, dist / 12f);
+                matrices.scale(tScale, tScale, 1.0f);
                 
-                // Scale target indicators for visibility at distance
-                float targetScale = Math.max(1.0f, dist / 12f);
-                matrices.scale(targetScale, targetScale, 1.0f);
-
                 String L = "{", R = "}";
-                int tColor = 0xFFFF0000; // Classic Red
-
-                // Preset Logic
+                int tColor = 0xFFFF0000;
                 switch (MtpvpDashboard.targetStyle) {
-                    case 1 -> { L = "«"; R = "»"; tColor = 0xFF00FFFF; } // Warrior
+                    case 1 -> { L = "«"; R = "»"; tColor = 0xFF00FFFF; } // Aqua
                     case 2 -> { L = "["; R = "]"; tColor = 0xFFFF5555; } // Square
                     case 3 -> { L = ">"; R = "<"; tColor = 0xFFFFFF55; } // Arrows
                     case 4 -> { L = "★"; R = "★"; tColor = 0xFFFFAA00; } // Stars
                 }
 
-                float offset = (tr.getWidth(text) / 2f) + 12;
-                // Draw Brackets (Glowing & See-Through)
-                tr.draw("§l" + L, -offset, 0, tColor, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, 15728880);
-                tr.draw("§l" + R, offset, 0, tColor, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, 15728880);
-                
+                float off = (tr.getWidth(text) / 2f) + 12;
+                tr.draw("§l" + L, -off, 0, tColor, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, 15728880);
+                tr.draw("§l" + R, off, 0, tColor, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, 15728880);
                 matrices.pop();
             }
 
@@ -101,21 +91,20 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
             } 
             // --- STYLE 1: SMOOTH BAR ---
             else if (MtpvpDashboard.styleIndex == 1) {
-                float w = 50f;
-                float progress = (animatedHp / maxHp) * w;
+                float w = 50f, prog = (animatedHp / maxHp) * w;
                 drawRect(matrices, vertexConsumers, -w/2 - 1, -1, w/2 + 1, 5, 0xFF000000); 
                 drawRect(matrices, vertexConsumers, -w/2, 0, w/2, 4, 0xAA333333); 
-                drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + progress, 4, healthColor);
+                drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + prog, 4, healthColor);
             }
             // --- STYLE 2: PRO FACE & HITS ---
             else if (MtpvpDashboard.styleIndex == 2) {
-                int hits = (int) Math.ceil(hp / (data.tpvp$getAttackDamage() <= 0 ? 1.5 : data.tpvp$getAttackDamage()));
+                int hits = (int) Math.ceil(hp / 1.5); // Simplified hits calc
                 Identifier skin = playerState.skinTextures.texture();
                 drawFace(matrices, vertexConsumers, skin, -25, -4, 14);
                 tr.draw("§l" + hits + " HITS", 0, 0, healthColor, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
 
-            // --- FEATURE: ARMOR & ADVANCED INFO ---
+            // --- ARMOR ICON ---
             if (MtpvpDashboard.showAdvancedInfo) {
                 drawIcon(matrices, vertexConsumers, 34, 9, 9, 9, -5, 12); 
             }
@@ -156,4 +145,4 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
         buf.vertex(mat, x2, y2, 0).color(r, g, b, a);
         buf.vertex(mat, x2, y1, 0).color(r, g, b, a);
     }
-}
+                                         }
