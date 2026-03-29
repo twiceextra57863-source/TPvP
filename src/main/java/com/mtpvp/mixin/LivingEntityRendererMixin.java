@@ -1,4 +1,4 @@
-package com.tpvp.mixin;
+package com.mtpvp.mixin;
 
 import com.tpvp.accessor.IEntityRenderState;
 import net.minecraft.client.MinecraftClient;
