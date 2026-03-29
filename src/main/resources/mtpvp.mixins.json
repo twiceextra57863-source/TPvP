@@ -4,7 +4,8 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "TitleScreenMixin",
-    "GameMenuMixin"
+    "GameMenuMixin",
+    "EntityRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
