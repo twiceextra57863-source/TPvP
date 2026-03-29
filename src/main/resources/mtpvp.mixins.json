@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "com.tpvp.mixin",
+  "package": "com.mtpvp.mixin",
   "compatibilityLevel": "JAVA_21",
 "mixins": [
     "EntityNameTagMixin",
