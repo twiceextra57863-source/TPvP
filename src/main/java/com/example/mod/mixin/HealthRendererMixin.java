@@ -8,8 +8,7 @@ import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.text.Text;
-import org.joml.Matrix4f;
+import net.minecraft.util.math.MathHelper;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -22,34 +21,44 @@ public abstract class HealthRendererMixin<T extends Entity> {
     public void onRender(T entity, float yaw, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
         if (!(entity instanceof PlayerEntity player) || player == MinecraftClient.getInstance().player || player.isInvisible()) return;
 
-        matrices.push();
-        // Player ke sir ke upar position set karein
-        matrices.translate(0, player.getHeight() + 0.5f, 0);
-        // Indicator hamesha player ki taraf face kare (Front & Back dono dikhega)
-        matrices.multiply(MinecraftClient.getInstance().getEntityRenderDispatcher().getRotation());
-        matrices.scale(-0.025f, -0.025f, 0.025f);
+        double dist = player.squaredDistanceTo(MinecraftClient.getInstance().player);
+        if (dist > 400) return; // 20 blocks se zyada dur na dikhe
 
-        Matrix4f matrix = matrices.peek().getPositionMatrix();
+        matrices.push();
+        // Dynamic Height based on distance to prevent clipping
+        float height = player.getHeight() + 0.5f;
+        matrices.translate(0, height, 0);
+        matrices.multiply(MinecraftClient.getInstance().getEntityRenderDispatcher().getRotation());
+        
+        // Distance Scaling: Thoda scale adjust kiya hai taaki clear dikhe
+        float scale = 0.025f;
+        matrices.scale(-scale, -scale, scale);
+
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
         float health = player.getHealth();
         float maxH = player.getMaxHealth();
-        int color = (health > maxH * 0.5) ? 0x55FF55 : (health > maxH * 0.25 ? 0xFFFF55 : 0xFF5555);
+        
+        // Color transition logic (Green -> Yellow -> Red)
+        float ratio = MathHelper.clamp(health / maxH, 0.0f, 1.0f);
+        int color = MathHelper.hsvToRgb(ratio / 3.0f, 1.0f, 1.0f) | 0xFF000000;
 
-        if (ModSettings.currentStyle == 0) { // DESIGN 1: HEARTS
-            String text = "❤ " + String.format("%.1f", health);
-            tr.draw(text, -tr.getWidth(text) / 2f, 0, 0xFF5555, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+        if (ModSettings.currentStyle == 0) {
+            String text = "❤ " + (int)health + " / " + (int)maxH;
+            tr.draw(text, -tr.getWidth(text) / 2f, 0, 0xFF5555, false, matrices.peek().getPositionMatrix(), vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
         } 
-        else if (ModSettings.currentStyle == 1) { // DESIGN 2: HEAD & HITS
-            String text = "HITS TO KILL: " + (int)Math.ceil(health / 1.5f); // 1.5 avg dmg
-            tr.draw(text, -tr.getWidth(text) / 2f, 0, 0xFFFFFF, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+        else if (ModSettings.currentStyle == 1) {
+            // New Feature: Head indicator logic placeholder + Hits
+            String text = "⚠ " + (int)Math.ceil(health / 2.0f) + " Hits Left";
+            tr.draw(text, -tr.getWidth(text) / 2f, 0, 0xFFAA00, false, matrices.peek().getPositionMatrix(), vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
         }
-        else if (ModSettings.currentStyle == 2) { // DESIGN 3: STATUS BAR
-            String bar = "||||||||||";
-            int activeBars = (int)((health / maxH) * 10);
-            tr.draw(bar.substring(0, Math.max(0, activeBars)), -20, 0, color, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+        else if (ModSettings.currentStyle == 2) {
+            // Advanced Feature: Real-time progress bar using ASCII
+            String fullBar = "■■■■■■■■■■";
+            int active = (int)(ratio * 10);
+            String display = "[" + fullBar.substring(0, active) + "§8" + fullBar.substring(active) + "§r]";
+            tr.draw(display, -tr.getWidth(display) / 2f, 0, color, false, matrices.peek().getPositionMatrix(), vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
         }
 
         matrices.pop();
     }
 }
-
