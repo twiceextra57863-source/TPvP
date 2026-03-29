@@ -27,21 +27,28 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
 
     @Inject(method = "renderLabelIfPresent", at = @At("HEAD"), cancellable = true)
     private void onRenderLabel(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
-        if (!MtpvpDashboard.headEnabled || !(state instanceof PlayerEntityRenderState playerState)) return;
+        // Sirf Players ke liye kaam karega
+        if (!(state instanceof PlayerEntityRenderState playerState)) return;
+        
+        // Agar Dashboard se enabled hai tabhi dikhayega
+        if (!MtpvpDashboard.headEnabled) return;
 
         if (state instanceof IEntityRenderState data) {
+            // Minecraft ka default render cancel karo taaki humara dikhe
+            ci.cancel();
+
             float hp = data.tpvp$getHealth();
             float maxHp = data.tpvp$getMaxHealth();
-            String name = playerState.name; // 1.21.4 Direct String
+            String name = playerState.name; 
 
-            // --- SMOOTH HP SYSTEM ---
+            // SMOOTH ANIMATION
             if (animatedHp < 0) animatedHp = hp;
             animatedHp = MathHelper.lerp(0.12f, animatedHp, hp);
             int healthColor = (hp > 14) ? 0xFF55FF55 : (hp > 7 ? 0xFFFFFF55 : 0xFFFF5555);
 
             matrices.push();
             
-            // --- BILLBOARDING (Always Face Camera) ---
+            // BILLBOARDING: Hamesha camera ki taraf face karega (Backside Fix)
             var camera = MinecraftClient.getInstance().gameRenderer.getCamera();
             matrices.multiply(camera.getRotation()); 
             matrices.translate(0, 0.45f, 0); 
@@ -50,7 +57,7 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
             Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-            // --- DISTANCE CALCULATION ---
+            // DISTANCE
             double dx = playerState.x - camera.getPos().x;
             double dy = playerState.y - camera.getPos().y;
             double dz = playerState.z - camera.getPos().z;
@@ -61,7 +68,7 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
                 tr.draw(dText, -tr.getWidth(dText)/2f, -14, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
 
-            // --- FEATURE: 5 TARGET PRESETS + SCALING ---
+            // --- TARGET TRACKER (5 PRESETS) ---
             boolean isTarget = name.equals(MtpvpDashboard.targetPlayerName) || (MtpvpDashboard.autoTargetLowHp && hp <= 6.0f);
             if (isTarget) {
                 matrices.push();
@@ -71,42 +78,45 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
                 String L = "{", R = "}";
                 int tColor = 0xFFFF0000;
                 switch (MtpvpDashboard.targetStyle) {
-                    case 1 -> { L = "«"; R = "»"; tColor = 0xFF00FFFF; } // Aqua
-                    case 2 -> { L = "["; R = "]"; tColor = 0xFFFF5555; } // Square
-                    case 3 -> { L = ">"; R = "<"; tColor = 0xFFFFFF55; } // Arrows
-                    case 4 -> { L = "★"; R = "★"; tColor = 0xFFFFAA00; } // Stars
+                    case 1 -> { L = "«"; R = "»"; tColor = 0xFF00FFFF; } 
+                    case 2 -> { L = "["; R = "]"; tColor = 0xFFFF5555; } 
+                    case 3 -> { L = ">"; R = "<"; tColor = 0xFFFFFF55; } 
+                    case 4 -> { L = "★"; R = "★"; tColor = 0xFFFFAA00; }
                 }
 
                 float off = (tr.getWidth(text) / 2f) + 12;
+                // Light 15728880 ensures glowing in dark
                 tr.draw("§l" + L, -off, 0, tColor, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, 15728880);
                 tr.draw("§l" + R, off, 0, tColor, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, 15728880);
                 matrices.pop();
             }
 
-            // --- STYLE 0: HEARTS ---
+            // NAME DRAW (Since we cancelled the original)
+            tr.draw(text, -tr.getWidth(text)/2f, 0, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+
+            // STYLE 0: HEARTS
             if (MtpvpDashboard.styleIndex == 0) {
                 int full = (int) Math.ceil(hp / 2);
                 String heartText = "§c" + "❤".repeat(Math.max(0, full)) + "§8" + "❤".repeat(Math.max(0, 10 - full));
-                tr.draw(heartText, -tr.getWidth(heartText.replaceAll("§.", ""))/2f, 0, 0xFFFFFF, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                tr.draw(heartText, -tr.getWidth(heartText.replaceAll("§.", ""))/2f, 10, 0xFFFFFF, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             } 
-            // --- STYLE 1: SMOOTH BAR ---
+            // STYLE 1: SMOOTH BAR
             else if (MtpvpDashboard.styleIndex == 1) {
                 float w = 50f, prog = (animatedHp / maxHp) * w;
-                drawRect(matrices, vertexConsumers, -w/2 - 1, -1, w/2 + 1, 5, 0xFF000000); 
-                drawRect(matrices, vertexConsumers, -w/2, 0, w/2, 4, 0xAA333333); 
-                drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + prog, 4, healthColor);
+                drawRect(matrices, vertexConsumers, -w/2 - 1, 9, w/2 + 1, 15, 0xFF000000); 
+                drawRect(matrices, vertexConsumers, -w/2, 10, w/2, 14, 0xAA333333); 
+                drawRect(matrices, vertexConsumers, -w/2, 10, -w/2 + prog, 14, healthColor);
             }
-            // --- STYLE 2: PRO FACE & HITS ---
+            // STYLE 2: PRO FACE
             else if (MtpvpDashboard.styleIndex == 2) {
-                int hits = (int) Math.ceil(hp / 1.5); // Simplified hits calc
                 Identifier skin = playerState.skinTextures.texture();
-                drawFace(matrices, vertexConsumers, skin, -25, -4, 14);
-                tr.draw("§l" + hits + " HITS", 0, 0, healthColor, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                drawFace(matrices, vertexConsumers, skin, -25, 10, 12);
+                tr.draw("§lHP: " + (int)hp, 0, 10, healthColor, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
 
-            // --- ARMOR ICON ---
+            // ARMOR
             if (MtpvpDashboard.showAdvancedInfo) {
-                drawIcon(matrices, vertexConsumers, 34, 9, 9, 9, -5, 12); 
+                drawIcon(matrices, vertexConsumers, 34, 9, 9, 9, -5, 22); 
             }
 
             matrices.pop();
@@ -145,4 +155,4 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
         buf.vertex(mat, x2, y2, 0).color(r, g, b, a);
         buf.vertex(mat, x2, y1, 0).color(r, g, b, a);
     }
-                                         }
+}
