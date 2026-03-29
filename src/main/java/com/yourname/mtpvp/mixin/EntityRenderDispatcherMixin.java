@@ -15,14 +15,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(EntityRenderDispatcher.class)
 public class EntityRenderDispatcherMixin {
 
+    // 1.21.4 mein 'tickDelta' parameter nahi hota, isliye use hata diya gaya hai
     @Inject(method = "render", at = @At("RETURN"))
-    private <E extends Entity> void onRender(E entity, double x, double y, double z, float yaw, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
-        // Sirf doosre players ke liye render karo
+    private <E extends Entity> void onRender(E entity, double x, double y, double z, float yaw, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
         if (entity instanceof PlayerEntity player && MtpvpConfig.enabled) {
+            // Khud ko indicator mat dikhao aur sirf alive players ko dikhao
             if (!player.isMainPlayer() && player.isAlive() && !player.isInvisible()) {
                 matrices.push();
-                // Player ki position par indicator ko translate karna
-                matrices.translate(x, y + player.getHeight() + 0.7, z);
+                // Position adjustment above head
+                matrices.translate(x, y + player.getHeight() + 0.75, z);
                 
                 HealthRenderer.renderIndicator(player, matrices, vertexConsumers, light);
                 
