@@ -21,6 +21,28 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(EntityRenderer.class)
+package com.mtpvp.mixin;
+
+import com.mtpvp.gui.MtpvpDashboard;
+import com.tpvp.accessor.IEntityRenderState;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.entity.EntityRenderer;
+import net.minecraft.client.render.entity.state.EntityRenderState;
+import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.MathHelper;
+import org.joml.Matrix4f;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+@Mixin(EntityRenderer.class)
 public abstract class EntityNameTagMixin<S extends EntityRenderState> {
 
     @Unique private float animatedHp = -1f;
@@ -28,14 +50,14 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
 
     @Inject(method = "renderLabelIfPresent", at = @At("HEAD"))
     private void onRenderLabel(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
-        // --- FEATURE: ON/OFF TOGGLE ---
+        // Toggle Check
         if (!MtpvpDashboard.headEnabled || !(state instanceof PlayerEntityRenderState playerState)) return;
 
         if (state instanceof IEntityRenderState data) {
             float hp = data.tpvp$getHealth();
             float maxHp = data.tpvp$getMaxHealth();
             
-            // --- FEATURE: SMOOTH ANIMATION ---
+            // Feature: Smooth Animation
             if (animatedHp < 0) animatedHp = hp;
             animatedHp = MathHelper.lerp(0.12f, animatedHp, hp);
 
@@ -48,29 +70,33 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
             Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-            // --- FEATURE: DISTANCE INDICATOR (FIXED FOR 1.21.4) ---
+            // --- FEATURE: DISTANCE (Manual calculation to fix "Symbol Not Found") ---
             if (MtpvpDashboard.showDistance) {
-                // 1.21.4 uses 'cameraDistance' (Direct float distance)
-                float dist = playerState.cameraDistance; 
+                var cameraPos = MinecraftClient.getInstance().gameRenderer.getCamera().getPos();
+                double dx = playerState.x - cameraPos.x;
+                double dy = playerState.y - cameraPos.y;
+                double dz = playerState.z - cameraPos.z;
+                float dist = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
+                
                 String distText = String.format("§e%.1fm", dist);
                 tr.draw(distText, -tr.getWidth(distText)/2f, -14, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
 
-            // --- FEATURE: STYLE 0 - 10 HEARTS (RED + BLACK) ---
+            // --- FEATURE: STYLE 0 - HEARTS ---
             if (MtpvpDashboard.styleIndex == 0) {
                 int full = (int) Math.ceil(hp / 2);
                 String heartText = "§c" + "❤".repeat(Math.max(0, full)) + "§8" + "❤".repeat(Math.max(0, 10 - full));
                 tr.draw(heartText, -tr.getWidth(heartText.replaceAll("§.", ""))/2f, 0, 0xFFFFFF, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             } 
-            // --- FEATURE: STYLE 1 - STATUS BAR (SMOOTH + BORDERS) ---
+            // --- FEATURE: STYLE 1 - SMOOTH BAR ---
             else if (MtpvpDashboard.styleIndex == 1) {
                 float w = 50f;
                 float progress = (animatedHp / maxHp) * w;
-                drawRect(matrices, vertexConsumers, -w/2 - 1, -1, w/2 + 1, 5, 0xFF000000); // Border
-                drawRect(matrices, vertexConsumers, -w/2, 0, w/2, 4, 0xAA333333); // BG
-                drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + progress, 4, healthColor); // Fill
+                drawRect(matrices, vertexConsumers, -w/2 - 1, -1, w/2 + 1, 5, 0xFF000000); 
+                drawRect(matrices, vertexConsumers, -w/2, 0, w/2, 4, 0xAA333333); 
+                drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + progress, 4, healthColor);
             }
-            // --- FEATURE: STYLE 2 - PRO FACE + HITS ---
+            // --- FEATURE: STYLE 2 - PRO FACE ---
             else if (MtpvpDashboard.styleIndex == 2) {
                 int hits = (int) Math.ceil(hp / (data.tpvp$getAttackDamage() <= 0 ? 1.5 : data.tpvp$getAttackDamage()));
                 Identifier skin = playerState.skinTextures.texture();
@@ -78,19 +104,9 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
                 tr.draw("§l" + hits + " HITS", 0, 0, healthColor, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
 
-            // --- FEATURE: ARMOR ICONS & ITEM DURABILITY (FIXED FOR 1.21.4) ---
+            // --- FEATURE: ARMOR ICON ---
             if (MtpvpDashboard.showAdvancedInfo) {
-                drawIcon(matrices, vertexConsumers, 34, 9, 9, 9, -28, 14); // Armor Icon
-                
-                // Using playerState.heldItem for 1.21.4
-                ItemStack hand = playerState.heldItem; 
-                if (hand != null && !hand.isEmpty()) {
-                    String itemInfo = "§b" + hand.getName().getString();
-                    if (hand.isDamageable()) {
-                        itemInfo += " §f[" + (hand.getMaxDamage() - hand.getDamage()) + "]";
-                    }
-                    tr.draw(itemInfo, -tr.getWidth(itemInfo.replaceAll("§.", ""))/2f, 16, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
-                }
+                drawIcon(matrices, vertexConsumers, 34, 9, 9, 9, -5, 12); // Armor Shield Icon
             }
 
             matrices.pop();
@@ -129,4 +145,4 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
         buf.vertex(mat, x2, y2, 0).color(r, g, b, a);
         buf.vertex(mat, x2, y1, 0).color(r, g, b, a);
     }
-}
+                                           }
