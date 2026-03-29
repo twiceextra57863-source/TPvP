@@ -1,7 +1,9 @@
-package com.yourname.mtpvp.gui;
+package com.mtpvp.gui;
 
+import com.mtpvp.config.MtpvpConfig;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 public class MtpvpDashboard extends Screen {
@@ -13,26 +15,34 @@ public class MtpvpDashboard extends Screen {
     }
 
     @Override
+    protected void init() {
+        // Mode Selection Button
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Switch Health Mode"), (button) -> {
+            MtpvpConfig.healthMode = (MtpvpConfig.healthMode + 1) % 3;
+        }).dimensions(120, 50, 150, 20).build());
+    }
+
+    @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context, mouseX, mouseY, delta);
         
-        // 1. Draw Sidebar Background (Left)
-        context.fill(10, 10, 100, this.height - 10, 0x80000000); // Dark semi-transparent
+        // Sidebar
+        context.fill(0, 0, 100, this.height, 0xAA000000);
+        context.drawTextWithShadow(this.textRenderer, "CATEGORIES", 10, 20, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, "> Indicators", 10, 50, 0x00FF00);
         
-        // 2. Draw Main Settings Area (Right)
-        context.fill(110, 10, this.width - 10, this.height - 10, 0x50000000);
-
-        // Title
-        context.drawCenteredTextWithShadow(this.textRenderer, "MTPVP CLIENT SETTINGS", this.width / 2 + 50, 20, 0xFFFFFF);
-        
-        // Categories (Example)
-        context.drawTextWithShadow(this.textRenderer, "> Indicators", 20, 40, 0x00FF00);
-        context.drawTextWithShadow(this.textRenderer, "  Movement", 20, 60, 0xFFFFFF);
-        context.drawTextWithShadow(this.textRenderer, "  Combat", 20, 80, 0xFFFFFF);
+        // Right Panel Info
+        String modeName = switch (MtpvpConfig.healthMode) {
+            case 0 -> "Progress Bar";
+            case 1 -> "Vanilla Hearts";
+            case 2 -> "Head + Hits To Kill";
+            default -> "Unknown";
+        };
+        context.drawTextWithShadow(this.textRenderer, "Current Mode: " + modeName, 120, 80, 0xFFFFFF);
 
         super.render(context, mouseX, mouseY, delta);
     }
-    
+
     @Override
     public void close() {
         this.client.setScreen(parent);
