@@ -1,4 +1,4 @@
-package com.mtpvp.mixin; // FIXED PACKAGE
+package com.mtpvp.mixin;
 
 import com.mtpvp.gui.MtpvpDashboard;
 import com.tpvp.accessor.IEntityRenderState;
@@ -39,20 +39,19 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
             if (animatedHp < 0) animatedHp = hp;
             animatedHp = MathHelper.lerp(0.12f, animatedHp, hp);
 
-            // --- FEATURE: DAMAGE COLOR FLASH ---
             int healthColor = (hp > 14) ? 0xFF55FF55 : (hp > 7 ? 0xFFFFFF55 : 0xFFFF5555);
 
             matrices.push();
-            // Position shifted for high visibility
             matrices.translate(0, 3.4f, 0); 
             matrices.scale(-0.025f, -0.025f, 0.025f);
             
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
             Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-            // --- FEATURE: DISTANCE INDICATOR ---
+            // --- FEATURE: DISTANCE INDICATOR (FIXED FOR 1.21.4) ---
             if (MtpvpDashboard.showDistance) {
-                float dist = (float) Math.sqrt(playerState.distanceToCameraSq);
+                // 1.21.4 uses 'cameraDistance' (Direct float distance)
+                float dist = playerState.cameraDistance; 
                 String distText = String.format("§e%.1fm", dist);
                 tr.draw(distText, -tr.getWidth(distText)/2f, -14, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
@@ -61,19 +60,15 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
             if (MtpvpDashboard.styleIndex == 0) {
                 int full = (int) Math.ceil(hp / 2);
                 String heartText = "§c" + "❤".repeat(Math.max(0, full)) + "§8" + "❤".repeat(Math.max(0, 10 - full));
-                float x = -tr.getWidth(heartText.replaceAll("§.", ""))/2f;
-                tr.draw(heartText, x, 0, 0xFFFFFF, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                tr.draw(heartText, -tr.getWidth(heartText.replaceAll("§.", ""))/2f, 0, 0xFFFFFF, false, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             } 
             // --- FEATURE: STYLE 1 - STATUS BAR (SMOOTH + BORDERS) ---
             else if (MtpvpDashboard.styleIndex == 1) {
                 float w = 50f;
                 float progress = (animatedHp / maxHp) * w;
-                // Professional Black Border
-                drawRect(matrices, vertexConsumers, -w/2 - 1, -1, w/2 + 1, 5, 0xFF000000); 
-                // Background
-                drawRect(matrices, vertexConsumers, -w/2, 0, w/2, 4, 0xAA333333); 
-                // Smooth Health Fill (Color changes with damage)
-                drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + progress, 4, healthColor);
+                drawRect(matrices, vertexConsumers, -w/2 - 1, -1, w/2 + 1, 5, 0xFF000000); // Border
+                drawRect(matrices, vertexConsumers, -w/2, 0, w/2, 4, 0xAA333333); // BG
+                drawRect(matrices, vertexConsumers, -w/2, 0, -w/2 + progress, 4, healthColor); // Fill
             }
             // --- FEATURE: STYLE 2 - PRO FACE + HITS ---
             else if (MtpvpDashboard.styleIndex == 2) {
@@ -83,15 +78,19 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
                 tr.draw("§l" + hits + " HITS", 0, 0, healthColor, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
 
-            // --- FEATURE: ARMOR ICONS & ITEM DURABILITY ---
+            // --- FEATURE: ARMOR ICONS & ITEM DURABILITY (FIXED FOR 1.21.4) ---
             if (MtpvpDashboard.showAdvancedInfo) {
-                // Armor Icon
-                drawIcon(matrices, vertexConsumers, 34, 9, 9, 9, -28, 14); 
+                drawIcon(matrices, vertexConsumers, 34, 9, 9, 9, -28, 14); // Armor Icon
                 
-                // Item & Durability (Safe check for 1.21.4)
-                // Note: We use the accessor for items to avoid symbol errors
-                String itemInfo = "§b" + (hp < 5 ? "§4LOW HP!" : "STABLE"); 
-                tr.draw(itemInfo, -tr.getWidth(itemInfo)/2f, 16, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                // Using playerState.heldItem for 1.21.4
+                ItemStack hand = playerState.heldItem; 
+                if (hand != null && !hand.isEmpty()) {
+                    String itemInfo = "§b" + hand.getName().getString();
+                    if (hand.isDamageable()) {
+                        itemInfo += " §f[" + (hand.getMaxDamage() - hand.getDamage()) + "]";
+                    }
+                    tr.draw(itemInfo, -tr.getWidth(itemInfo.replaceAll("§.", ""))/2f, 16, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
+                }
             }
 
             matrices.pop();
@@ -130,4 +129,4 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
         buf.vertex(mat, x2, y2, 0).color(r, g, b, a);
         buf.vertex(mat, x2, y1, 0).color(r, g, b, a);
     }
-                            }
+}
