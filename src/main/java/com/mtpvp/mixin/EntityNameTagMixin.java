@@ -26,7 +26,6 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
 
     @Inject(method = "renderLabelIfPresent", at = @At("HEAD"))
     private void onRenderLabel(S state, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
-        // Toggle Check
         if (!MtpvpDashboard.headEnabled || !(state instanceof PlayerEntityRenderState playerState)) return;
 
         if (state instanceof IEntityRenderState data) {
@@ -43,10 +42,14 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
             Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-            // 1. DISTANCE (Using base state field)
+            // 1. DISTANCE (Manual Calculation to avoid 'symbol not found')
             if (MtpvpDashboard.showDistance) {
-                // In 1.21.4, distanceToCamera is often a field in the base EntityRenderState
-                float dist = state.distanceToCamera; 
+                var camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+                double dx = playerState.x - camera.getPos().x;
+                double dy = playerState.y - camera.getPos().y;
+                double dz = playerState.z - camera.getPos().z;
+                float dist = (float) Math.sqrt(dx*dx + dy*dy + dz*dz);
+                
                 String dText = String.format("§e%.1fm", dist);
                 tr.draw(dText, -tr.getWidth(dText)/2f, -12, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
