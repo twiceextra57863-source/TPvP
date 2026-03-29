@@ -1,14 +1,17 @@
 {
   "schemaVersion": 1,
   "id": "mtpvp",
-  "version": "1.0.0", 
+  "version": "${version}",
   "name": "Mtpvp Client",
-  "description": "Advanced PvP Heart Indicators",
-  "authors": ["Twicefear"],
+  "description": "Custom PvP Client Mod",
+  "authors": ["YourName"],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/mtpvp/icon.png",
   "environment": "client",
   "entrypoints": {
     "client": [
-      "com.mtpvp.Mtpvp"
+      "com.mtpvp.MtpvpMod"
     ]
   },
   "mixins": [
@@ -16,7 +19,7 @@
   ],
   "depends": {
     "fabricloader": ">=0.16.0",
-    "minecraft": "1.21.4",
+    "minecraft": "~1.21.4",
     "java": ">=21",
     "fabric-api": "*"
   }
