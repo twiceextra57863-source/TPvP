@@ -1,4 +1,4 @@
-package com.tpvp.accessor;
+package com.mtpvp.accessor;
 
 public interface IEntityRenderState {
     float tpvp$getHealth();
