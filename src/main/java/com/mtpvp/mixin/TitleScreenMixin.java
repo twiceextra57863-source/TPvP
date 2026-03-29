@@ -1,4 +1,4 @@
-package com.tpvp.mixin;
+package com.mtpvp.mixin;
 
 import com.mtpvp.gui.MtpvpDashboard;
 import net.minecraft.client.gui.screen.Screen;
