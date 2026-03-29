@@ -5,7 +5,7 @@
   "mixins": [
     "TitleScreenMixin",
     "GameMenuMixin",
-    "EntityRendererMixin"
+    "EntityRenderDispatcherMixin"
   ],
   "injectors": {
     "defaultRequire": 1
