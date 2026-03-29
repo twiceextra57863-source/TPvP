@@ -17,9 +17,8 @@ public abstract class MenuMixin extends Screen {
 
     @Inject(method = "init", at = @At("TAIL"))
     private void addDashboardButton(CallbackInfo ci) {
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Mod Dashboard"), b -> {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Health Mod"), b -> {
             this.client.setScreen(new DashboardScreen());
-        }).dimensions(10, 10, 100, 20).build());
+        }).dimensions(5, 5, 80, 20).build());
     }
 }
-
