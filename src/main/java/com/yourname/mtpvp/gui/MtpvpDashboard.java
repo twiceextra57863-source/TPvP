@@ -10,52 +10,41 @@ public class MtpvpDashboard extends Screen {
     private final Screen parent;
 
     public MtpvpDashboard(Screen parent) {
-        super(Text.literal("Mtpvp Dashboard"));
+        super(Text.literal("MTPVP DASHBOARD"));
         this.parent = parent;
     }
 
     @Override
     protected void init() {
-        int startX = 120;
-        
-        // Mode 0: Progress Bar Button
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: Progress Bar"), (button) -> {
-            MtpvpConfig.healthMode = 0;
-        }).dimensions(startX, 50, 160, 20).build());
+        int x = 110;
+        // Style Buttons
+        addBtn("Style: Progress Bar", 0, x, 60);
+        addBtn("Style: Vanilla Hearts", 1, x, 90);
+        addBtn("Style: Head & Hits", 2, x, 120);
 
-        // Mode 1: Vanilla Hearts Button
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: Vanilla Hearts"), (button) -> {
-            MtpvpConfig.healthMode = 1;
-        }).dimensions(startX, 80, 160, 20).build());
+        // Save
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("§a✔ SAVE & APPLY"), (btn) -> this.close())
+            .dimensions(this.width - 110, this.height - 30, 100, 20).build());
+    }
 
-        // Mode 2: Head + Hits Button
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: Head + Hits"), (button) -> {
-            MtpvpConfig.healthMode = 2;
-        }).dimensions(startX, 110, 160, 20).build());
-
-        // Save & Close Button
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("💾 SAVE & APPLY"), (button) -> {
-            MtpvpConfig.save();
-            this.close();
-        }).dimensions(this.width - 110, this.height - 30, 100, 20).build());
+    private void addBtn(String label, int mode, int x, int y) {
+        this.addDrawableChild(ButtonWidget.builder(Text.literal(label), (btn) -> MtpvpConfig.healthMode = mode)
+            .dimensions(x, y, 160, 20).build());
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context, mouseX, mouseY, delta);
+        // Sidebar background
+        context.fill(0, 0, 100, this.height, 0xDD000000);
+        context.fill(100, 0, 101, this.height, 0xFF00FFFF);
         
-        // Dynamic Sidebar Rendering
-        context.fill(0, 0, 100, this.height, 0xCC000000); // Black Sidebar
-        context.fill(100, 0, 102, this.height, 0xFF00AAFF); // Cyan Accent Line
+        context.drawCenteredTextWithShadow(textRenderer, "§bMTPVP", 50, 20, 0xFFFFFF);
+        context.drawTextWithShadow(textRenderer, "§e> Indicators", 10, 65, 0xFFFFFF);
         
-        context.drawCenteredTextWithShadow(this.textRenderer, "MTPVP CLIENT", 50, 20, 0x00FF00);
-        context.drawTextWithShadow(this.textRenderer, "● Indicators", 10, 55, 0x00FF00);
-        context.drawTextWithShadow(this.textRenderer, "  Combat", 10, 75, 0xAAAAAA);
-        context.drawTextWithShadow(this.textRenderer, "  Movement", 10, 95, 0xAAAAAA);
-
-        // Highlight Active Mode
-        String current = "Current: " + (MtpvpConfig.healthMode == 0 ? "Bar" : MtpvpConfig.healthMode == 1 ? "Hearts" : "Hits");
-        context.drawTextWithShadow(this.textRenderer, "Status: §a" + current, 120, 20, 0xFFFFFF);
+        // Active Indicator highlight
+        context.drawTextWithShadow(textRenderer, "Status: §aRunning", 110, 20, 0xFFFFFF);
+        context.drawTextWithShadow(textRenderer, "Mode: §bStyle " + MtpvpConfig.healthMode, 110, 35, 0xFFFFFF);
 
         super.render(context, mouseX, mouseY, delta);
     }
