@@ -10,7 +10,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
-public class MtpvpClient implements ClientModInitializer {
+public class Mtpvp implements ClientModInitializer {
     public static KeyBinding targetKey;
 
     @Override
