@@ -4,7 +4,7 @@
   "version": "${version}",
   "name": "Mtpvp Client",
   "description": "Custom PvP Client Mod",
-  "authors": ["YourName"],
+  "authors": ["MineTwice"],
   "contact": {},
   "license": "MIT",
   "icon": "assets/mtpvp/icon.png",
