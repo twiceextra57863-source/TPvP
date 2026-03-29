@@ -6,25 +6,15 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 public class DashboardScreen extends Screen {
-    public DashboardScreen() {
-        super(Text.literal("Mod Dashboard"));
-    }
+    public DashboardScreen() { super(Text.literal("Mod Dashboard")); }
 
     @Override
     protected void init() {
         int centerX = this.width / 2 - 100;
-        
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: Vanilla Hearts"), b -> ModSettings.currentStyle = 0)
-            .dimensions(centerX, 60, 200, 20).build());
-            
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: Head & Hits"), b -> ModSettings.currentStyle = 1)
-            .dimensions(centerX, 90, 200, 20).build());
-            
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: Status Bar"), b -> ModSettings.currentStyle = 2)
-            .dimensions(centerX, 120, 200, 20).build());
-            
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Done"), b -> this.close())
-            .dimensions(centerX, 160, 200, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: Vanilla Hearts"), b -> ModSettings.currentStyle = 0).dimensions(centerX, 60, 200, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: Player Head & Hits"), b -> ModSettings.currentStyle = 1).dimensions(centerX, 90, 200, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: Dynamic Status Bar"), b -> ModSettings.currentStyle = 2).dimensions(centerX, 120, 200, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Done"), b -> this.close()).dimensions(centerX, 160, 200, 20).build());
     }
 
     @Override
@@ -34,4 +24,3 @@ public class DashboardScreen extends Screen {
         super.render(context, mouseX, mouseY, delta);
     }
 }
-
