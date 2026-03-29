@@ -38,16 +38,16 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
             animatedHp = MathHelper.lerp(0.15f, animatedHp, hp);
 
             matrices.push();
-            // Sabse upar position (Armor/Distance ke liye jagah)
+            // Position: NameTag ke upar (Perfectly balanced)
             matrices.translate(0, 3.2f, 0); 
             matrices.scale(-0.025f, -0.025f, 0.025f);
             
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
             Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-            // 1. DISTANCE (If Enabled)
+            // 1. DISTANCE (FIXED: Using distanceToCamera)
             if (MtpvpDashboard.showDistance) {
-                double dist = Math.sqrt(playerState.distanceToCameraSq);
+                float dist = playerState.distanceToCamera; 
                 String dText = String.format("§e%.1fm", dist);
                 tr.draw(dText, -tr.getWidth(dText)/2f, -12, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
@@ -72,12 +72,16 @@ public abstract class EntityNameTagMixin<S extends EntityRenderState> {
                 tr.draw("§l" + hits + " HITS", 0, 0, color, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
             }
 
-            // 3. ADVANCED INFO (Armor & Items)
+            // 3. ADVANCED INFO (FIXED: Accessing item state)
             if (MtpvpDashboard.showAdvancedInfo) {
-                ItemStack hand = playerState.mainHandItem;
-                if (!hand.isEmpty()) {
+                // 1.21.4 uses 'item' for current held item in render state
+                ItemStack hand = playerState.item; 
+                if (hand != null && !hand.isEmpty()) {
                     String itemInfo = "§b" + hand.getName().getString();
-                    if (hand.isDamageable()) itemInfo += " §f[" + (hand.getMaxDamage() - hand.getDamage()) + "]";
+                    if (hand.isDamageable()) {
+                        int dur = hand.getMaxDamage() - hand.getDamage();
+                        itemInfo += " §f[" + dur + "]";
+                    }
                     tr.draw(itemInfo, -tr.getWidth(itemInfo.replaceAll("§.", ""))/2f, 12, 0xFFFFFF, true, matrix, vertexConsumers, TextRenderer.TextLayerType.SEE_THROUGH, 0, light);
                 }
             }
