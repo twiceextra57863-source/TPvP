@@ -1,12 +1,11 @@
-"schemaVersion": 1,
+{
+  "schemaVersion": 1,
   "id": "heartindicator",
-  "version": "${version}",
+  "version": "1.0.0",
   "name": "Heart Indicator",
-  "description": "See the health of all nearby players above their heads with a beautiful HUD!",
+  "description": "See the health of all nearby players above their heads!",
   "authors": ["MineTwice"],
-  "contact": {},
   "license": "MIT",
-  "icon": "assets/heartindicator/icon.png",
   "environment": "client",
   "entrypoints": {
     "client": [
