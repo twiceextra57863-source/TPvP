@@ -1,0 +1,17 @@
+{
+  "heartindicator.title": "Heart Indicator",
+  "heartindicator.toggle": "Heart Indicator",
+  "heartindicator.toggle.on": "§aHeart Indicator: ON",
+  "heartindicator.toggle.off": "§cHeart Indicator: OFF",
+  "heartindicator.menu.title": "Heart Indicator Settings",
+  "heartindicator.menu.toggle": "Toggle Indicator",
+  "heartindicator.menu.style": "Icon Style",
+  "heartindicator.menu.range": "Detection Range",
+  "heartindicator.menu.back": "← Back",
+  "heartindicator.style.classic": "Classic ❤",
+  "heartindicator.style.pixel": "Pixel ♥",
+  "heartindicator.style.modern": "Modern ◆",
+  "heartindicator.range.short": "Short (16 blocks)",
+  "heartindicator.range.medium": "Medium (32 blocks)",
+  "heartindicator.range.long": "Long (64 blocks)"
+}
