@@ -48,15 +48,11 @@ public class HeartIndicatorRenderer {
             } else if (item instanceof AxeItem) {
                 if (item.toString().contains("netherite")) damage = 10.0f;
                 else if (item.toString().contains("diamond")) damage = 9.0f;
-                else if (item.toString().contains("iron")) damage = 8.0f;
-                else damage = 7.0f;
-            } else if (item instanceof BowItem) {
-                damage = 6.0f;
-            } else if (item instanceof CrossbowItem) {
-                damage = 8.0f;
+                else damage = 8.0f;
+            } else if (item instanceof BowItem || item instanceof CrossbowItem) {
+                damage = 7.0f;
             }
         }
-        
         return damage;
     }
 }
