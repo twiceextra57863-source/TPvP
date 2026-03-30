@@ -3,16 +3,12 @@ package com.yourname.mtpvp.client.render;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.*;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RotationAxis;
-import org.joml.Matrix4f;
-import net.minecraft.client.gui.DrawContext;
 
 public class HeartIndicatorRenderer {
     
@@ -24,8 +20,6 @@ public class HeartIndicatorRenderer {
     }
     
     private static DesignType currentDesign = DesignType.VANILLA;
-    private static final Identifier HEART_TEXTURE = Identifier.of("minecraft", "textures/gui/heart.png");
-    private static final Identifier DEFAULT_SKIN = Identifier.of("minecraft", "textures/entity/steve.png");
     
     public static void setDesignType(DesignType design) {
         currentDesign = design;
@@ -39,7 +33,6 @@ public class HeartIndicatorRenderer {
         
         TextRenderer textRenderer = client.textRenderer;
         
-        // Position above entity
         matrices.push();
         
         double yOffset = entity.getHeight() + 0.5;
@@ -70,17 +63,16 @@ public class HeartIndicatorRenderer {
     
     private static void renderVanillaHearts(MatrixStack matrices, VertexConsumerProvider vertexConsumers, 
                                             TextRenderer textRenderer, int x, int y, float health, float maxHealth) {
-        int heartCount = MathHelper.ceil(maxHealth / 2);
-        int displayedHearts = MathHelper.ceil(health / 2);
+        int heartCount = (int) Math.ceil(maxHealth / 2);
+        int displayedHearts = (int) Math.ceil(health / 2);
         
         int startX = x - (heartCount * 8);
         
         for (int i = 0; i < heartCount; i++) {
             int heartX = startX + i * 16;
-            String heart = (i >= displayedHearts) ? "❤" : "❤";
+            String heart = "❤";
             int color = (i >= displayedHearts) ? 0x663333 : 0xFF5555;
             
-            // Simple text rendering for hearts
             matrices.push();
             matrices.translate(heartX, y, 0);
             textRenderer.draw(heart, 0, 0, color, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
@@ -94,7 +86,6 @@ public class HeartIndicatorRenderer {
         int barLength = 50;
         int filledLength = (int)(barLength * healthPercent);
         
-        // Create bar string
         StringBuilder bar = new StringBuilder("[");
         for (int i = 0; i < barLength / 2; i++) {
             if (i < filledLength / 2) {
@@ -105,14 +96,13 @@ public class HeartIndicatorRenderer {
         }
         bar.append("]");
         
-        // Color based on health
         int color;
         if (healthPercent > 0.66) {
-            color = 0x55FF55; // Green
+            color = 0x55FF55;
         } else if (healthPercent > 0.33) {
-            color = 0xFFAA55; // Orange
+            color = 0xFFAA55;
         } else {
-            color = 0xFF5555; // Red
+            color = 0xFF5555;
         }
         
         matrices.push();
@@ -121,7 +111,6 @@ public class HeartIndicatorRenderer {
                          TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
         
-        // Draw percentage
         matrices.push();
         matrices.translate(x + (barLength / 2) + 10, y, 0);
         textRenderer.draw(String.format("%d%%", (int)(healthPercent * 100)), 0, 0, 0xFFFFFF, false, 
@@ -132,7 +121,6 @@ public class HeartIndicatorRenderer {
     private static void renderPlayerHeadWithHTK(MinecraftClient client, MatrixStack matrices, 
                                                 VertexConsumerProvider vertexConsumers, TextRenderer textRenderer,
                                                 LivingEntity entity, int x, int y, float health, float maxHealth) {
-        // Draw health text
         String healthText = String.format("%.0f/%.0f", health, maxHealth);
         matrices.push();
         matrices.translate(x - 30, y, 0);
@@ -140,7 +128,6 @@ public class HeartIndicatorRenderer {
                          TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
         
-        // Calculate hits to kill
         int hitsToKill = calculateHitsToKill(client.player, entity);
         String htkText = String.format("HTK: %d", hitsToKill);
         
@@ -150,7 +137,6 @@ public class HeartIndicatorRenderer {
                          TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
         
-        // Death zone indicator
         int deathZone = (int)(maxHealth * 0.25f);
         if (health <= deathZone) {
             matrices.push();
@@ -160,9 +146,7 @@ public class HeartIndicatorRenderer {
             matrices.pop();
         }
         
-        // Draw player head texture (simplified)
-        if (entity instanceof PlayerEntity player) {
-            // Draw head indicator using text for now
+        if (entity instanceof PlayerEntity) {
             matrices.push();
             matrices.translate(x + 10, y - 8, 0);
             textRenderer.draw("👤", 0, 0, 0x55AAFF, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
@@ -184,24 +168,51 @@ public class HeartIndicatorRenderer {
     
     private static float getPlayerDamage(PlayerEntity player) {
         ItemStack mainHand = player.getMainHandStack();
-        float baseDamage = 1.0f;
+        float baseDamage = 2.0f; // Default fist damage
         
-        if (mainHand.getItem() instanceof SwordItem sword) {
-            baseDamage = sword.getAttackDamage();
-        } else if (mainHand.getItem() instanceof AxeItem axe) {
-            baseDamage = axe.getAttackDamage();
-        } else if (mainHand.getItem() instanceof BowItem) {
-            baseDamage = 6.0f;
-        } else if (mainHand.getItem() instanceof CrossbowItem) {
-            baseDamage = 8.0f;
-        } else {
-            baseDamage = 2.0f; // Base fist damage
+        if (mainHand.isEmpty()) {
+            return baseDamage;
         }
         
-        // Add strength effect if applicable
+        Item item = mainHand.getItem();
+        
+        // Get attack damage from item attribute
+        var attackDamageAttribute = mainHand.getAttributeModifiers(ItemAttributeModifierContext.ATTACK_DAMAGE_MODIFIER_TYPE);
+        
+        if (attackDamageAttribute != null && !attackDamageAttribute.isEmpty()) {
+            // Try to get the attack damage from the item's attribute modifiers
+            for (var modifier : attackDamageAttribute.values()) {
+                if (modifier.getId().toString().contains("attack_damage")) {
+                    baseDamage += (float) modifier.value();
+                    break;
+                }
+            }
+        } else {
+            // Fallback damage values based on item type
+            if (item instanceof SwordItem) {
+                baseDamage = 4.0f;
+            } else if (item instanceof AxeItem) {
+                baseDamage = 5.0f;
+            } else if (item instanceof BowItem) {
+                baseDamage = 6.0f;
+            } else if (item instanceof CrossbowItem) {
+                baseDamage = 8.0f;
+            } else if (item instanceof PickaxeItem) {
+                baseDamage = 3.0f;
+            } else if (item instanceof ShovelItem) {
+                baseDamage = 2.5f;
+            }
+        }
+        
+        // Add strength effect bonus
         if (player.hasStatusEffect(net.minecraft.entity.effect.StatusEffects.STRENGTH)) {
             int amplifier = player.getStatusEffect(net.minecraft.entity.effect.StatusEffects.STRENGTH).getAmplifier();
             baseDamage += (amplifier + 1) * 1.5f;
+        }
+        
+        // Critical hit bonus (if falling)
+        if (player.fallDistance > 0 && !player.isOnGround()) {
+            baseDamage *= 1.5f;
         }
         
         return baseDamage;
