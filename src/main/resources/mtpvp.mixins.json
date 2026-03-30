@@ -7,7 +7,7 @@
   "client": [
     "TitleScreenMixin",
     "InGameMenuMixin",
-    "EntityRenderDispatcherMixin"
+    "LivingEntityRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
