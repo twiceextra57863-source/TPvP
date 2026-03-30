@@ -2,23 +2,17 @@ package com.yourname.mtpvp.client.render;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.SwordItem;
-import net.minecraft.item.AxeItem;
-import net.minecraft.item.BowItem;
-import net.minecraft.item.CrossbowItem;
+import net.minecraft.item.*;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.RotationAxis;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
+import org.joml.Matrix4f;
+import net.minecraft.client.gui.DrawContext;
 
 public class HeartIndicatorRenderer {
     
@@ -30,136 +24,156 @@ public class HeartIndicatorRenderer {
     }
     
     private static DesignType currentDesign = DesignType.VANILLA;
+    private static final Identifier HEART_TEXTURE = Identifier.of("minecraft", "textures/gui/heart.png");
     private static final Identifier DEFAULT_SKIN = Identifier.of("minecraft", "textures/entity/steve.png");
     
     public static void setDesignType(DesignType design) {
         currentDesign = design;
     }
     
-    public static void renderIndicator(DrawContext context, LivingEntity entity, TextRenderer textRenderer, float tickDelta) {
+    public static void renderIndicator(LivingEntity entity, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light) {
         if (currentDesign == DesignType.DISABLED) return;
         
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null) return;
+        if (client.player == null || client.player == entity) return;
         
-        // Don't render indicator on self
-        if (entity == client.player) return;
+        TextRenderer textRenderer = client.textRenderer;
         
-        // Calculate position above entity
-        double x = entity.getX();
-        double y = entity.getY() + entity.getHeight() + 0.5;
-        double z = entity.getZ();
+        // Position above entity
+        matrices.push();
         
-        Vec3d screenPos = projectToScreen(client, x, y, z, tickDelta);
-        if (screenPos == null) return;
-        
-        int screenX = (int) screenPos.x;
-        int screenY = (int) screenPos.y;
+        double yOffset = entity.getHeight() + 0.5;
+        matrices.translate(0, yOffset, 0);
+        matrices.scale(0.025f, -0.025f, 0.025f);
         
         float health = entity.getHealth();
         float maxHealth = entity.getMaxHealth();
         float healthPercent = health / maxHealth;
         
+        int centerX = 0;
+        int yPos = 0;
+        
         switch (currentDesign) {
             case VANILLA:
-                renderVanillaHearts(context, screenX, screenY, health, maxHealth);
+                renderVanillaHearts(matrices, vertexConsumers, textRenderer, centerX, yPos, health, maxHealth);
                 break;
             case STATUS_BAR:
-                renderStatusBar(context, screenX, screenY, healthPercent);
+                renderStatusBar(matrices, vertexConsumers, textRenderer, centerX, yPos, healthPercent);
                 break;
             case PLAYER_HEAD:
-                renderPlayerHeadWithHTK(context, client, entity, screenX, screenY, health, maxHealth);
+                renderPlayerHeadWithHTK(client, matrices, vertexConsumers, textRenderer, entity, centerX, yPos, health, maxHealth);
                 break;
         }
+        
+        matrices.pop();
     }
     
-    private static void renderVanillaHearts(DrawContext context, int x, int y, float health, float maxHealth) {
+    private static void renderVanillaHearts(MatrixStack matrices, VertexConsumerProvider vertexConsumers, 
+                                            TextRenderer textRenderer, int x, int y, float health, float maxHealth) {
         int heartCount = MathHelper.ceil(maxHealth / 2);
         int displayedHearts = MathHelper.ceil(health / 2);
         
-        int startX = x - (heartCount * 4);
-        int heartY = y;
+        int startX = x - (heartCount * 8);
         
         for (int i = 0; i < heartCount; i++) {
-            int heartX = startX + i * 8;
-            Identifier heartTexture;
+            int heartX = startX + i * 16;
+            String heart = (i >= displayedHearts) ? "❤" : "❤";
+            int color = (i >= displayedHearts) ? 0x663333 : 0xFF5555;
             
-            if (i >= displayedHearts) {
-                heartTexture = Identifier.of("minecraft", "textures/gui/heart.png");
-                context.drawTexture(heartTexture, heartX, heartY, 16, 0, 9, 9, 256, 256);
+            // Simple text rendering for hearts
+            matrices.push();
+            matrices.translate(heartX, y, 0);
+            textRenderer.draw(heart, 0, 0, color, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
+                             TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
+            matrices.pop();
+        }
+    }
+    
+    private static void renderStatusBar(MatrixStack matrices, VertexConsumerProvider vertexConsumers, 
+                                        TextRenderer textRenderer, int x, int y, float healthPercent) {
+        int barLength = 50;
+        int filledLength = (int)(barLength * healthPercent);
+        
+        // Create bar string
+        StringBuilder bar = new StringBuilder("[");
+        for (int i = 0; i < barLength / 2; i++) {
+            if (i < filledLength / 2) {
+                bar.append("=");
             } else {
-                heartTexture = Identifier.of("minecraft", "textures/gui/heart.png");
-                context.drawTexture(heartTexture, heartX, heartY, 52, 0, 9, 9, 256, 256);
+                bar.append(" ");
             }
         }
-    }
-    
-    private static void renderStatusBar(DrawContext context, int x, int y, float healthPercent) {
-        int barWidth = 50;
-        int barHeight = 5;
-        int filledWidth = (int)(barWidth * healthPercent);
+        bar.append("]");
         
-        int barX = x - (barWidth / 2);
-        int barY = y;
-        
-        // Background
-        context.fill(barX, barY, barX + barWidth, barY + barHeight, 0xFF333333);
-        
-        // Health color based on percentage
+        // Color based on health
         int color;
         if (healthPercent > 0.66) {
-            color = 0xFF00FF00; // Green
+            color = 0x55FF55; // Green
         } else if (healthPercent > 0.33) {
-            color = 0xFFFFAA00; // Orange
+            color = 0xFFAA55; // Orange
         } else {
-            color = 0xFFFF0000; // Red
+            color = 0xFF5555; // Red
         }
         
-        // Foreground (health)
-        context.fill(barX, barY, barX + filledWidth, barY + barHeight, color);
+        matrices.push();
+        matrices.translate(x - (barLength / 2), y, 0);
+        textRenderer.draw(bar.toString(), 0, 0, color, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
+                         TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
+        matrices.pop();
         
-        // Add brackets
-        String barString = "[" + "=".repeat(Math.max(1, filledWidth / 2)) + "]";
-        context.drawText(textRenderer, barString, x - 25, y - 10, 0xFFFFFF, true);
+        // Draw percentage
+        matrices.push();
+        matrices.translate(x + (barLength / 2) + 10, y, 0);
+        textRenderer.draw(String.format("%d%%", (int)(healthPercent * 100)), 0, 0, 0xFFFFFF, false, 
+                         matrices.peek().getPositionMatrix(), vertexConsumers, TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
+        matrices.pop();
     }
     
-    private static void renderPlayerHeadWithHTK(DrawContext context, MinecraftClient client, LivingEntity entity, 
-                                                int x, int y, float health, float maxHealth) {
-        // Render player head
-        int headSize = 16;
-        int headX = x - headSize - 5;
-        int headY = y - 8;
-        
-        // Draw head background
-        context.fill(headX - 1, headY - 1, headX + headSize + 1, headY + headSize + 1, 0xFF000000);
-        
-        // Get player skin
-        Identifier skinTexture = DEFAULT_SKIN;
-        if (entity instanceof PlayerEntity player) {
-            skinTexture = client.getSkinProvider().getSkinTextures(player).texture();
-        }
-        
-        // Draw player head (simple rectangle for now, but we'll draw the actual skin)
-        context.drawTexture(skinTexture, headX, headY, 8, 8, 8, 8, 64, 64);
-        
-        // Calculate hits needed to kill based on current weapon
-        int hitsToKill = calculateHitsToKill(client.player, entity);
-        
-        // Display health and hits to kill
+    private static void renderPlayerHeadWithHTK(MinecraftClient client, MatrixStack matrices, 
+                                                VertexConsumerProvider vertexConsumers, TextRenderer textRenderer,
+                                                LivingEntity entity, int x, int y, float health, float maxHealth) {
+        // Draw health text
         String healthText = String.format("%.0f/%.0f", health, maxHealth);
+        matrices.push();
+        matrices.translate(x - 30, y, 0);
+        textRenderer.draw(healthText, 0, 0, 0xFFFFFF, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
+                         TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
+        matrices.pop();
+        
+        // Calculate hits to kill
+        int hitsToKill = calculateHitsToKill(client.player, entity);
         String htkText = String.format("HTK: %d", hitsToKill);
         
-        context.drawText(textRenderer, healthText, x + 5, y - 8, 0xFFAAAA, true);
-        context.drawText(textRenderer, htkText, x + 5, y, 0xFFFFAA, true);
+        matrices.push();
+        matrices.translate(x - 30, y + 12, 0);
+        textRenderer.draw(htkText, 0, 0, 0xFFFFAA, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
+                         TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
+        matrices.pop();
         
-        // Add death hit indicator (critical hit zone)
-        int deathZone = (int)(maxHealth * 0.25f); // 25% health is death zone
+        // Death zone indicator
+        int deathZone = (int)(maxHealth * 0.25f);
         if (health <= deathZone) {
-            context.drawText(textRenderer, "⚠️ DEATH ZONE", x + 5, y + 8, 0xFF0000, true);
+            matrices.push();
+            matrices.translate(x - 30, y + 24, 0);
+            textRenderer.draw("⚠️ DEATH ZONE", 0, 0, 0xFF5555, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
+                             TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
+            matrices.pop();
+        }
+        
+        // Draw player head texture (simplified)
+        if (entity instanceof PlayerEntity player) {
+            // Draw head indicator using text for now
+            matrices.push();
+            matrices.translate(x + 10, y - 8, 0);
+            textRenderer.draw("👤", 0, 0, 0x55AAFF, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
+                             TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
+            matrices.pop();
         }
     }
     
     private static int calculateHitsToKill(PlayerEntity attacker, LivingEntity target) {
+        if (attacker == null) return 99;
+        
         float totalHealth = target.getHealth();
         float damagePerHit = getPlayerDamage(attacker);
         
@@ -173,51 +187,23 @@ public class HeartIndicatorRenderer {
         float baseDamage = 1.0f;
         
         if (mainHand.getItem() instanceof SwordItem sword) {
-            baseDamage = sword.getAttackDamage() + 2.0f;
+            baseDamage = sword.getAttackDamage();
         } else if (mainHand.getItem() instanceof AxeItem axe) {
-            baseDamage = axe.getAttackDamage() + 2.0f;
+            baseDamage = axe.getAttackDamage();
         } else if (mainHand.getItem() instanceof BowItem) {
-            baseDamage = 6.0f; // Base bow damage
+            baseDamage = 6.0f;
         } else if (mainHand.getItem() instanceof CrossbowItem) {
-            baseDamage = 8.0f; // Crossbow damage
+            baseDamage = 8.0f;
+        } else {
+            baseDamage = 2.0f; // Base fist damage
         }
         
-        // Add critical hit calculation (simplified)
-        if (player.fallDistance > 0 && !player.isOnGround()) {
-            baseDamage *= 1.5f;
+        // Add strength effect if applicable
+        if (player.hasStatusEffect(net.minecraft.entity.effect.StatusEffects.STRENGTH)) {
+            int amplifier = player.getStatusEffect(net.minecraft.entity.effect.StatusEffects.STRENGTH).getAmplifier();
+            baseDamage += (amplifier + 1) * 1.5f;
         }
         
         return baseDamage;
-    }
-    
-    private static Vec3d projectToScreen(MinecraftClient client, double x, double y, double z, float tickDelta) {
-        if (client.player == null) return null;
-        
-        double deltaX = x - client.player.getX();
-        double deltaY = y - (client.player.getY() + client.player.getEyeHeight(client.player.getPose()));
-        double deltaZ = z - client.player.getZ();
-        
-        double distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-        if (distance > 20) return null; // Don't render too far
-        
-        // Simple projection - in real implementation, use camera projection
-        if (client.getCameraEntity() == null) return null;
-        
-        Vec3d screenPos = client.getCameraEntity().getPos().add(deltaX, deltaY, deltaZ);
-        
-        // This is a simplified projection - you might want to use actual camera transformation
-        int screenWidth = client.getWindow().getScaledWidth();
-        int screenHeight = client.getWindow().getScaledHeight();
-        
-        // Very basic perspective projection
-        double scale = 1.0 / distance;
-        double screenX = screenWidth / 2 + (deltaX * 100 * scale);
-        double screenY = screenHeight / 2 - (deltaY * 100 * scale) - 30;
-        
-        if (screenX < 0 || screenX > screenWidth || screenY < 0 || screenY > screenHeight) {
-            return null;
-        }
-        
-        return new Vec3d(screenX, screenY, 0);
     }
 }
