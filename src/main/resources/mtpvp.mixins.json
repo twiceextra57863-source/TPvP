@@ -1,11 +1,12 @@
 {
   "required": true,
-  "package": "com.heartindicator.mixin",
+  "minVersion": "0.8",
+  "package": "com.yourname.mtpvp.mixin",
   "compatibilityLevel": "JAVA_21",
+  "mixins": [],
   "client": [
     "TitleScreenMixin",
-    "GameMenuScreenMixin",
-    "PlayerEntityRendererMixin"
+    "InGameMenuMixin"
   ],
   "injectors": {
     "defaultRequire": 1
