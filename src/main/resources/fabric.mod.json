@@ -9,10 +9,12 @@
   "license": "MIT",
   "icon": "assets/heartindicator/icon.png",
   "environment": "*",
+{
   "entrypoints": {
     "main": ["com.example.heartindicator.HeartIndicatorMod"],
     "client": ["com.example.heartindicator.client.HeartIndicatorClient"]
-  },
+  }
+},
   "mixins": [
     "mixins.heartindicator.json"
   ],
