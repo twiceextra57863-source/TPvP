@@ -5,44 +5,44 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.fabricmc.loader.api.FabricLoader;
 
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Path;
 
 public class ModConfig {
-    private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("heartindicator.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("heartindicator.json");
+    private static ConfigData data = new ConfigData();
 
-    private boolean enabled = true; // default: on
-
-    public boolean isEnabled() {
-        return enabled;
+    public static boolean isEnabled() {
+        return data.enabled;
     }
 
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
+    public static void setEnabled(boolean enabled) {
+        data.enabled = enabled;
         save();
     }
 
-    public void save() {
-        try (FileWriter writer = new FileWriter(CONFIG_PATH.toFile())) {
-            GSON.toJson(this, writer);
+    public static void load() {
+        if (CONFIG_PATH.toFile().exists()) {
+            try (Reader reader = new FileReader(CONFIG_PATH.toFile())) {
+                data = GSON.fromJson(reader, ConfigData.class);
+            } catch (IOException e) {
+                HeartIndicatorMod.LOGGER.error("Failed to load config", e);
+            }
+        } else {
+            save(); // create default config
+        }
+    }
+
+    public static void save() {
+        try (Writer writer = new FileWriter(CONFIG_PATH.toFile())) {
+            GSON.toJson(data, writer);
         } catch (IOException e) {
             HeartIndicatorMod.LOGGER.error("Failed to save config", e);
         }
     }
 
-    public static ModConfig load() {
-        if (CONFIG_PATH.toFile().exists()) {
-            try (FileReader reader = new FileReader(CONFIG_PATH.toFile())) {
-                return GSON.fromJson(reader, ModConfig.class);
-            } catch (IOException e) {
-                HeartIndicatorMod.LOGGER.error("Failed to load config, using default", e);
-            }
-        }
-        ModConfig config = new ModConfig();
-        config.save();
-        return config;
+    private static class ConfigData {
+        boolean enabled = true; // default: enabled
     }
 }
