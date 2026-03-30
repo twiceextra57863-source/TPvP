@@ -56,17 +56,6 @@ public class HeartIndicatorRenderer {
             }
         }
         
-        // Strength effect bonus
-        if (player.hasStatusEffect(net.minecraft.entity.effect.StatusEffects.STRENGTH)) {
-            int amplifier = player.getStatusEffect(net.minecraft.entity.effect.StatusEffects.STRENGTH).getAmplifier();
-            damage += (amplifier + 1) * 1.5f;
-        }
-        
-        // Critical hit bonus
-        if (player.fallDistance > 0 && !player.isOnGround()) {
-            damage *= 1.5f;
-        }
-        
         return damage;
     }
 }
