@@ -8,23 +8,22 @@ import net.minecraft.client.render.entity.model.EntityModel;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 
-public class HeartIndicatorFeatureRenderer<T extends LivingEntity> extends FeatureRenderer<T, EntityModel<T>> {
+public class HeartIndicatorFeatureRenderer extends FeatureRenderer<LivingEntity, EntityModel<LivingEntity>> {
     
-    public HeartIndicatorFeatureRenderer(FeatureRendererContext<T, EntityModel<T>> context) {
+    public HeartIndicatorFeatureRenderer(FeatureRendererContext<LivingEntity, EntityModel<LivingEntity>> context) {
         super(context);
     }
     
     @Override
     public void render(MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light,
-                       T entity, float limbAngle, float limbDistance, float tickDelta,
+                       LivingEntity entity, float limbAngle, float limbDistance, float tickDelta,
                        float animationProgress, float headYaw, float headPitch) {
         
         if (HeartIndicatorRenderer.currentDesign == HeartIndicatorRenderer.DesignType.DISABLED) return;
         if (!(entity instanceof PlayerEntity player)) return;
         
-        // Don't render on self
         var client = net.minecraft.client.MinecraftClient.getInstance();
         if (client.player == player) return;
         
