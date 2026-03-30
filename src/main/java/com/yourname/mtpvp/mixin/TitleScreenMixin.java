@@ -17,9 +17,8 @@ public class TitleScreenMixin extends Screen {
         super(title);
     }
     
-    @Inject(method = "init", at = @At("TAIL"))
+    @Inject(method = "init", at = @At("TAIL"), remap = true)
     private void onInit(CallbackInfo ci) {
-        // Add Mtpvp button to title screen
         this.addDrawableChild(ButtonWidget.builder(Text.literal("Mtpvp"), button -> {
             if (client != null) {
                 client.setScreen(new MtpvpDashboardScreen(this));
