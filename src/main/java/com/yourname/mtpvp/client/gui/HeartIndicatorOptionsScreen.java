@@ -27,44 +27,32 @@ public class HeartIndicatorOptionsScreen extends Screen {
         int buttonWidth = 220;
         int buttonHeight = 40;
         
-        // Title with gradient effect
+        // Title
         TextWidget titleText = new TextWidget(centerX - 120, 25, 
             Text.literal("❤️ HEART INDICATOR SETTINGS ❤️").formatted(Formatting.BOLD, Formatting.GOLD), 
             this.textRenderer);
         titleText.setWidth(240);
         this.addDrawableChild(titleText);
         
-        // Design 1: Vanilla Hearts
+        // Create all buttons first
         ButtonWidget vanillaBtn = createDesignButton(
             centerX - 110, startY, buttonWidth, buttonHeight,
             "❤️ Vanilla Hearts",
-            "Classic Minecraft heart display",
-            0xFF5555,
             HeartIndicatorRenderer.DesignType.VANILLA
         );
-        this.addDrawableChild(vanillaBtn);
         
-        // Design 2: Status Bar
         ButtonWidget statusBarBtn = createDesignButton(
             centerX - 110, startY + 55, buttonWidth, buttonHeight,
             "📊 Status Bar",
-            "Health bar with percentage [====]",
-            0x55FF55,
             HeartIndicatorRenderer.DesignType.STATUS_BAR
         );
-        this.addDrawableChild(statusBarBtn);
         
-        // Design 3: Player Head + HTK
         ButtonWidget headBtn = createDesignButton(
             centerX - 110, startY + 110, buttonWidth, buttonHeight,
             "👤 Player Head + HTK",
-            "Shows hits needed to kill with your weapon",
-            0x55AAFF,
             HeartIndicatorRenderer.DesignType.PLAYER_HEAD
         );
-        this.addDrawableChild(headBtn);
         
-        // Disable Indicator Button
         ButtonWidget disableBtn = ButtonWidget.builder(
             Text.literal("❌ DISABLE INDICATOR").formatted(Formatting.BOLD, Formatting.DARK_RED),
             button -> {
@@ -73,6 +61,11 @@ public class HeartIndicatorOptionsScreen extends Screen {
             })
             .dimensions(centerX - 110, startY + 175, buttonWidth, buttonHeight)
             .build();
+        
+        // Add all buttons
+        this.addDrawableChild(vanillaBtn);
+        this.addDrawableChild(statusBarBtn);
+        this.addDrawableChild(headBtn);
         this.addDrawableChild(disableBtn);
         
         // Save Button
@@ -106,13 +99,12 @@ public class HeartIndicatorOptionsScreen extends Screen {
     }
     
     private ButtonWidget createDesignButton(int x, int y, int width, int height, 
-                                            String title, String description, 
-                                            int color, HeartIndicatorRenderer.DesignType design) {
+                                            String title, HeartIndicatorRenderer.DesignType design) {
         return ButtonWidget.builder(
             Text.literal(title).formatted(Formatting.BOLD),
             button -> {
                 selectedDesign = design;
-                updatePreview(design);
+                updatePreview();
             })
             .dimensions(x, y, width, height)
             .build();
@@ -140,14 +132,17 @@ public class HeartIndicatorOptionsScreen extends Screen {
     
     private void setButtonHighlight(ButtonWidget button, boolean highlight) {
         if (highlight) {
-            button.setMessage(Text.literal("▶ " + button.getMessage().getString() + " ◀").formatted(Formatting.GREEN));
+            String text = button.getMessage().getString();
+            if (!text.startsWith("▶")) {
+                button.setMessage(Text.literal("▶ " + text + " ◀").formatted(Formatting.GREEN));
+            }
         } else {
             String text = button.getMessage().getString().replace("▶ ", "").replace(" ◀", "");
             button.setMessage(Text.literal(text));
         }
     }
     
-    private void updatePreview(HeartIndicatorRenderer.DesignType design) {
+    private void updatePreview() {
         // Update preview text
         TextWidget preview = (TextWidget) this.children().stream()
             .filter(child -> child instanceof TextWidget && 
