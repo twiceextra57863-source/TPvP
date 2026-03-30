@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.yourname.mtpvp.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "refmap": "mtpvp.refmap.json",
+  "mixins": [],
+  "client": [
+    "TitleScreenMixin",
+    "InGameMenuMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
