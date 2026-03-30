@@ -4,12 +4,10 @@
   "package": "com.example.heartindicator.mixin",
   "compatibilityLevel": "JAVA_21",
   "refmap": "heartindicator.refmap.json",
-  "mixins": [
-    "TitleScreenMixin",
-    "InGameMenuScreenMixin",
-    "PlayerEntityRendererMixin"
-  ],
   "client": [
+    "TitleScreenMixin",
+    "GameMenuScreenMixin",
+    "EntityRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
