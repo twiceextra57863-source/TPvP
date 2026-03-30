@@ -1,6 +1,5 @@
 package com.yourname.mtpvp.client.gui;
 
-import com.yourname.mtpvp.client.render.HeartIndicatorRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -67,8 +66,9 @@ public class MtpvpDashboardScreen extends Screen {
     }
     
     private void showHeartIndicatorOptions() {
-        // Create a new screen for heart indicator options
-        this.client.setScreen(new HeartIndicatorOptionsScreen(this));
+        if (client != null) {
+            client.setScreen(new HeartIndicatorOptionsScreen(this));
+        }
     }
     
     private void showFeatureMessage(String feature) {
@@ -80,14 +80,9 @@ public class MtpvpDashboardScreen extends Screen {
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context, mouseX, mouseY, delta);
-        
-        // Draw the dashboard background
         context.fill(10, 10, width - 10, height - 10, 0xCC000000);
         context.drawBorder(10, 10, width - 20, height - 20, 0xFFAA00);
-        
-        // Draw title
         context.drawText(textRenderer, "MTPVP Dashboard", width / 2 - 60, 25, 0xFFFFAA, false);
-        
         super.render(context, mouseX, mouseY, delta);
     }
     
