@@ -27,7 +27,7 @@ public class NameTagRendererMixin {
             try {
                 HeartIndicatorRenderer.renderIndicator(living, matrices, vertexConsumers, light);
             } catch (Exception e) {
-                // Silent fail
+                // Silent fail to prevent crashes
             }
         }
     }
