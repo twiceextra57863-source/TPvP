@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "heartindicator",
+  "version": "${version}",
+  "name": "Heart Indicator",
+  "description": "Shows heart indicators above player name tags. Toggle via the menu button.",
+  "authors": ["minetwice"],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/heartindicator/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "main": ["com.example.heartindicator.HeartIndicatorMod"]
+  },
+  "mixins": ["heartindicator.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.5",
+    "minecraft": "~1.21",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
