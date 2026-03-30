@@ -1,5 +1,6 @@
 package com.yourname.mtpvp.client.render;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.*;
