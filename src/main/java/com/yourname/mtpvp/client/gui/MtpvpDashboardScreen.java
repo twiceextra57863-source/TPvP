@@ -1,5 +1,6 @@
 package com.yourname.mtpvp.client.gui;
 
+import com.yourname.mtpvp.client.render.HeartIndicatorRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -19,57 +20,60 @@ public class MtpvpDashboardScreen extends Screen {
     protected void init() {
         super.init();
         
-        // Left side features
         int startY = height / 4;
-        int buttonWidth = 100;
-        int buttonHeight = 20;
+        int buttonWidth = 150;
+        int buttonHeight = 25;
+        int centerX = width / 2;
         
-        // Indicator Button
-        ButtonWidget indicatorBtn = ButtonWidget.builder(Text.literal("Indicator"), 
-            button -> showFeatureMessage("Indicator"))
-            .dimensions(20, startY, buttonWidth, buttonHeight)
+        // Title
+        TextWidget titleText = new TextWidget(centerX - 100, 20, 
+            Text.literal("MTPVP Features").formatted(Formatting.BOLD, Formatting.GOLD), this.textRenderer);
+        titleText.setWidth(200);
+        this.addDrawableChild(titleText);
+        
+        // Indicator Button with sub-options
+        ButtonWidget indicatorBtn = ButtonWidget.builder(Text.literal("► Heart Indicator"), 
+            button -> showHeartIndicatorOptions())
+            .dimensions(centerX - 75, startY, buttonWidth, buttonHeight)
             .build();
         this.addDrawableChild(indicatorBtn);
         
         // Basic Button
-        ButtonWidget basicBtn = ButtonWidget.builder(Text.literal("Basic"), 
+        ButtonWidget basicBtn = ButtonWidget.builder(Text.literal("Basic Features"), 
             button -> showFeatureMessage("Basic"))
-            .dimensions(20, startY + 30, buttonWidth, buttonHeight)
+            .dimensions(centerX - 75, startY + 35, buttonWidth, buttonHeight)
             .build();
         this.addDrawableChild(basicBtn);
         
         // Advance Button
-        ButtonWidget advanceBtn = ButtonWidget.builder(Text.literal("Advance"), 
+        ButtonWidget advanceBtn = ButtonWidget.builder(Text.literal("Advance Features"), 
             button -> showFeatureMessage("Advance"))
-            .dimensions(20, startY + 60, buttonWidth, buttonHeight)
+            .dimensions(centerX - 75, startY + 70, buttonWidth, buttonHeight)
             .build();
         this.addDrawableChild(advanceBtn);
         
         // Epic Button
-        ButtonWidget epicBtn = ButtonWidget.builder(Text.literal("Epic"), 
+        ButtonWidget epicBtn = ButtonWidget.builder(Text.literal("Epic Features"), 
             button -> showFeatureMessage("Epic"))
-            .dimensions(20, startY + 90, buttonWidth, buttonHeight)
+            .dimensions(centerX - 75, startY + 105, buttonWidth, buttonHeight)
             .build();
         this.addDrawableChild(epicBtn);
         
         // Close button
         ButtonWidget closeBtn = ButtonWidget.builder(Text.literal("Close"), button -> close())
-            .dimensions(width / 2 - 50, height - 30, 100, 20)
+            .dimensions(centerX - 50, height - 40, 100, 20)
             .build();
         this.addDrawableChild(closeBtn);
-        
-        // Add title text widget
-        TextWidget titleText = new TextWidget(width / 2 - 50, 20, 
-            Text.literal("MTPVP Features").formatted(Formatting.BOLD, Formatting.GOLD), this.textRenderer);
-        titleText.setWidth(100);
-        this.addDrawableChild(titleText);
+    }
+    
+    private void showHeartIndicatorOptions() {
+        // Create a new screen for heart indicator options
+        this.client.setScreen(new HeartIndicatorOptionsScreen(this));
     }
     
     private void showFeatureMessage(String feature) {
-        // You can implement actual feature functionality here
-        // For now, just show a message
         if (client != null && client.player != null) {
-            client.player.sendMessage(Text.literal("§a[§6MTPVP§a] §f" + feature + " feature clicked!"), false);
+            client.player.sendMessage(Text.literal("§a[§6MTPVP§a] §f" + feature + " feature will be implemented soon!"), false);
         }
     }
     
