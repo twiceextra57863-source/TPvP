@@ -155,13 +155,54 @@ public class HeartIndicatorRenderer {
     }
     
     private static float getPlayerDamage(PlayerEntity player) {
-        // Get attack damage from player attributes
         float baseDamage = 1.0f;
         
-        // Get the attack damage attribute
-        var attackDamage = player.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
-        if (attackDamage != null) {
-            baseDamage = (float) attackDamage.getValue();
+        // Try to get attack damage from the player's held item
+        ItemStack mainHand = player.getMainHandStack();
+        
+        if (!mainHand.isEmpty()) {
+            Item item = mainHand.getItem();
+            
+            // Manual damage values based on item type
+            if (item instanceof SwordItem) {
+                // Get material-based damage
+                if (item.toString().contains("netherite")) baseDamage = 8.0f;
+                else if (item.toString().contains("diamond")) baseDamage = 7.0f;
+                else if (item.toString().contains("iron")) baseDamage = 6.0f;
+                else if (item.toString().contains("stone")) baseDamage = 5.0f;
+                else if (item.toString().contains("wooden")) baseDamage = 4.0f;
+                else if (item.toString().contains("golden")) baseDamage = 4.0f;
+                else baseDamage = 5.0f;
+            } 
+            else if (item instanceof AxeItem) {
+                if (item.toString().contains("netherite")) baseDamage = 10.0f;
+                else if (item.toString().contains("diamond")) baseDamage = 9.0f;
+                else if (item.toString().contains("iron")) baseDamage = 8.0f;
+                else if (item.toString().contains("stone")) baseDamage = 7.0f;
+                else if (item.toString().contains("wooden")) baseDamage = 6.0f;
+                else if (item.toString().contains("golden")) baseDamage = 6.0f;
+                else baseDamage = 7.0f;
+            }
+            else if (item instanceof PickaxeItem) {
+                if (item.toString().contains("netherite")) baseDamage = 6.0f;
+                else if (item.toString().contains("diamond")) baseDamage = 5.0f;
+                else if (item.toString().contains("iron")) baseDamage = 4.0f;
+                else if (item.toString().contains("stone")) baseDamage = 3.0f;
+                else if (item.toString().contains("wooden")) baseDamage = 2.0f;
+                else if (item.toString().contains("golden")) baseDamage = 2.0f;
+                else baseDamage = 3.0f;
+            }
+            else if (item instanceof BowItem) {
+                baseDamage = 6.0f;
+            }
+            else if (item instanceof CrossbowItem) {
+                baseDamage = 8.0f;
+            }
+            else {
+                baseDamage = 2.0f; // Default fist damage
+            }
+        } else {
+            baseDamage = 2.0f; // Empty hand
         }
         
         // Add strength effect bonus
