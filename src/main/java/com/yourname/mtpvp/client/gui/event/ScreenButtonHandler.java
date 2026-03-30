@@ -11,34 +11,30 @@ public class ScreenButtonHandler {
     
     public static void register() {
         // Add button to Title Screen
-        ScreenEvents.BEFORE_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
+        ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
             if (screen instanceof TitleScreen) {
-                ScreenEvents.afterInit(screen).register(initScreen -> {
-                    int centerX = initScreen.width / 2;
-                    int buttonY = initScreen.height / 4 + 96 + 48;
-                    
-                    ButtonWidget mtpvpButton = ButtonWidget.builder(
-                        Text.literal("Mtpvp"),
-                        button -> client.setScreen(new MtpvpDashboardScreen(initScreen))
-                    ).dimensions(centerX - 100, buttonY, 200, 20).build();
-                    
-                    initScreen.addDrawableChild(mtpvpButton);
-                });
+                int centerX = screen.width / 2;
+                int buttonY = screen.height / 4 + 96 + 48;
+                
+                ButtonWidget mtpvpButton = ButtonWidget.builder(
+                    Text.literal("Mtpvp"),
+                    button -> client.setScreen(new MtpvpDashboardScreen(screen))
+                ).dimensions(centerX - 100, buttonY, 200, 20).build();
+                
+                screen.addDrawableChild(mtpvpButton);
             }
             
             // Add button to Escape Menu
             if (screen instanceof GameMenuScreen) {
-                ScreenEvents.afterInit(screen).register(initScreen -> {
-                    int centerX = initScreen.width / 2;
-                    int buttonY = initScreen.height / 4 + 96 + 48;
-                    
-                    ButtonWidget mtpvpButton = ButtonWidget.builder(
-                        Text.literal("Mtpvp"),
-                        button -> client.setScreen(new MtpvpDashboardScreen(initScreen))
-                    ).dimensions(centerX - 100, buttonY, 200, 20).build();
-                    
-                    initScreen.addDrawableChild(mtpvpButton);
-                });
+                int centerX = screen.width / 2;
+                int buttonY = screen.height / 4 + 96 + 48;
+                
+                ButtonWidget mtpvpButton = ButtonWidget.builder(
+                    Text.literal("Mtpvp"),
+                    button -> client.setScreen(new MtpvpDashboardScreen(screen))
+                ).dimensions(centerX - 100, buttonY, 200, 20).build();
+                
+                screen.addDrawableChild(mtpvpButton);
             }
         });
     }
