@@ -17,9 +17,8 @@ public class InGameMenuMixin extends Screen {
         super(title);
     }
     
-    @Inject(method = "init", at = @At("TAIL"))
+    @Inject(method = "init", at = @At("TAIL"), remap = true)
     private void onInit(CallbackInfo ci) {
-        // Add Mtpvp button to escape menu
         this.addDrawableChild(ButtonWidget.builder(Text.literal("Mtpvp"), button -> {
             if (client != null) {
                 client.setScreen(new MtpvpDashboardScreen(this));
