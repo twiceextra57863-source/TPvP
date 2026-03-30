@@ -32,8 +32,4 @@ public class HeartIndicatorClient implements ClientModInitializer {
             }
         });
     }
-    
-    public static boolean isShowing() {
-        return showHeartIndicator;
-    }
 }
