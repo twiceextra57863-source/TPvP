@@ -7,7 +7,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.*;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.text.Text;
 
 public class HeartIndicatorRenderer {
     
@@ -24,7 +24,7 @@ public class HeartIndicatorRenderer {
         currentDesign = design;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player != null) {
-            client.player.sendMessage(net.minecraft.text.Text.literal("§a[§6MTPVP§a] §fHeart indicator set to: §e" + design.name()), false);
+            client.player.sendMessage(Text.literal("§a[§6MTPVP§a] §fHeart indicator set to: §e" + design.name()), false);
         }
     }
     
@@ -40,7 +40,7 @@ public class HeartIndicatorRenderer {
             
             matrices.push();
             
-            // Position above entity
+            // Position above entity's head
             double yOffset = entity.getHeight() + 0.5;
             matrices.translate(0, yOffset, 0);
             matrices.scale(0.025f, -0.025f, 0.025f);
@@ -66,8 +66,8 @@ public class HeartIndicatorRenderer {
             
             matrices.pop();
         } catch (Exception e) {
-            // Prevent crashes
-            System.err.println("Error rendering heart indicator: " + e.getMessage());
+            // Prevent any rendering crash
+            System.err.println("MTPVP: Error rendering indicator - " + e.getMessage());
         }
     }
     
@@ -95,10 +95,18 @@ public class HeartIndicatorRenderer {
         else if (healthPercent > 0.33) color = 0xFFAA55;
         else color = 0xFF5555;
         
+        int barLength = 25;
+        int filled = (int)(barLength * healthPercent);
+        
+        StringBuilder bar = new StringBuilder("[");
+        for (int i = 0; i < barLength; i++) {
+            bar.append(i < filled ? "=" : " ");
+        }
+        bar.append("]");
+        
         matrices.push();
         matrices.translate(x - 25, y, 0);
-        String bar = "[" + "=".repeat((int)(healthPercent * 25)) + " ".repeat(25 - (int)(healthPercent * 25)) + "]";
-        textRenderer.draw(bar, 0, 0, color, false, matrices.peek().getPositionMatrix(),
+        textRenderer.draw(bar.toString(), 0, 0, color, false, matrices.peek().getPositionMatrix(),
                          vertexConsumers, TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
         
@@ -113,6 +121,7 @@ public class HeartIndicatorRenderer {
     private static void renderPlayerHeadWithHTK(MinecraftClient client, MatrixStack matrices,
                                                 VertexConsumerProvider vertexConsumers, TextRenderer textRenderer,
                                                 LivingEntity entity, int x, int y, float health, float maxHealth) {
+        // Health text
         matrices.push();
         matrices.translate(x - 40, y, 0);
         textRenderer.draw(String.format("%.0f/%.0f ❤", health, maxHealth), 0, 0, 0xFFFFFF, false,
@@ -120,6 +129,7 @@ public class HeartIndicatorRenderer {
                          TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
         
+        // Hits to Kill
         int hitsToKill = calculateHitsToKill(client.player, entity);
         matrices.push();
         matrices.translate(x - 40, y + 12, 0);
@@ -128,6 +138,7 @@ public class HeartIndicatorRenderer {
                          TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
         
+        // Death zone warning
         if (health <= maxHealth * 0.25) {
             matrices.push();
             matrices.translate(x - 40, y + 24, 0);
@@ -137,8 +148,9 @@ public class HeartIndicatorRenderer {
             matrices.pop();
         }
         
+        // Head icon
         matrices.push();
-        matrices.translate(x + 30, y - 5, 0);
+        matrices.translate(x + 35, y - 5, 0);
         textRenderer.draw("👤", 0, 0, 0x55AAFF, false, matrices.peek().getPositionMatrix(),
                          vertexConsumers, TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
@@ -162,25 +174,18 @@ public class HeartIndicatorRenderer {
                 if (item.toString().contains("netherite")) damage = 8.0f;
                 else if (item.toString().contains("diamond")) damage = 7.0f;
                 else if (item.toString().contains("iron")) damage = 6.0f;
-                else damage = 5.0f;
+                else if (item.toString().contains("stone")) damage = 5.0f;
+                else damage = 4.0f;
             } else if (item instanceof AxeItem) {
                 if (item.toString().contains("netherite")) damage = 10.0f;
                 else if (item.toString().contains("diamond")) damage = 9.0f;
-                else damage = 8.0f;
+                else if (item.toString().contains("iron")) damage = 8.0f;
+                else damage = 7.0f;
             } else if (item instanceof BowItem) {
                 damage = 6.0f;
             } else if (item instanceof CrossbowItem) {
                 damage = 8.0f;
             }
-        }
-        
-        if (player.hasStatusEffect(net.minecraft.entity.effect.StatusEffects.STRENGTH)) {
-            int amplifier = player.getStatusEffect(net.minecraft.entity.effect.StatusEffects.STRENGTH).getAmplifier();
-            damage += (amplifier + 1) * 1.5f;
-        }
-        
-        if (player.fallDistance > 0 && !player.isOnGround()) {
-            damage *= 1.5f;
         }
         
         return damage;
