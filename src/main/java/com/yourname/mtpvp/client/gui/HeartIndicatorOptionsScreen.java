@@ -71,7 +71,7 @@ public class HeartIndicatorOptionsScreen extends Screen {
         
         // Info text
         TextWidget infoText = new TextWidget(centerX - 150, height - 80, 
-            Text.literal("Design 3 shows player head and hits needed to kill based on your weapon").formatted(Formatting.GRAY, Formatting.ITALIC), 
+            Text.literal("Design 3 shows HTK based on your current weapon").formatted(Formatting.GRAY, Formatting.ITALIC), 
             this.textRenderer);
         infoText.setWidth(300);
         this.addDrawableChild(infoText);
