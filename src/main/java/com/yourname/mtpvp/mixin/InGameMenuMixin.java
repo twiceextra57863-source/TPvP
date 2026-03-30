@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(GameMenuScreen.class)
-public abstract class InGameMenuMixin extends Screen {
+public class InGameMenuMixin extends Screen {
     
     protected InGameMenuMixin(Text title) {
         super(title);
