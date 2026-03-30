@@ -19,10 +19,13 @@ public class TitleScreenMixin extends Screen {
     
     @Inject(method = "init", at = @At("TAIL"))
     private void onInit(CallbackInfo ci) {
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("Mtpvp"), button -> {
+        // Position button away from quit button (above or below)
+        // Quit button is usually at y = height / 4 + 96 + 48 + 24
+        // Let's put our button above it
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("⚔️ MTPVP"), button -> {
             if (client != null) {
                 client.setScreen(new MtpvpDashboardScreen(this));
             }
-        }).dimensions(this.width / 2 - 100, this.height / 4 + 96 + 48, 200, 20).build());
+        }).dimensions(this.width / 2 - 100, this.height / 4 + 96 + 48 - 30, 200, 20).build());
     }
 }
