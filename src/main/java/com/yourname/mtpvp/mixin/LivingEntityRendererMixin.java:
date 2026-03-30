@@ -16,8 +16,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class LivingEntityRendererMixin<T extends LivingEntity> {
     
     @Inject(method = "renderLabelIfPresent", at = @At("HEAD"))
-    private void onRenderLabel(T entity, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, CallbackInfo ci) {
-        // This will render our indicators alongside the nametags
+    private void renderHeartIndicator(T entity, Text text, MatrixStack matrices, 
+                                      VertexConsumerProvider vertexConsumers, int light, 
+                                      CallbackInfo ci) {
+        // Heart indicator render karo
         HeartIndicatorRenderer.renderIndicator(entity, matrices, vertexConsumers, light);
     }
 }
