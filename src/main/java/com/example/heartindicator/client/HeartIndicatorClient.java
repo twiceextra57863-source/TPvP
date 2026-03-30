@@ -11,10 +11,19 @@ import org.lwjgl.glfw.GLFW;
 public class HeartIndicatorClient implements ClientModInitializer {
     public static boolean showHeartIndicator = true;
     private static KeyBinding toggleKey;
+    private static boolean texturesGenerated = false;
 
     @Override
     public void onInitializeClient() {
         HeartIndicatorMod.LOGGER.info("Heart Indicator Client Initialized!");
+        
+        // Generate textures on first tick
+        ClientTickEvents.START_CLIENT_TICK.register(client -> {
+            if (!texturesGenerated && client != null) {
+                TextureGenerator.generateHeartTextures();
+                texturesGenerated = true;
+            }
+        });
         
         // Register toggle key (H key)
         toggleKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
