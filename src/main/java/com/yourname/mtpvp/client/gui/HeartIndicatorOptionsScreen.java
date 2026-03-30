@@ -11,6 +11,10 @@ import net.minecraft.util.Formatting;
 public class HeartIndicatorOptionsScreen extends Screen {
     private final Screen parent;
     private HeartIndicatorRenderer.DesignType selectedDesign;
+    private ButtonWidget vanillaBtn;
+    private ButtonWidget statusBarBtn;
+    private ButtonWidget headBtn;
+    private ButtonWidget disableBtn;
     
     public HeartIndicatorOptionsScreen(Screen parent) {
         super(Text.literal("Heart Indicator Options"));
@@ -34,30 +38,46 @@ public class HeartIndicatorOptionsScreen extends Screen {
         titleText.setWidth(240);
         this.addDrawableChild(titleText);
         
-        // Create all buttons first
-        ButtonWidget vanillaBtn = createDesignButton(
-            centerX - 110, startY, buttonWidth, buttonHeight,
-            "❤️ Vanilla Hearts",
-            HeartIndicatorRenderer.DesignType.VANILLA
-        );
+        // Create Vanilla Button
+        vanillaBtn = ButtonWidget.builder(
+            Text.literal("❤️ Vanilla Hearts").formatted(Formatting.BOLD),
+            button -> {
+                selectedDesign = HeartIndicatorRenderer.DesignType.VANILLA;
+                updatePreview();
+                updateSelectionHighlight();
+            })
+            .dimensions(centerX - 110, startY, buttonWidth, buttonHeight)
+            .build();
         
-        ButtonWidget statusBarBtn = createDesignButton(
-            centerX - 110, startY + 55, buttonWidth, buttonHeight,
-            "📊 Status Bar",
-            HeartIndicatorRenderer.DesignType.STATUS_BAR
-        );
+        // Create Status Bar Button
+        statusBarBtn = ButtonWidget.builder(
+            Text.literal("📊 Status Bar").formatted(Formatting.BOLD),
+            button -> {
+                selectedDesign = HeartIndicatorRenderer.DesignType.STATUS_BAR;
+                updatePreview();
+                updateSelectionHighlight();
+            })
+            .dimensions(centerX - 110, startY + 55, buttonWidth, buttonHeight)
+            .build();
         
-        ButtonWidget headBtn = createDesignButton(
-            centerX - 110, startY + 110, buttonWidth, buttonHeight,
-            "👤 Player Head + HTK",
-            HeartIndicatorRenderer.DesignType.PLAYER_HEAD
-        );
+        // Create Player Head Button
+        headBtn = ButtonWidget.builder(
+            Text.literal("👤 Player Head + HTK").formatted(Formatting.BOLD),
+            button -> {
+                selectedDesign = HeartIndicatorRenderer.DesignType.PLAYER_HEAD;
+                updatePreview();
+                updateSelectionHighlight();
+            })
+            .dimensions(centerX - 110, startY + 110, buttonWidth, buttonHeight)
+            .build();
         
-        ButtonWidget disableBtn = ButtonWidget.builder(
+        // Create Disable Button
+        disableBtn = ButtonWidget.builder(
             Text.literal("❌ DISABLE INDICATOR").formatted(Formatting.BOLD, Formatting.DARK_RED),
             button -> {
                 selectedDesign = HeartIndicatorRenderer.DesignType.DISABLED;
-                updateSelectionHighlight(vanillaBtn, statusBarBtn, headBtn, disableBtn);
+                updatePreview();
+                updateSelectionHighlight();
             })
             .dimensions(centerX - 110, startY + 175, buttonWidth, buttonHeight)
             .build();
@@ -95,61 +115,50 @@ public class HeartIndicatorOptionsScreen extends Screen {
         this.addDrawableChild(previewText);
         
         // Highlight current selection
-        updateSelectionHighlight(vanillaBtn, statusBarBtn, headBtn, disableBtn);
+        updateSelectionHighlight();
     }
     
-    private ButtonWidget createDesignButton(int x, int y, int width, int height, 
-                                            String title, HeartIndicatorRenderer.DesignType design) {
-        return ButtonWidget.builder(
-            Text.literal(title).formatted(Formatting.BOLD),
-            button -> {
-                selectedDesign = design;
-                updatePreview();
-            })
-            .dimensions(x, y, width, height)
-            .build();
-    }
-    
-    private void updateSelectionHighlight(ButtonWidget vanilla, ButtonWidget status, 
-                                          ButtonWidget head, ButtonWidget disable) {
+    private void updateSelectionHighlight() {
         // Reset all buttons
-        setButtonHighlight(vanilla, false);
-        setButtonHighlight(status, false);
-        setButtonHighlight(head, false);
-        setButtonHighlight(disable, false);
+        setButtonHighlight(vanillaBtn, false);
+        setButtonHighlight(statusBarBtn, false);
+        setButtonHighlight(headBtn, false);
+        setButtonHighlight(disableBtn, false);
         
         // Highlight selected
         if (selectedDesign == HeartIndicatorRenderer.DesignType.VANILLA) {
-            setButtonHighlight(vanilla, true);
+            setButtonHighlight(vanillaBtn, true);
         } else if (selectedDesign == HeartIndicatorRenderer.DesignType.STATUS_BAR) {
-            setButtonHighlight(status, true);
+            setButtonHighlight(statusBarBtn, true);
         } else if (selectedDesign == HeartIndicatorRenderer.DesignType.PLAYER_HEAD) {
-            setButtonHighlight(head, true);
+            setButtonHighlight(headBtn, true);
         } else if (selectedDesign == HeartIndicatorRenderer.DesignType.DISABLED) {
-            setButtonHighlight(disable, true);
+            setButtonHighlight(disableBtn, true);
         }
     }
     
     private void setButtonHighlight(ButtonWidget button, boolean highlight) {
+        if (button == null) return;
+        
+        String originalText = button.getMessage().getString();
+        // Clean the text from any existing highlights
+        originalText = originalText.replace("▶ ", "").replace(" ◀", "");
+        
         if (highlight) {
-            String text = button.getMessage().getString();
-            if (!text.startsWith("▶")) {
-                button.setMessage(Text.literal("▶ " + text + " ◀").formatted(Formatting.GREEN));
-            }
+            button.setMessage(Text.literal("▶ " + originalText + " ◀").formatted(Formatting.GREEN));
         } else {
-            String text = button.getMessage().getString().replace("▶ ", "").replace(" ◀", "");
-            button.setMessage(Text.literal(text));
+            button.setMessage(Text.literal(originalText));
         }
     }
     
     private void updatePreview() {
-        // Update preview text
-        TextWidget preview = (TextWidget) this.children().stream()
-            .filter(child -> child instanceof TextWidget && 
-                   ((TextWidget) child).getMessage().getString().contains("Preview:"))
-            .findFirst().orElse(null);
-        if (preview != null) {
-            preview.setMessage(Text.literal("Preview: " + getPreviewText()).formatted(Formatting.ITALIC, Formatting.GRAY));
+        // Find and update preview text
+        for (var child : this.children()) {
+            if (child instanceof TextWidget textWidget && 
+                textWidget.getMessage().getString().contains("Preview:")) {
+                textWidget.setMessage(Text.literal("Preview: " + getPreviewText()).formatted(Formatting.ITALIC, Formatting.GRAY));
+                break;
+            }
         }
     }
     
