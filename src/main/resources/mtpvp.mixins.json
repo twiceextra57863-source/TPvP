@@ -6,7 +6,8 @@
   "mixins": [],
   "client": [
     "TitleScreenMixin",
-    "InGameMenuMixin"
+    "InGameMenuMixin",
+    "LivingEntityRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
