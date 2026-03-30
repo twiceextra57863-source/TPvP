@@ -1,7 +1,6 @@
 package com.example.heartindicator.mixin;
 
 import com.example.heartindicator.client.HeartIndicatorClient;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.GameMenuScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
