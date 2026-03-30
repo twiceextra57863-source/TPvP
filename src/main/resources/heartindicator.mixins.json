@@ -1,13 +1,11 @@
 {
   "required": true,
-  "minVersion": "0.8",
-  "package": "com.example.heartindicator.mixin",
+  "package": "com.heartindicator.mixin",
   "compatibilityLevel": "JAVA_21",
-  "refmap": "heartindicator.refmap.json",
   "client": [
-    "PlayerEntityRendererMixin",
     "TitleScreenMixin",
-    "GameMenuMixin"
+    "GameMenuScreenMixin",
+    "PlayerEntityRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
