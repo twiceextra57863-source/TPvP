@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(GameMenuScreen.class)
-public class GameMenuScreenMixin extends net.minecraft.client.gui.screen.Screen {
+public abstract class GameMenuScreenMixin extends net.minecraft.client.gui.screen.Screen {
 
     protected GameMenuScreenMixin() {
         super(Text.empty());
@@ -18,19 +18,16 @@ public class GameMenuScreenMixin extends net.minecraft.client.gui.screen.Screen 
 
     @Inject(method = "initWidgets", at = @At("TAIL"))
     private void heartindicator$addButton(CallbackInfo ci) {
-        GameMenuScreen self = (GameMenuScreen)(Object) this;
-
         int btnW = 160;
         int btnH = 20;
-        // Place in the empty bottom-right space of the pause menu
-        int x    = self.width  - btnW - 8;
-        int y    = self.height - btnH - 8;
+        int x    = this.width  - btnW - 8;
+        int y    = this.height - btnH - 8;
 
-        self.addDrawableChild(
+        this.addDrawableChild(
             ButtonWidget.builder(
                 Text.of("§c❤ §fHeart Indicator"),
-                btn -> self.client.setScreen(
-                    new HeartIndicatorSettingsScreen(self)
+                btn -> this.client.setScreen(
+                    new HeartIndicatorSettingsScreen(this)
                 )
             )
             .dimensions(x, y, btnW, btnH)
