@@ -2,7 +2,7 @@ package com.yourname.mtpvp.mixin;
 
 import com.yourname.mtpvp.client.gui.MtpvpDashboardScreen;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.ingame.InGameMenuScreen;
+import net.minecraft.client.gui.screen.ingame.GameMenuScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
