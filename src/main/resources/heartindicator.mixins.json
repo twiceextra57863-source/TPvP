@@ -5,9 +5,9 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "heartindicator.refmap.json",
   "client": [
+    "PlayerEntityRendererMixin",
     "TitleScreenMixin",
-    "GameMenuScreenMixin",
-    "EntityRendererMixin"
+    "GameMenuMixin"
   ],
   "injectors": {
     "defaultRequire": 1
