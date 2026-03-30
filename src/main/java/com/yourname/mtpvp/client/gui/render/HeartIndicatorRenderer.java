@@ -49,10 +49,24 @@ public class HeartIndicatorRenderer {
                 if (item.toString().contains("netherite")) damage = 10.0f;
                 else if (item.toString().contains("diamond")) damage = 9.0f;
                 else damage = 8.0f;
-            } else if (item instanceof BowItem || item instanceof CrossbowItem) {
-                damage = 7.0f;
+            } else if (item instanceof BowItem) {
+                damage = 6.0f;
+            } else if (item instanceof CrossbowItem) {
+                damage = 8.0f;
             }
         }
+        
+        // Strength effect bonus
+        if (player.hasStatusEffect(net.minecraft.entity.effect.StatusEffects.STRENGTH)) {
+            int amplifier = player.getStatusEffect(net.minecraft.entity.effect.StatusEffects.STRENGTH).getAmplifier();
+            damage += (amplifier + 1) * 1.5f;
+        }
+        
+        // Critical hit bonus
+        if (player.fallDistance > 0 && !player.isOnGround()) {
+            damage *= 1.5f;
+        }
+        
         return damage;
     }
 }
