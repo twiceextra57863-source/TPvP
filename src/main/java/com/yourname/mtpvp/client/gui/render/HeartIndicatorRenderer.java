@@ -84,17 +84,6 @@ public class HeartIndicatorRenderer {
     private static void renderStatusBar(MatrixStack matrices, VertexConsumerProvider vertexConsumers, 
                                         TextRenderer textRenderer, int x, int y, float healthPercent) {
         int barLength = 50;
-        int filledLength = (int)(barLength * healthPercent);
-        
-        StringBuilder bar = new StringBuilder("[");
-        for (int i = 0; i < barLength / 2; i++) {
-            if (i < filledLength / 2) {
-                bar.append("=");
-            } else {
-                bar.append(" ");
-            }
-        }
-        bar.append("]");
         
         int color;
         if (healthPercent > 0.66) {
@@ -106,13 +95,14 @@ public class HeartIndicatorRenderer {
         }
         
         matrices.push();
-        matrices.translate(x - (barLength / 2), y, 0);
-        textRenderer.draw(bar.toString(), 0, 0, color, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
+        matrices.translate(x - 25, y, 0);
+        textRenderer.draw("[" + "=".repeat((int)(healthPercent * 25)) + " ".repeat(25 - (int)(healthPercent * 25)) + "]", 
+                         0, 0, color, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
                          TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
         
         matrices.push();
-        matrices.translate(x + (barLength / 2) + 10, y, 0);
+        matrices.translate(x + 30, y, 0);
         textRenderer.draw(String.format("%d%%", (int)(healthPercent * 100)), 0, 0, 0xFFFFFF, false, 
                          matrices.peek().getPositionMatrix(), vertexConsumers, TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
@@ -123,7 +113,7 @@ public class HeartIndicatorRenderer {
                                                 LivingEntity entity, int x, int y, float health, float maxHealth) {
         String healthText = String.format("%.0f/%.0f", health, maxHealth);
         matrices.push();
-        matrices.translate(x - 30, y, 0);
+        matrices.translate(x - 35, y, 0);
         textRenderer.draw(healthText, 0, 0, 0xFFFFFF, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
                          TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
@@ -132,7 +122,7 @@ public class HeartIndicatorRenderer {
         String htkText = String.format("HTK: %d", hitsToKill);
         
         matrices.push();
-        matrices.translate(x - 30, y + 12, 0);
+        matrices.translate(x - 35, y + 12, 0);
         textRenderer.draw(htkText, 0, 0, 0xFFFFAA, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
                          TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
@@ -140,19 +130,17 @@ public class HeartIndicatorRenderer {
         int deathZone = (int)(maxHealth * 0.25f);
         if (health <= deathZone) {
             matrices.push();
-            matrices.translate(x - 30, y + 24, 0);
+            matrices.translate(x - 35, y + 24, 0);
             textRenderer.draw("⚠️ DEATH ZONE", 0, 0, 0xFF5555, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
                              TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
             matrices.pop();
         }
         
-        if (entity instanceof PlayerEntity) {
-            matrices.push();
-            matrices.translate(x + 10, y - 8, 0);
-            textRenderer.draw("👤", 0, 0, 0x55AAFF, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
-                             TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
-            matrices.pop();
-        }
+        matrices.push();
+        matrices.translate(x + 15, y - 5, 0);
+        textRenderer.draw("👤", 0, 0, 0x55AAFF, false, matrices.peek().getPositionMatrix(), vertexConsumers, 
+                         TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
+        matrices.pop();
     }
     
     private static int calculateHitsToKill(PlayerEntity attacker, LivingEntity target) {
@@ -167,41 +155,13 @@ public class HeartIndicatorRenderer {
     }
     
     private static float getPlayerDamage(PlayerEntity player) {
-        ItemStack mainHand = player.getMainHandStack();
-        float baseDamage = 2.0f; // Default fist damage
+        // Get attack damage from player attributes
+        float baseDamage = 1.0f;
         
-        if (mainHand.isEmpty()) {
-            return baseDamage;
-        }
-        
-        Item item = mainHand.getItem();
-        
-        // Get attack damage from item attribute
-        var attackDamageAttribute = mainHand.getAttributeModifiers(ItemAttributeModifierContext.ATTACK_DAMAGE_MODIFIER_TYPE);
-        
-        if (attackDamageAttribute != null && !attackDamageAttribute.isEmpty()) {
-            // Try to get the attack damage from the item's attribute modifiers
-            for (var modifier : attackDamageAttribute.values()) {
-                if (modifier.getId().toString().contains("attack_damage")) {
-                    baseDamage += (float) modifier.value();
-                    break;
-                }
-            }
-        } else {
-            // Fallback damage values based on item type
-            if (item instanceof SwordItem) {
-                baseDamage = 4.0f;
-            } else if (item instanceof AxeItem) {
-                baseDamage = 5.0f;
-            } else if (item instanceof BowItem) {
-                baseDamage = 6.0f;
-            } else if (item instanceof CrossbowItem) {
-                baseDamage = 8.0f;
-            } else if (item instanceof PickaxeItem) {
-                baseDamage = 3.0f;
-            } else if (item instanceof ShovelItem) {
-                baseDamage = 2.5f;
-            }
+        // Get the attack damage attribute
+        var attackDamage = player.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
+        if (attackDamage != null) {
+            baseDamage = (float) attackDamage.getValue();
         }
         
         // Add strength effect bonus
