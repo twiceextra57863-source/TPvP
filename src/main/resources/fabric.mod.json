@@ -1,24 +1,29 @@
 {
   "schemaVersion": 1,
-  "id": "heartindicator",
-  "version": "1.0.0",
-  "name": "Heart Indicator",
-  "description": "See the health of all nearby players above their heads!",
+  "id": "mtpvp",
+  "version": "${version}",
+  "name": "MTPVP Mod",
+  "description": "A mod that adds MTPVP features to Minecraft",
   "authors": ["MineTwice"],
+  "contact": {},
   "license": "MIT",
+  "icon": "assets/mtpvp/icon.png",
   "environment": "client",
   "entrypoints": {
+    "main": [
+      "com.yourname.mtpvp.MtpvpMod"
+    ],
     "client": [
-      "com.heartindicator.client.HeartIndicatorClient"
+      "com.yourname.mtpvp.client.MtpvpClient"
     ]
   },
   "mixins": [
-    "heartindicator.mixins.json"
+    "mtpvp.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.15.0",
-    "fabric-api": "*",
     "minecraft": "~1.21",
-    "java": ">=21"
+    "java": ">=21",
+    "fabric-api": "*"
   }
 }
