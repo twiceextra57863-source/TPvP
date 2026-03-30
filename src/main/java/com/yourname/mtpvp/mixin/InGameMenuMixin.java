@@ -17,10 +17,8 @@ public class InGameMenuMixin extends Screen {
         super(title);
     }
     
-    @Inject(method = "init", at = @At("TAIL"))
+    @Inject(method = "initWidgets", at = @At("TAIL"))
     private void onInit(CallbackInfo ci) {
-        // Position button away from quit button
-        // Put it above the quit button
         this.addDrawableChild(ButtonWidget.builder(Text.literal("⚔️ MTPVP"), button -> {
             if (client != null) {
                 client.setScreen(new MtpvpDashboardScreen(this));
