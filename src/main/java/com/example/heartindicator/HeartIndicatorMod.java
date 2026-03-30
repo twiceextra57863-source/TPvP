@@ -2,6 +2,7 @@ package com.example.heartindicator;
 
 import com.example.heartindicator.config.ModConfig;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -9,19 +10,11 @@ public class HeartIndicatorMod implements ModInitializer {
     public static final String MOD_ID = "heartindicator";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-    private static ModConfig config;
-
     @Override
     public void onInitialize() {
-        config = ModConfig.load();
-        LOGGER.info("Heart Indicator Mod initialized. Enabled: {}", config.isEnabled());
-    }
+        LOGGER.info("Heart Indicator Mod initializing...");
 
-    public static ModConfig getConfig() {
-        return config;
-    }
-
-    public static void saveConfig() {
-        config.save();
+        // Load config on server start (config is client-only but we still load on server for safety)
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> ModConfig.load());
     }
 }
