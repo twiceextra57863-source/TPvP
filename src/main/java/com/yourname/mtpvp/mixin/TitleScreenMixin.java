@@ -17,9 +17,8 @@ public class TitleScreenMixin extends Screen {
         super(title);
     }
     
-    @Inject(method = "initWidgetsNormal(IILnet/minecraft/client/gui/widget/ButtonWidget$Builder;)V", 
-            at = @At("TAIL"))
-    private void onInit(int y, int spacingY, ButtonWidget.Builder builder, CallbackInfo ci) {
+    @Inject(method = "init", at = @At("TAIL"))
+    private void onInit(CallbackInfo ci) {
         this.addDrawableChild(ButtonWidget.builder(Text.literal("⚔️ MTPVP"), button -> {
             if (client != null) {
                 client.setScreen(new MtpvpDashboardScreen(this));
