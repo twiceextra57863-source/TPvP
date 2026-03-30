@@ -17,11 +17,9 @@ public class TitleScreenMixin extends Screen {
         super(title);
     }
     
-    @Inject(method = "init", at = @At("TAIL"))
-    private void onInit(CallbackInfo ci) {
-        // Position button away from quit button (above or below)
-        // Quit button is usually at y = height / 4 + 96 + 48 + 24
-        // Let's put our button above it
+    @Inject(method = "initWidgetsNormal(IILnet/minecraft/client/gui/widget/ButtonWidget$Builder;)V", 
+            at = @At("TAIL"))
+    private void onInit(int y, int spacingY, ButtonWidget.Builder builder, CallbackInfo ci) {
         this.addDrawableChild(ButtonWidget.builder(Text.literal("⚔️ MTPVP"), button -> {
             if (client != null) {
                 client.setScreen(new MtpvpDashboardScreen(this));
