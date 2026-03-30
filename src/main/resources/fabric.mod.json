@@ -4,7 +4,7 @@
   "version": "${version}",
   "name": "MTPVP Mod",
   "description": "A mod that adds MTPVP features to Minecraft",
-  "authors": ["MineTwice"],
+  "authors": ["YourName"],
   "contact": {},
   "license": "MIT",
   "icon": "assets/mtpvp/icon.png",
@@ -17,9 +17,6 @@
       "com.yourname.mtpvp.client.MtpvpClient"
     ]
   },
-  "mixins": [
-    "mtpvp.mixins.json"
-  ],
   "depends": {
     "fabricloader": ">=0.15.0",
     "minecraft": "~1.21",
