@@ -28,8 +28,7 @@ public class LivingEntityRendererMixin<T extends LivingEntity> {
         
         matrices.push();
         
-        // Position above the entity's head
-        matrices.translate(0, entity.getHeight() + 0.5, 0);
+        matrices.translate(0, entity.getHeight() + 0.6, 0);
         matrices.scale(0.025f, -0.025f, 0.025f);
         
         TextRenderer textRenderer = client.textRenderer;
@@ -96,7 +95,6 @@ public class LivingEntityRendererMixin<T extends LivingEntity> {
     private void renderPlayerHead(MatrixStack matrices, VertexConsumerProvider vertexConsumers,
                                   TextRenderer textRenderer, net.minecraft.client.MinecraftClient client,
                                   PlayerEntity player, float health, float maxHealth) {
-        // Health text
         matrices.push();
         matrices.translate(-45, 0, 0);
         textRenderer.draw(String.format("%.0f/%.0f ❤", health, maxHealth), 0, 0, 0xFFFFFF, false,
@@ -104,7 +102,6 @@ public class LivingEntityRendererMixin<T extends LivingEntity> {
                          TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
         
-        // Hits to Kill
         int hitsToKill = HeartIndicatorRenderer.calculateHitsToKill(client.player, player);
         matrices.push();
         matrices.translate(-45, 12, 0);
@@ -113,7 +110,6 @@ public class LivingEntityRendererMixin<T extends LivingEntity> {
                          TextRenderer.TextLayerType.NORMAL, 0, 0xF000F0);
         matrices.pop();
         
-        // Death zone warning
         if (health <= maxHealth * 0.25) {
             matrices.push();
             matrices.translate(-45, 24, 0);
@@ -123,7 +119,6 @@ public class LivingEntityRendererMixin<T extends LivingEntity> {
             matrices.pop();
         }
         
-        // Head icon
         matrices.push();
         matrices.translate(40, -5, 0);
         textRenderer.draw("👤", 0, 0, 0x55AAFF, false,
