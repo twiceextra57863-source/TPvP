@@ -4,16 +4,16 @@ import com.tpvp.config.ModConfig;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter; // Naya Import
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.Identifier;
 
 public class IndicatorHud implements HudRenderCallback {
-    private static final Identifier HEART_TEXTURE = Identifier.of("minecraft", "textures/gui/sprites/hud/heart/full.png");
 
+    // HudRenderCallback ka naya 1.21.2+ Method Signature
     @Override
-    public void onHudRender(DrawContext context, float tickDelta) {
+    public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
         if (!ModConfig.indicatorEnabled) return;
 
         MinecraftClient client = MinecraftClient.getInstance();
@@ -24,8 +24,12 @@ public class IndicatorHud implements HudRenderCallback {
             float health = target.getHealth();
             float maxHealth = target.getMaxHealth();
 
-            // Hand me jo item hai uska damage calculate karna
-            double weaponDamage = client.player.getAttributeValue(EntityAttributes.GENERIC_ATTACK_DAMAGE);
+            // 1.21.2+ me "GENERIC_ATTACK_DAMAGE" ko "ATTACK_DAMAGE" kar diya gaya hai
+            double weaponDamage = client.player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
+            
+            // Safe check: Agar damage 0 ho toh game crash na ho
+            if (weaponDamage <= 0) weaponDamage = 1.0; 
+            
             // Hits to kill: (Health / Damage) round up
             int hitsToKill = (int) Math.ceil(health / weaponDamage);
 
@@ -44,7 +48,7 @@ public class IndicatorHud implements HudRenderCallback {
             if (ModConfig.indicatorStyle == 0) { // Heart Style
                 String text = String.format("%.1f", health);
                 context.drawTextWithShadow(client.textRenderer, text, x + 12, y + 1, color);
-                // Draw a simple rect as placeholder for heart icon to ensure compatibility
+                // Draw a simple rect as placeholder for heart icon
                 context.fill(x, y, x + 8, y + 8, 0xFFFF5555); 
             } 
             else if (ModConfig.indicatorStyle == 1) { // Bar Style
