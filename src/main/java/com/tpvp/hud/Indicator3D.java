@@ -39,19 +39,14 @@ public class Indicator3D {
         float tickDelta = context.tickCounter().getTickDelta(true);
         MatrixStack matrices = context.matrixStack();
 
-        // Buffer provider se buffers lena
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
-        // Player ki current hand me jo item hai uska original damage
         double weaponDamage = client.player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
         if (weaponDamage <= 0) weaponDamage = 1.0;
 
-        // Aas-paas ki sabhi entities ke liye loop chalana (No need to point cursor)
         for (Entity entity : client.world.getEntities()) {
-            // Sirf Living Entities (Players/Mobs) ke liye aur khudko (client.player) chhod kar
             if (entity instanceof LivingEntity target && entity != client.player) {
                 
-                // Sirf 32 blocks ke andar wale players ke liye show karo (Lag fix)
                 if (target.distanceTo(client.player) > 32.0) continue;
 
                 double yOffset = target.getHeight() + 0.825;
@@ -64,24 +59,22 @@ public class Indicator3D {
                 matrices.push();
                 matrices.translate(x, y, z);
                 
-                // Nametag ki tarah Camera ko face karwana
                 matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
                 matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
                 
-                // Nametag ki standard size
                 matrices.scale(-0.025F, -0.025F, 0.025F);
 
                 Matrix4f positionMatrix = matrices.peek().getPositionMatrix();
-                int light = LightmapTextureManager.MAX_LIGHT_COORDINATE; // Hamesha bright
+                int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
 
                 float health = target.getHealth();
                 float maxHealth = target.getMaxHealth();
                 int hitsToKill = (int) Math.ceil(health / weaponDamage);
                 
                 float healthPercent = Math.max(0, Math.min(1, health / maxHealth));
-                int textColor = 0x00FF00; // Green
-                if (healthPercent < 0.3f) textColor = 0xFF0000; // Red
-                else if (healthPercent < 0.6f) textColor = 0xFFFF00; // Yellow
+                int textColor = 0x00FF00;
+                if (healthPercent < 0.3f) textColor = 0xFF0000;
+                else if (healthPercent < 0.6f) textColor = 0xFFFF00;
 
                 // --------- STYLE 0: REAL MINECRAFT HEARTS ---------
                 if (ModConfig.indicatorStyle == 0) {
@@ -94,15 +87,11 @@ public class Indicator3D {
                     VertexConsumer heartConsumer = immediate.getBuffer(RenderLayer.getTextSeeThrough(fullHeart.getAtlasId()));
                     
                     float heartSize = 9f;
-                    float startX = -(totalHearts * heartSize) / 2f; // Center me lane ke liye
+                    float startX = -(totalHearts * heartSize) / 2f;
 
                     for (int i = 0; i < totalHearts; i++) {
                         float hx = startX + (i * heartSize);
-                        
-                        // Pehle empty background heart draw karo
                         drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, emptyHeart, light);
-                        
-                        // Fir uske upar health ke hisaab se Full ya Half heart draw karo
                         if (health >= (i * 2) + 2) {
                             drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, fullHeart, light);
                         } else if (health > (i * 2)) {
@@ -110,21 +99,36 @@ public class Indicator3D {
                         }
                     }
                 } 
-                // --------- STYLE 1: SMOOTH PROGRESS BAR ---------
+                // --------- STYLE 1: MODERN PROGRESS BAR WITH BORDER & PERCENTAGE ---------
                 else if (ModConfig.indicatorStyle == 1) {
                     VertexConsumer barConsumer = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
-                    float barWidth = 40f;
-                    float barHeight = 6f;
+                    
+                    float barWidth = 50f; // Thoda lamba bar modern look ke liye
+                    float barHeight = 5f; // Patla aur sleek design
                     float currentWidth = barWidth * healthPercent;
                     
-                    // Background Bar (Dark Gray)
-                    drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 0, barWidth, barHeight, 0x88000000, light);
+                    int barColor = 0xFF00FF00; // Green
+                    if (healthPercent < 0.3f) barColor = 0xFFFF3333; // Bright Red
+                    else if (healthPercent < 0.6f) barColor = 0xFFFFAA00; // Orange/Yellow
+
+                    // 1. Dark Border (Thoda bada rectangle peeche taaki outline ban jaye)
+                    drawColorQuad(positionMatrix, barConsumer, -barWidth/2 - 1, 0, barWidth + 2, barHeight + 2, 0xFF000000, light); // Solid Black
+
+                    // 2. Empty Background Track (Dark Gray)
+                    drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, barWidth, barHeight, 0xFF333333, light);
+
+                    // 3. Colored Health Fill
+                    if (currentWidth > 0) {
+                        drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, currentWidth, barHeight, barColor, light);
+                    }
+
+                    // 4. Percentage Text (Bar ke theek upar center me)
+                    TextRenderer textRenderer = client.textRenderer;
+                    String percentText = (int)(healthPercent * 100) + "%";
+                    float textWidth = textRenderer.getWidth(percentText);
                     
-                    // Foreground Bar (Health Color)
-                    int barColor = 0xFF00FF00;
-                    if (healthPercent < 0.3f) barColor = 0xFFFF0000;
-                    else if (healthPercent < 0.6f) barColor = 0xFFFFFF00;
-                    drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 0, currentWidth, barHeight, barColor, light);
+                    // Y = -9 rakhne se text exactly bar ke thoda sa upar float karega
+                    textRenderer.draw(percentText, -textWidth / 2f, -9, 0xFFFFFF, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, light);
                 } 
                 // --------- STYLE 2: HEAD + HITS TO KILL ---------
                 else if (ModConfig.indicatorStyle == 2) {
@@ -137,16 +141,12 @@ public class Indicator3D {
                     float textWidth = textRenderer.getWidth(text);
                     float textStartX = -textWidth / 2f;
 
-                    // Agar target player hai toh uska asli head render karo
                     if (target instanceof AbstractClientPlayerEntity playerTarget) {
                         Identifier skin = playerTarget.getSkinTextures().texture();
                         VertexConsumer headConsumer = immediate.getBuffer(RenderLayer.getTextSeeThrough(skin));
-                        
-                        // Player ke face ki skin texture mapping (U: 8/64, V: 8/64, Size: 8x8)
                         drawTextureQuad(positionMatrix, headConsumer, textStartX - 12, -1, 10, 10, 8f/64f, 8f/64f, 16f/64f, 16f/64f, light);
                     }
 
-                    // Text Draw karna
                     textRenderer.draw(text, textStartX, 0, textColor, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x40000000, light);
                 }
 
@@ -154,18 +154,14 @@ public class Indicator3D {
             }
         }
         
-        // Sab entities ke indicators ek hi baar screen pe draw/flush karna (High FPS / No Glitch)
         immediate.draw();
     }
-
-    // --- HELPER METHODS FOR DRAWING QUADS IN 3D SPACE ---
 
     private static void drawSpriteQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, Sprite sprite, int light) {
         drawTextureQuad(matrix, consumer, x, y, width, height, sprite.getMinU(), sprite.getMinV(), sprite.getMaxU(), sprite.getMaxV(), light);
     }
 
     private static void drawTextureQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, float u1, float v1, float u2, float v2, int light) {
-        // Texture color is pure white (1,1,1,1), relying completely on the texture pixels
         consumer.vertex(matrix, x, y, 0).color(1f, 1f, 1f, 1f).texture(u1, v1).light(light);
         consumer.vertex(matrix, x, y + height, 0).color(1f, 1f, 1f, 1f).texture(u1, v2).light(light);
         consumer.vertex(matrix, x + width, y + height, 0).color(1f, 1f, 1f, 1f).texture(u2, v2).light(light);
@@ -183,4 +179,4 @@ public class Indicator3D {
         consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
         consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
     }
-                            }
+}
