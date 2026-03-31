@@ -5,7 +5,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.*;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.client.util.math.MatrixStack;
@@ -35,10 +34,10 @@ public class Indicator3D {
         MatrixStack matrices = context.matrixStack();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
-        // ---------------- TARGET LOCK LOGIC ----------------
+        // Target Lock Logic
         PlayerEntity lockedTarget = null;
         if (ModConfig.targetEnabled) {
-            if (ModConfig.targetMode == 1) { // Auto: Lowest HP
+            if (ModConfig.targetMode == 1) { 
                 float minHp = 999f;
                 for (PlayerEntity p : client.world.getPlayers()) {
                     if (p == client.player || p.isSpectator()) continue;
@@ -48,7 +47,7 @@ public class Indicator3D {
                         lockedTarget = p;
                     }
                 }
-            } else { // Manual Tag
+            } else { 
                 if (!ModConfig.taggedPlayerName.isEmpty()) {
                     for (PlayerEntity p : client.world.getPlayers()) {
                         if (p.getName().getString().equals(ModConfig.taggedPlayerName)) {
@@ -59,7 +58,6 @@ public class Indicator3D {
             }
         }
 
-        // ---------------- RENDER LOOP ----------------
         double weaponDamage = client.player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
         if (weaponDamage <= 0) weaponDamage = 1.0;
 
@@ -69,13 +67,7 @@ public class Indicator3D {
                 if (target.distanceTo(client.player) > 32.0) continue;
 
                 boolean isLocked = (target == lockedTarget);
-
-                // Target Glow Effect (Minecraft Vanilla Glowing)
-                if (isLocked && ModConfig.glowEffect) {
-                    target.setGlowing(true); // Epic Vanilla Glow
-                } else if (!isLocked && target.isGlowing()) {
-                    target.setGlowing(false); // Remove if not target
-                }
+                // GLOWING FEATURE REMOVED AS REQUESTED
 
                 double yOffset = target.getHeight() + 0.825;
                 Vec3d targetPos = target.getLerpedPos(tickDelta);
@@ -83,46 +75,53 @@ public class Indicator3D {
                 double y = targetPos.y - cameraPos.y + yOffset;
                 double z = targetPos.z - cameraPos.z;
 
-                // --- 1. RENDER 3D CROWN IF TARGETED ---
+                // --- RENDER EPIC 3D CROWN ---
                 if (isLocked) {
                     matrices.push();
-                    // Crown thoda aur upar float karega
-                    matrices.translate(x, y + 0.6, z);
+                    matrices.translate(x, y + 0.5, z);
                     
-                    // Rotate automatically over time
+                    // Crown ka rotation
                     float time = client.world.getTime() + tickDelta;
-                    matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(time * 5f)); // Spin speed
+                    matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(time * 6f));
                     matrices.scale(ModConfig.crownScale, ModConfig.crownScale, ModConfig.crownScale);
 
-                    Matrix4f posMatrix = matrices.peek().getPositionMatrix();
-                    VertexConsumer buffer = immediate.getBuffer(RenderLayer.getGui()); // Solid color layer
+                    VertexConsumer buffer = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough()); 
 
-                    // Get Color
                     int cColor = 0xFFFFD700; // Gold
                     if (ModConfig.crownColor == 1) cColor = 0xFFFF3333; // Red
                     else if (ModConfig.crownColor == 2) cColor = 0xFF33FFFF; // Diamond
                     else if (ModConfig.crownColor == 3) cColor = 0xFF33FF33; // Emerald
 
                     if (ModConfig.crownStyle == 0) {
-                        // Style 0: 3D Crown (A ring with 4 spikes)
-                        float s = 0.25f; // size
-                        // Draw flat square base
-                        drawColorQuad(posMatrix, buffer, -s, 0, s*2, 0.05f, cColor, 255);
-                        // Draw 4 spikes (Front, Back, Left, Right)
-                        drawColorQuad(posMatrix, buffer, -s, 0.05f, 0.1f, 0.2f, cColor, 255); // Left Spike
-                        drawColorQuad(posMatrix, buffer, s-0.1f, 0.05f, 0.1f, 0.2f, cColor, 255); // Right Spike
+                        // ACTUAL 3D HOLLOW CROWN MODEL GENERATION
+                        for (int i = 0; i < 4; i++) {
+                            matrices.push();
+                            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(i * 90f));
+                            matrices.translate(0, 0, 0.2f); // Crown ki motai/radius
+                            
+                            Matrix4f posMatrix = matrices.peek().getPositionMatrix();
+                            // Crown ka Base (Niche ka border)
+                            drawDoubleSidedQuad(posMatrix, buffer, -0.2f, 0, 0.4f, 0.1f, cColor, 255);
+                            // Corner Spike 1 (Left)
+                            drawDoubleSidedQuad(posMatrix, buffer, -0.2f, 0.1f, 0.1f, 0.2f, cColor, 255);
+                            // Corner Spike 2 (Right)
+                            drawDoubleSidedQuad(posMatrix, buffer, 0.1f, 0.1f, 0.1f, 0.2f, cColor, 255);
+                            
+                            matrices.pop();
+                        }
                     } else {
-                        // Style 1: Floating Diamond
-                        float s = 0.2f;
-                        drawColorQuad(posMatrix, buffer, -s, -s, s*2, s*2, cColor, 255);
+                        // Floating Diamond Style (2 Intersecting Planes)
+                        Matrix4f posMatrix = matrices.peek().getPositionMatrix();
+                        drawDoubleSidedQuad(posMatrix, buffer, -0.2f, -0.2f, 0.4f, 0.4f, cColor, 255);
+                        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(90f));
+                        drawDoubleSidedQuad(matrices.peek().getPositionMatrix(), buffer, -0.2f, -0.2f, 0.4f, 0.4f, cColor, 255);
                     }
-
                     matrices.pop();
 
-                    // Optional Health Text below Crown
+                    // Text Target Label
                     if (ModConfig.showTargetHealth) {
                         matrices.push();
-                        matrices.translate(x, y + 0.3, z);
+                        matrices.translate(x, y + 0.2, z);
                         matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
                         matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
                         matrices.scale(-0.025F, -0.025F, 0.025F);
@@ -132,7 +131,7 @@ public class Indicator3D {
                     }
                 }
 
-                // --- 2. REGULAR 3D INDICATORS (Purana wala Code) ---
+                // --- REGULAR HUD BARS ---
                 if (!ModConfig.indicatorEnabled) continue;
                 
                 matrices.push();
@@ -144,12 +143,11 @@ public class Indicator3D {
                 Matrix4f positionMatrix = matrices.peek().getPositionMatrix();
                 int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
 
-                // [Purana Health bar rendering code yahan aayega, maine jagah bachane ke liye skip nahi kiya, waise hi chalega jaise pehle banaya tha]
                 float health = target.getHealth();
                 float maxHealth = target.getMaxHealth();
                 float healthPercent = Math.max(0, Math.min(1, health / maxHealth));
                 
-                if (ModConfig.indicatorStyle == 1) { // Bar Style
+                if (ModConfig.indicatorStyle == 1) { 
                     VertexConsumer barConsumer = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
                     float barWidth = 50f; 
                     float barHeight = 5f; 
@@ -163,21 +161,33 @@ public class Indicator3D {
                     String percentText = (int)(healthPercent * 100) + "%";
                     client.textRenderer.draw(percentText, -client.textRenderer.getWidth(percentText) / 2f, -9, 0xFFFFFF, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, light);
                 }
-
                 matrices.pop();
             }
         }
         immediate.draw();
     }
 
-    private static void drawColorQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
+    // Is method se color ekdum solid aata hai aur dono side se dikhta hai (No invisible side bug)
+    private static void drawDoubleSidedQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
         float a = (argb >> 24 & 255) / 255.0F;
         float r = (argb >> 16 & 255) / 255.0F;
         float g = (argb >> 8 & 255) / 255.0F;
         float b = (argb & 255) / 255.0F;
+        
+        // Front Face
         consumer.vertex(matrix, x, y, 0).color(r, g, b, a).light(light);
         consumer.vertex(matrix, x, y + height, 0).color(r, g, b, a).light(light);
         consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
         consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
+
+        // Back Face (Andar se bhi dikhega)
+        consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, x, y + height, 0).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, x, y, 0).color(r, g, b, a).light(light);
+    }
+
+    private static void drawColorQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
+        drawDoubleSidedQuad(matrix, consumer, x, y, width, height, argb, light);
     }
 }
