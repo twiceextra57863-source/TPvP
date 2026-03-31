@@ -15,27 +15,29 @@ public class TPvPDashboardScreen extends Screen {
         super(Text.literal("TPvP Dashboard"));
     }
 
-    // Helper method to create Epic Modern Buttons
-    private ButtonWidget createEpicButton(int x, int y, int width, int height, String text, ButtonWidget.PressAction action) {
-        return new ButtonWidget(x, y, width, height, Text.literal(text), action, ButtonWidget.DEFAULT_NARRATION_SUPPLIER) {
-            @Override
-            protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
-                // 30% Opacity Default (0x4D000000), Hover hone par thoda white mix hoga
-                int bgColor = this.isHovered() ? 0x4D333333 : 0x4D000000; 
-                // Border glow on hover
-                int borderColor = this.isHovered() ? 0xAA00FF00 : 0x55FFFFFF;
-                
-                // Draw 30% opacity flat background
-                context.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bgColor);
-                // Draw sleek border
-                context.drawBorder(this.getX(), this.getY(), this.width, this.height, borderColor);
-                
-                // Draw 100% Opacity Solid Text
-                int textColor = this.isHovered() ? 0x00FF00 : 0xFFFFFF; // Hover pe green, waise solid white
-                context.drawCenteredTextWithShadow(MinecraftClient.getInstance().textRenderer, this.getMessage(), 
-                        this.getX() + this.width / 2, this.getY() + (this.height - 8) / 2, textColor);
-            }
-        };
+    // NAYA FIX: Custom Inner Class banayi hai Button ke liye taaki protected access ka error na aaye
+    private class EpicButton extends ButtonWidget {
+        public EpicButton(int x, int y, int width, int height, String message, PressAction onPress) {
+            super(x, y, width, height, Text.literal(message), onPress, ButtonWidget.DEFAULT_NARRATION_SUPPLIER);
+        }
+
+        @Override
+        protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
+            // 30% Opacity Default, Hover hone par thoda light
+            int bgColor = this.isHovered() ? 0x4D333333 : 0x4D000000; 
+            // Hover hone par border glow karega
+            int borderColor = this.isHovered() ? 0xAA00FF00 : 0x55FFFFFF;
+            
+            // 30% opacity flat background draw karo
+            context.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bgColor);
+            // Sleek border draw karo
+            context.drawBorder(this.getX(), this.getY(), this.width, this.height, borderColor);
+            
+            // 100% Opacity Solid Text
+            int textColor = this.isHovered() ? 0x00FF00 : 0xFFFFFF;
+            context.drawCenteredTextWithShadow(MinecraftClient.getInstance().textRenderer, this.getMessage(), 
+                    this.getX() + this.width / 2, this.getY() + (this.height - 8) / 2, textColor);
+        }
     }
 
     @Override
@@ -43,12 +45,12 @@ public class TPvPDashboardScreen extends Screen {
         this.clearChildren();
 
         // ----- LEFT TABS (Modern Buttons) -----
-        this.addDrawableChild(createEpicButton(10, 50, sidebarWidth - 20, 25, "⚔ Combat", button -> {
+        this.addDrawableChild(new EpicButton(10, 50, sidebarWidth - 20, 25, "⚔ Combat", button -> {
             currentTab = "Combat";
             this.init();
         }));
         
-        this.addDrawableChild(createEpicButton(10, 85, sidebarWidth - 20, 25, "📡 Radar", button -> {
+        this.addDrawableChild(new EpicButton(10, 85, sidebarWidth - 20, 25, "📡 Radar", button -> {
             currentTab = "Radar";
             this.init();
         }));
@@ -57,24 +59,24 @@ public class TPvPDashboardScreen extends Screen {
         int rightStartX = sidebarWidth + 30;
         
         if (currentTab.equals("Combat")) {
-            this.addDrawableChild(createEpicButton(rightStartX, 50, 200, 25, "3D Indicator: " + (ModConfig.indicatorEnabled ? "§aON" : "§cOFF"), button -> {
+            this.addDrawableChild(new EpicButton(rightStartX, 50, 200, 25, "3D Indicator: " + (ModConfig.indicatorEnabled ? "§aON" : "§cOFF"), button -> {
                 ModConfig.indicatorEnabled = !ModConfig.indicatorEnabled;
                 this.init(); // UI refresh
             }));
 
             String[] styles = {"Heart Style", "Bar Style", "Head + Hits Style"};
-            this.addDrawableChild(createEpicButton(rightStartX, 85, 200, 25, "Style: §e" + styles[ModConfig.indicatorStyle], button -> {
+            this.addDrawableChild(new EpicButton(rightStartX, 85, 200, 25, "Style: §e" + styles[ModConfig.indicatorStyle], button -> {
                 ModConfig.indicatorStyle = (ModConfig.indicatorStyle + 1) % 3;
                 this.init();
             }));
         } 
         else if (currentTab.equals("Radar")) {
-            this.addDrawableChild(createEpicButton(rightStartX, 50, 200, 25, "Nearby Players: " + (ModConfig.nearbyEnabled ? "§aON" : "§cOFF"), button -> {
+            this.addDrawableChild(new EpicButton(rightStartX, 50, 200, 25, "Nearby Players: " + (ModConfig.nearbyEnabled ? "§aON" : "§cOFF"), button -> {
                 ModConfig.nearbyEnabled = !ModConfig.nearbyEnabled;
                 this.init();
             }));
 
-            this.addDrawableChild(createEpicButton(rightStartX, 85, 200, 25, "§bEdit HUD Position", button -> {
+            this.addDrawableChild(new EpicButton(rightStartX, 85, 200, 25, "§bEdit HUD Position", button -> {
                 this.client.setScreen(new EditHudScreen(this)); 
             }));
         }
@@ -82,11 +84,10 @@ public class TPvPDashboardScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        // Blur Background
+        // Vanilla background ko thoda blur type effect dega
         this.renderBackground(context, mouseX, mouseY, delta);
 
-        // Modern 30% Opacity Backgrounds
-        // 0x4D000000 = ~30% Black
+        // Modern 30% Opacity Backgrounds (Hex: 4D = 30% alpha)
         context.fill(0, 0, sidebarWidth, this.height, 0x4D000000); // Sidebar
         context.fill(sidebarWidth, 0, this.width, this.height, 0x33000000); // Main Area
 
