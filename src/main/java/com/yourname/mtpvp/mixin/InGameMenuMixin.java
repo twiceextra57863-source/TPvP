@@ -17,7 +17,7 @@ public class InGameMenuMixin extends Screen {
         super(title);
     }
     
-    @Inject(method = "initWidgets", at = @At("TAIL"))
+    @Inject(method = "init", at = @At("TAIL"), remap = true)
     private void onInit(CallbackInfo ci) {
         this.addDrawableChild(ButtonWidget.builder(Text.literal("⚔️ MTPVP"), button -> {
             if (client != null) {
