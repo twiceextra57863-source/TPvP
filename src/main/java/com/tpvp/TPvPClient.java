@@ -1,17 +1,16 @@
 package com.tpvp;
 
 import com.tpvp.config.ModConfig;
-import com.tpvp.hud.IndicatorHud;
+import com.tpvp.hud.Indicator3D;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 
 public class TPvPClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
-        // Config load karna
+        // Config load
         ModConfig.load();
         
-        // HUD render event register karna
-        HudRenderCallback.EVENT.register(new IndicatorHud());
+        // Naya 3D Name Tag Indicator start karna
+        Indicator3D.register();
     }
 }
