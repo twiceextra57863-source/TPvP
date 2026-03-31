@@ -16,6 +16,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.entity.decoration.ArmorStandEntity; // Server Hologram bug fix ke liye
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
@@ -46,6 +47,10 @@ public class Indicator3D {
 
         for (Entity entity : client.world.getEntities()) {
             if (entity instanceof LivingEntity target && entity != client.player) {
+                
+                // --- BUG FIX: SERVER PLUGINS HOLOGRAM/ARMOR STAND FILTER ---
+                if (target.isInvisible()) continue; // Invisible nametags ko ignore karo
+                if (target instanceof ArmorStandEntity) continue; // Armor stands ko ignore karo
                 
                 if (target.distanceTo(client.player) > 32.0) continue;
 
@@ -103,18 +108,18 @@ public class Indicator3D {
                 else if (ModConfig.indicatorStyle == 1) {
                     VertexConsumer barConsumer = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
                     
-                    float barWidth = 50f; // Thoda lamba bar modern look ke liye
-                    float barHeight = 5f; // Patla aur sleek design
+                    float barWidth = 50f; 
+                    float barHeight = 5f; 
                     float currentWidth = barWidth * healthPercent;
                     
-                    int barColor = 0xFF00FF00; // Green
-                    if (healthPercent < 0.3f) barColor = 0xFFFF3333; // Bright Red
-                    else if (healthPercent < 0.6f) barColor = 0xFFFFAA00; // Orange/Yellow
+                    int barColor = 0xFF00FF00; 
+                    if (healthPercent < 0.3f) barColor = 0xFFFF3333; 
+                    else if (healthPercent < 0.6f) barColor = 0xFFFFAA00; 
 
-                    // 1. Dark Border (Thoda bada rectangle peeche taaki outline ban jaye)
-                    drawColorQuad(positionMatrix, barConsumer, -barWidth/2 - 1, 0, barWidth + 2, barHeight + 2, 0xFF000000, light); // Solid Black
+                    // 1. Dark Border 
+                    drawColorQuad(positionMatrix, barConsumer, -barWidth/2 - 1, 0, barWidth + 2, barHeight + 2, 0xFF000000, light);
 
-                    // 2. Empty Background Track (Dark Gray)
+                    // 2. Empty Background Track 
                     drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, barWidth, barHeight, 0xFF333333, light);
 
                     // 3. Colored Health Fill
@@ -122,12 +127,11 @@ public class Indicator3D {
                         drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, currentWidth, barHeight, barColor, light);
                     }
 
-                    // 4. Percentage Text (Bar ke theek upar center me)
+                    // 4. Percentage Text 
                     TextRenderer textRenderer = client.textRenderer;
                     String percentText = (int)(healthPercent * 100) + "%";
                     float textWidth = textRenderer.getWidth(percentText);
                     
-                    // Y = -9 rakhne se text exactly bar ke thoda sa upar float karega
                     textRenderer.draw(percentText, -textWidth / 2f, -9, 0xFFFFFF, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, light);
                 } 
                 // --------- STYLE 2: HEAD + HITS TO KILL ---------
