@@ -47,6 +47,11 @@ public class TPvPDashboardScreen extends Screen {
                 ModConfig.nearbyEnabled = !ModConfig.nearbyEnabled;
                 button.setMessage(Text.literal("Nearby Players: " + (ModConfig.nearbyEnabled ? "ON" : "OFF")));
             }).dimensions(sidebarWidth + 20, 40, 150, 20).build());
+
+            // Naya Button - Drag/Drop screen open karne ke liye
+            this.addDrawableChild(ButtonWidget.builder(Text.literal("§eEdit HUD Position"), button -> {
+                this.client.setScreen(new EditHudScreen(this)); // Edit screen open karna
+            }).dimensions(sidebarWidth + 20, 65, 150, 20).build());
         }
     }
 
