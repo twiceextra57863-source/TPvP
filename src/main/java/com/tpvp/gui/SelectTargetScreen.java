@@ -13,7 +13,6 @@ import java.util.List;
 
 public class SelectTargetScreen extends Screen {
     private final Screen parent;
-    private int page = 0;
 
     public SelectTargetScreen(Screen parent) {
         super(Text.literal("Select Target Player"));
@@ -24,10 +23,10 @@ public class SelectTargetScreen extends Screen {
     protected void init() {
         this.clearChildren();
         
-        // Back Button
-        this.addDrawableChild(new ButtonWidget(this.width / 2 - 50, this.height - 30, 100, 20, Text.literal("Done"), button -> {
+        // --- COMPILATION BUG FIX: Use ButtonWidget.builder for 1.21.2+ ---
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("Done"), button -> {
             this.client.setScreen(parent);
-        }, ButtonWidget.DEFAULT_NARRATION_SUPPLIER));
+        }).dimensions(this.width / 2 - 50, this.height - 30, 100, 20).build());
     }
 
     @Override
@@ -44,38 +43,29 @@ public class SelectTargetScreen extends Screen {
         int count = 0;
 
         for (AbstractClientPlayerEntity player : players) {
-            if (player == this.client.player) continue; // Khud ko ignore karo
+            if (player == this.client.player) continue;
 
             String pName = player.getName().getString();
             boolean isTagged = ModConfig.taggedPlayerName.equals(pName);
 
-            // Card Background
-            int cardColor = isTagged ? 0x6600FF00 : 0x4D000000; // Green agar selected hai
+            int cardColor = isTagged ? 0x6600FF00 : 0x4D000000; 
             context.fill(startX, startY, startX + 300, startY + 50, cardColor);
             context.drawBorder(startX, startY, 300, 50, isTagged ? 0xFF00FF00 : 0x55FFFFFF);
 
-            // Epic Logic: Draw Full Body Flat Skin
+            // Full Body 2D Skin Render
             Identifier skin = player.getSkinTextures().texture();
             int bX = startX + 10;
             int bY = startY + 5;
-            // Head (8x8 -> 16x16)
             context.drawTexture(RenderLayer::getGuiTextured, skin, bX + 8, bY, 8f, 8f, 16, 16, 64, 64);
-            // Torso (8x12 -> 16x24)
             context.drawTexture(RenderLayer::getGuiTextured, skin, bX + 8, bY + 16, 20f, 20f, 16, 24, 64, 64);
-            // Left Arm (4x12 -> 8x24)
             context.drawTexture(RenderLayer::getGuiTextured, skin, bX, bY + 16, 32f, 48f, 8, 24, 64, 64);
-            // Right Arm (4x12 -> 8x24)
             context.drawTexture(RenderLayer::getGuiTextured, skin, bX + 24, bY + 16, 40f, 16f, 8, 24, 64, 64);
-            // Left Leg (4x12 -> 8x24)
             context.drawTexture(RenderLayer::getGuiTextured, skin, bX + 8, bY + 40, 16f, 48f, 8, 24, 64, 64);
-            // Right Leg (4x12 -> 8x24)
             context.drawTexture(RenderLayer::getGuiTextured, skin, bX + 16, bY + 40, 0f, 16f, 8, 24, 64, 64);
 
-            // Text info
             context.drawTextWithShadow(this.textRenderer, "§l" + pName, startX + 50, startY + 15, 0xFFFFFF);
             context.drawTextWithShadow(this.textRenderer, "HP: §c" + (int)player.getHealth() + " ♥", startX + 50, startY + 30, 0xFFFFFF);
 
-            // Select Checkbox button
             String btnText = isTagged ? "§a[ Locked ]" : "§7[ Tag ]";
             int btnX = startX + 220;
             int btnY = startY + 15;
@@ -83,16 +73,14 @@ public class SelectTargetScreen extends Screen {
             context.drawBorder(btnX, btnY, 70, 20, 0x55FFFFFF);
             context.drawCenteredTextWithShadow(this.textRenderer, btnText, btnX + 35, btnY + 6, 0xFFFFFF);
 
-            // Simple click detection for the card
             if (mouseX >= btnX && mouseX <= btnX + 70 && mouseY >= btnY && mouseY <= btnY + 20) {
-                context.fill(btnX, btnY, btnX + 70, btnY + 20, 0x33FFFFFF); // Hover glow
+                context.fill(btnX, btnY, btnX + 70, btnY + 20, 0x33FFFFFF); 
             }
 
             startY += 55;
             count++;
-            if (count >= 4) break; // Max 4 dikhayega page pe (Scroll baad me add kar sakte hain)
+            if (count >= 4) break; 
         }
-
         super.render(context, mouseX, mouseY, delta);
     }
 
@@ -107,12 +95,11 @@ public class SelectTargetScreen extends Screen {
                 int btnX = startX + 220;
                 int btnY = startY + 15;
                 if (mouseX >= btnX && mouseX <= btnX + 70 && mouseY >= btnY && mouseY <= btnY + 20) {
-                    // Tag/Untag Logic
                     if (ModConfig.taggedPlayerName.equals(player.getName().getString())) {
-                        ModConfig.taggedPlayerName = ""; // Untag
+                        ModConfig.taggedPlayerName = ""; 
                     } else {
-                        ModConfig.taggedPlayerName = player.getName().getString(); // Tag
-                        ModConfig.targetMode = 0; // Auto Manual pe switch ho jayega
+                        ModConfig.taggedPlayerName = player.getName().getString(); 
+                        ModConfig.targetMode = 0; 
                     }
                     return true;
                 }
