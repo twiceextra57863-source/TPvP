@@ -5,19 +5,25 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.texture.Sprite;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.RotationAxis; // Naya import camera rotation ke liye
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
 public class Indicator3D {
-    
+
     public static void register() {
         WorldRenderEvents.LAST.register(Indicator3D::onWorldRender);
     }
@@ -26,81 +32,155 @@ public class Indicator3D {
         if (!ModConfig.indicatorEnabled) return;
 
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.targetedEntity == null) return;
+        if (client.player == null || client.world == null) return;
 
-        // Agar jisko dekh raha hai wo Player/Mob hai
-        if (client.targetedEntity instanceof LivingEntity target) {
-            Camera camera = context.camera();
-            Vec3d cameraPos = camera.getPos();
-            
-            float tickDelta = context.tickCounter().getTickDelta(true);
+        Camera camera = context.camera();
+        Vec3d cameraPos = camera.getPos();
+        float tickDelta = context.tickCounter().getTickDelta(true);
+        MatrixStack matrices = context.matrixStack();
 
-            // Vanilla nametag ki height target.getHeight() + 0.5 hoti hai.
-            // Hum 0.825 rakhenge taaki humara indicator theek Nametag ke upar aaye.
-            double yOffset = target.getHeight() + 0.825;
-            Vec3d targetPos = target.getLerpedPos(tickDelta);
-            
-            double x = targetPos.x - cameraPos.x;
-            double y = targetPos.y - cameraPos.y + yOffset;
-            double z = targetPos.z - cameraPos.z;
+        // Buffer provider se buffers lena
+        VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
-            MatrixStack matrices = context.matrixStack();
-            matrices.push();
-            
-            // Nametag ki position par set karna
-            matrices.translate(x, y, z);
-            
-            // Ye 2 lines EXACTLY vanilla nametag ki tarah player ke camera ko face karwayengi
-            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
-            matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-            
-            // Nametag size set karna
-            matrices.scale(-0.025F, -0.025F, 0.025F);
+        // Player ki current hand me jo item hai uska original damage
+        double weaponDamage = client.player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
+        if (weaponDamage <= 0) weaponDamage = 1.0;
 
-            // Stats calculation
-            float health = target.getHealth();
-            float maxHealth = target.getMaxHealth();
-            double weaponDamage = client.player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
-            if (weaponDamage <= 0) weaponDamage = 1.0; 
-            int hitsToKill = (int) Math.ceil(health / weaponDamage);
+        // Aas-paas ki sabhi entities ke liye loop chalana (No need to point cursor)
+        for (Entity entity : client.world.getEntities()) {
+            // Sirf Living Entities (Players/Mobs) ke liye aur khudko (client.player) chhod kar
+            if (entity instanceof LivingEntity target && entity != client.player) {
+                
+                // Sirf 32 blocks ke andar wale players ke liye show karo (Lag fix)
+                if (target.distanceTo(client.player) > 32.0) continue;
 
-            float healthPercent = health / maxHealth;
-            int color = 0x00FF00; // Green
-            if (healthPercent < 0.3f) color = 0xFF0000; // Red
-            else if (healthPercent < 0.6f) color = 0xFFFF00; // Yellow
+                double yOffset = target.getHeight() + 0.825;
+                Vec3d targetPos = target.getLerpedPos(tickDelta);
+                
+                double x = targetPos.x - cameraPos.x;
+                double y = targetPos.y - cameraPos.y + yOffset;
+                double z = targetPos.z - cameraPos.z;
 
-            TextRenderer textRenderer = client.textRenderer;
-            VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
-            Matrix4f positionMatrix = matrices.peek().getPositionMatrix();
-            int light = LightmapTextureManager.MAX_LIGHT_COORDINATE; // Hamesha bright dikhega
+                matrices.push();
+                matrices.translate(x, y, z);
+                
+                // Nametag ki tarah Camera ko face karwana
+                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
+                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
+                
+                // Nametag ki standard size
+                matrices.scale(-0.025F, -0.025F, 0.025F);
 
-            // Text Setup
-            String text = "";
-            if (ModConfig.indicatorStyle == 0) {
-                text = String.format("❤ %.1f", health);
-            } else if (ModConfig.indicatorStyle == 1) {
-                int totalBars = 10;
-                int activeBars = (int) (healthPercent * totalBars);
-                StringBuilder barStr = new StringBuilder("HP: [");
-                for (int i = 0; i < totalBars; i++) barStr.append(i < activeBars ? "|" : ".");
-                barStr.append("]");
-                text = barStr.toString();
-            } else if (ModConfig.indicatorStyle == 2) {
-                text = "Hits: " + hitsToKill;
-                if (target instanceof PlayerEntity) {
-                    text = target.getName().getString() + " | Hits: " + hitsToKill;
+                Matrix4f positionMatrix = matrices.peek().getPositionMatrix();
+                int light = LightmapTextureManager.MAX_LIGHT_COORDINATE; // Hamesha bright
+
+                float health = target.getHealth();
+                float maxHealth = target.getMaxHealth();
+                int hitsToKill = (int) Math.ceil(health / weaponDamage);
+                
+                float healthPercent = Math.max(0, Math.min(1, health / maxHealth));
+                int textColor = 0x00FF00; // Green
+                if (healthPercent < 0.3f) textColor = 0xFF0000; // Red
+                else if (healthPercent < 0.6f) textColor = 0xFFFF00; // Yellow
+
+                // --------- STYLE 0: REAL MINECRAFT HEARTS ---------
+                if (ModConfig.indicatorStyle == 0) {
+                    int totalHearts = (int) Math.ceil(Math.max(maxHealth, health) / 2.0f);
+                    
+                    Sprite fullHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/full"));
+                    Sprite halfHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/half"));
+                    Sprite emptyHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/container"));
+                    
+                    VertexConsumer heartConsumer = immediate.getBuffer(RenderLayer.getTextSeeThrough(fullHeart.getAtlasId()));
+                    
+                    float heartSize = 9f;
+                    float startX = -(totalHearts * heartSize) / 2f; // Center me lane ke liye
+
+                    for (int i = 0; i < totalHearts; i++) {
+                        float hx = startX + (i * heartSize);
+                        
+                        // Pehle empty background heart draw karo
+                        drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, emptyHeart, light);
+                        
+                        // Fir uske upar health ke hisaab se Full ya Half heart draw karo
+                        if (health >= (i * 2) + 2) {
+                            drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, fullHeart, light);
+                        } else if (health > (i * 2)) {
+                            drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, halfHeart, light);
+                        }
+                    }
+                } 
+                // --------- STYLE 1: SMOOTH PROGRESS BAR ---------
+                else if (ModConfig.indicatorStyle == 1) {
+                    VertexConsumer barConsumer = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
+                    float barWidth = 40f;
+                    float barHeight = 6f;
+                    float currentWidth = barWidth * healthPercent;
+                    
+                    // Background Bar (Dark Gray)
+                    drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 0, barWidth, barHeight, 0x88000000, light);
+                    
+                    // Foreground Bar (Health Color)
+                    int barColor = 0xFF00FF00;
+                    if (healthPercent < 0.3f) barColor = 0xFFFF0000;
+                    else if (healthPercent < 0.6f) barColor = 0xFFFFFF00;
+                    drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 0, currentWidth, barHeight, barColor, light);
+                } 
+                // --------- STYLE 2: HEAD + HITS TO KILL ---------
+                else if (ModConfig.indicatorStyle == 2) {
+                    TextRenderer textRenderer = client.textRenderer;
+                    String text = "Hits to kill: " + hitsToKill;
+                    if (target instanceof PlayerEntity) {
+                        text = target.getName().getString() + " | Hits: " + hitsToKill;
+                    }
+                    
+                    float textWidth = textRenderer.getWidth(text);
+                    float textStartX = -textWidth / 2f;
+
+                    // Agar target player hai toh uska asli head render karo
+                    if (target instanceof AbstractClientPlayerEntity playerTarget) {
+                        Identifier skin = playerTarget.getSkinTextures().texture();
+                        VertexConsumer headConsumer = immediate.getBuffer(RenderLayer.getTextSeeThrough(skin));
+                        
+                        // Player ke face ki skin texture mapping (U: 8/64, V: 8/64, Size: 8x8)
+                        drawTextureQuad(positionMatrix, headConsumer, textStartX - 12, -1, 10, 10, 8f/64f, 8f/64f, 16f/64f, 16f/64f, light);
+                    }
+
+                    // Text Draw karna
+                    textRenderer.draw(text, textStartX, 0, textColor, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x40000000, light);
                 }
+
+                matrices.pop();
             }
-
-            float textWidth = textRenderer.getWidth(text);
-            
-            // SEE_THROUGH use kiya hai taaki indicator kisi block/body part ke peeche chhupe nahi
-            textRenderer.draw(text, -textWidth / 2f, 0, color, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x40000000, light);
-
-            // **SABSE ZYADA IMPORTANT**: Buffer ko draw karna taaki text actually screen par aaye!
-            immediate.draw();
-
-            matrices.pop();
         }
+        
+        // Sab entities ke indicators ek hi baar screen pe draw/flush karna (High FPS / No Glitch)
+        immediate.draw();
     }
-}
+
+    // --- HELPER METHODS FOR DRAWING QUADS IN 3D SPACE ---
+
+    private static void drawSpriteQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, Sprite sprite, int light) {
+        drawTextureQuad(matrix, consumer, x, y, width, height, sprite.getMinU(), sprite.getMinV(), sprite.getMaxU(), sprite.getMaxV(), light);
+    }
+
+    private static void drawTextureQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, float u1, float v1, float u2, float v2, int light) {
+        // Texture color is pure white (1,1,1,1), relying completely on the texture pixels
+        consumer.vertex(matrix, x, y, 0).color(1f, 1f, 1f, 1f).texture(u1, v1).light(light);
+        consumer.vertex(matrix, x, y + height, 0).color(1f, 1f, 1f, 1f).texture(u1, v2).light(light);
+        consumer.vertex(matrix, x + width, y + height, 0).color(1f, 1f, 1f, 1f).texture(u2, v2).light(light);
+        consumer.vertex(matrix, x + width, y, 0).color(1f, 1f, 1f, 1f).texture(u2, v1).light(light);
+    }
+
+    private static void drawColorQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
+        float a = (argb >> 24 & 255) / 255.0F;
+        float r = (argb >> 16 & 255) / 255.0F;
+        float g = (argb >> 8 & 255) / 255.0F;
+        float b = (argb & 255) / 255.0F;
+        
+        consumer.vertex(matrix, x, y, 0).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, x, y + height, 0).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
+    }
+                            }
