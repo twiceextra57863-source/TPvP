@@ -18,9 +18,9 @@ public class TitleScreenMixin extends Screen {
 
     @Inject(at = @At("RETURN"), method = "init")
     private void addCustomButton(CallbackInfo info) {
-        // Title Screen par TPvP Client ka button add karna
+        // Position changed to Top-Left Corner (x = 10, y = 10)
         this.addDrawableChild(ButtonWidget.builder(Text.literal("§b§lTPvP Client"), button -> {
             this.client.setScreen(new TPvPDashboardScreen());
-        }).dimensions(this.width / 2 - 100, this.height / 4 + 48 + 72 + 24, 200, 20).build());
+        }).dimensions(10, 10, 100, 20).build());
     }
 }
