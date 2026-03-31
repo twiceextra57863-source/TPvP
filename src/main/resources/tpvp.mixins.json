@@ -1,13 +1,13 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.yourname.mtpvp.mixin",
+  "package": "com.tpvp.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [],
+  "mixins": [
+  ],
   "client": [
     "TitleScreenMixin",
-    "InGameMenuMixin",
-    "LivingEntityRendererMixin"
+    "GameMenuScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1
