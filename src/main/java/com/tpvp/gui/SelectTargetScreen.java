@@ -6,6 +6,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
@@ -23,7 +24,6 @@ public class SelectTargetScreen extends Screen {
     protected void init() {
         this.clearChildren();
         
-        // --- COMPILATION BUG FIX: Use ButtonWidget.builder for 1.21.2+ ---
         this.addDrawableChild(ButtonWidget.builder(Text.literal("Done"), button -> {
             this.client.setScreen(parent);
         }).dimensions(this.width / 2 - 50, this.height - 30, 100, 20).build());
@@ -48,23 +48,53 @@ public class SelectTargetScreen extends Screen {
             String pName = player.getName().getString();
             boolean isTagged = ModConfig.taggedPlayerName.equals(pName);
 
+            // Card Background
             int cardColor = isTagged ? 0x6600FF00 : 0x4D000000; 
             context.fill(startX, startY, startX + 300, startY + 50, cardColor);
             context.drawBorder(startX, startY, 300, 50, isTagged ? 0xFF00FF00 : 0x55FFFFFF);
 
-            // Full Body 2D Skin Render
+            // --- EPIC 64x64 FULL BODY SKIN RENDERER ---
             Identifier skin = player.getSkinTextures().texture();
-            int bX = startX + 10;
-            int bY = startY + 5;
-            context.drawTexture(RenderLayer::getGuiTextured, skin, bX + 8, bY, 8f, 8f, 16, 16, 64, 64);
-            context.drawTexture(RenderLayer::getGuiTextured, skin, bX + 8, bY + 16, 20f, 20f, 16, 24, 64, 64);
-            context.drawTexture(RenderLayer::getGuiTextured, skin, bX, bY + 16, 32f, 48f, 8, 24, 64, 64);
-            context.drawTexture(RenderLayer::getGuiTextured, skin, bX + 24, bY + 16, 40f, 16f, 8, 24, 64, 64);
-            context.drawTexture(RenderLayer::getGuiTextured, skin, bX + 8, bY + 40, 16f, 48f, 8, 24, 64, 64);
-            context.drawTexture(RenderLayer::getGuiTextured, skin, bX + 16, bY + 40, 0f, 16f, 8, 24, 64, 64);
+            MatrixStack matrices = context.getMatrices();
+            matrices.push();
+            
+            // Card ke andar positioning aur size scaling
+            matrices.translate(startX + 10, startY + 2, 0);
+            matrices.scale(1.4f, 1.4f, 1.0f); // Perfect size for 50px card
+
+            // LAYER 1: BASE SKIN (Body)
+            // Head
+            context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 0, 8f, 8f, 8, 8, 64, 64);
+            // Torso
+            context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 8, 20f, 20f, 8, 12, 64, 64);
+            // Right Arm (Screen left)
+            context.drawTexture(RenderLayer::getGuiTextured, skin, 0, 8, 44f, 20f, 4, 12, 64, 64);
+            // Left Arm (Screen right)
+            context.drawTexture(RenderLayer::getGuiTextured, skin, 12, 8, 36f, 52f, 4, 12, 64, 64);
+            // Right Leg
+            context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 20, 4f, 20f, 4, 12, 64, 64);
+            // Left Leg
+            context.drawTexture(RenderLayer::getGuiTextured, skin, 8, 20, 20f, 52f, 4, 12, 64, 64);
+
+            // LAYER 2: OVERLAY SKIN (Clothes/Hat/Jacket) - 3D Skin depth feel
+            // Hat
+            context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 0, 40f, 8f, 8, 8, 64, 64);
+            // Jacket
+            context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 8, 20f, 36f, 8, 12, 64, 64);
+            // Right Sleeve
+            context.drawTexture(RenderLayer::getGuiTextured, skin, 0, 8, 44f, 36f, 4, 12, 64, 64);
+            // Left Sleeve
+            context.drawTexture(RenderLayer::getGuiTextured, skin, 12, 8, 52f, 52f, 4, 12, 64, 64);
+            // Right Pants
+            context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 20, 4f, 36f, 4, 12, 64, 64);
+            // Left Pants
+            context.drawTexture(RenderLayer::getGuiTextured, skin, 8, 20, 4f, 52f, 4, 12, 64, 64);
+
+            matrices.pop();
+            // ------------------------------------------
 
             context.drawTextWithShadow(this.textRenderer, "§l" + pName, startX + 50, startY + 15, 0xFFFFFF);
-            context.drawTextWithShadow(this.textRenderer, "HP: §c" + (int)player.getHealth() + " ♥", startX + 50, startY + 30, 0xFFFFFF);
+            context.drawTextWithShadow(this.textRenderer, "HP: §c" + String.format("%.1f ♥", player.getHealth()), startX + 50, startY + 30, 0xFFFFFF);
 
             String btnText = isTagged ? "§a[ Locked ]" : "§7[ Tag ]";
             int btnX = startX + 220;
