@@ -18,9 +18,9 @@ public class GameMenuScreenMixin extends Screen {
 
     @Inject(at = @At("RETURN"), method = "init")
     private void addDashboardButton(CallbackInfo info) {
-        // Top right corner me button add karna Pause menu me
+        // Pause Menu me Bottom-Right corner
         this.addDrawableChild(ButtonWidget.builder(Text.literal("§bTPvP"), button -> {
             this.client.setScreen(new TPvPDashboardScreen());
-        }).dimensions(10, 10, 60, 20).build());
+        }).dimensions(this.width - 90, this.height - 30, 80, 20).build());
     }
 }
