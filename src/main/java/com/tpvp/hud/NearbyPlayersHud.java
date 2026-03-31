@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
+import net.minecraft.client.render.RenderLayer; // Naya import 1.21.2+ ke liye
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
@@ -22,7 +23,7 @@ public class NearbyPlayersHud implements HudRenderCallback {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return;
 
-        // Render distance in blocks (Render Distance Chunk * 16)
+        // Render distance in blocks
         double maxDistance = client.options.getClampedViewDistance() * 16.0;
 
         // Sabhi players ki list nikalna aur sort karna
@@ -50,12 +51,12 @@ public class NearbyPlayersHud implements HudRenderCallback {
             double dx = targetPos.x - playerPos.x;
             double dz = targetPos.z - playerPos.z;
             
-            // Angle to target (-90 because MC yaw 0 is +Z)
+            // Angle to target
             double angleToTarget = Math.toDegrees(Math.atan2(dz, dx)) - 90;
             double relativeYaw = MathHelper.wrapDegrees(angleToTarget - client.player.getYaw());
 
-            // Simple 2D Direction Arrow
-            String arrow = "▲"; // Aage
+            // Simple Direction Arrow
+            String arrow;
             if (relativeYaw >= -45 && relativeYaw < 45) arrow = "▲"; // Front
             else if (relativeYaw >= 45 && relativeYaw < 135) arrow = "▶"; // Right
             else if (relativeYaw >= -135 && relativeYaw < -45) arrow = "◀"; // Left
@@ -68,14 +69,13 @@ public class NearbyPlayersHud implements HudRenderCallback {
             // Modern Dark Background Box for each player
             context.fill(startX, startY, startX + 130, startY + 14, 0x66000000);
 
-            // Render Player Head (Skin)
+            // Render Player Head (Skin) - Fix for 1.21.2+ rendering API
             Identifier skin = target.getSkinTextures().texture();
-            // x, y, u, v, width, height, textureWidth, textureHeight
-            context.drawTexture(skin, startX + 2, startY + 2, 8, 8, 10, 10, 64, 64);
+            // Naya method: renderLayer, texture, x, y, u, v, width, height, textureWidth, textureHeight
+            context.drawTexture(RenderLayer::getGuiTextured, skin, startX + 2, startY + 2, 8f, 8f, 10, 10, 64, 64);
 
             // Render Text: [Arrow] Name [Distance] [Elevation]
             String name = target.getName().getString();
-            // Lamba naam ho toh cut karna
             if (name.length() > 8) name = name.substring(0, 8) + "..";
 
             String displayText = String.format("§e%s §f%s §7(%.0fm) %s", arrow, name, distance, elevation);
