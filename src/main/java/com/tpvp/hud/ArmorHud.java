@@ -16,108 +16,76 @@ import java.util.List;
 public class ArmorHud implements HudRenderCallback {
     @Override
     public void onHudRender(DrawContext context, RenderTickCounter tickCounter) {
+        if (!ModConfig.armorHudEnabled) return;
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
+
+        List<ItemStack> armorList = new ArrayList<>();
+        client.player.getArmorItems().forEach(armorList::add);
+        Collections.reverse(armorList); // Helmet to Boots
 
         MatrixStack matrices = context.getMatrices();
         float time = client.player.age + tickCounter.getTickDelta(true);
 
-        // ==========================================
-        // 1. ARMOR HUD RENDERING
-        // ==========================================
-        if (ModConfig.armorHudEnabled) {
-            List<ItemStack> armorList = new ArrayList<>();
-            client.player.getArmorItems().forEach(armorList::add);
-            Collections.reverse(armorList);
+        matrices.push();
+        // Z=1000 moves it above everything including Chat
+        matrices.translate(ModConfig.armorHudX, ModConfig.armorHudY, 1000);
+        matrices.scale(ModConfig.armorHudScale, ModConfig.armorHudScale, 1.0f);
 
-            matrices.push();
-            // Z=500 FORCES IT ABOVE CHAT!
-            matrices.translate(ModConfig.armorHudX, ModConfig.armorHudY, 500);
-            matrices.scale(ModConfig.armorHudScale, ModConfig.armorHudScale, 1.0f);
+        int spacingX = ModConfig.armorHudHorizontal ? 40 : 0;
+        int spacingY = ModConfig.armorHudHorizontal ? 0 : 22;
+        int totalW = ModConfig.armorHudHorizontal ? (ModConfig.heldItemEnabled ? 200 : 160) : 40;
+        int totalH = ModConfig.armorHudHorizontal ? 25 : 100;
 
-            int spacingX = ModConfig.armorHudHorizontal ? 40 : 0;
-            int spacingY = ModConfig.armorHudHorizontal ? 0 : 22;
-            int totalW = ModConfig.armorHudHorizontal ? (4 * 40) : 40;
-            int totalH = ModConfig.armorHudHorizontal ? 25 : (4 * 22);
+        // --- GLASS BACKGROUND EFFECT ---
+        if (ModConfig.armorBgEnabled) {
+            int alpha = (int)(ModConfig.armorBgOpacity * 255);
+            context.fill(-4, -4, totalW, totalH, (alpha << 24) | 0x111111);
+            context.drawBorder(-4, -4, totalW + 4, totalH + 4, ModConfig.armorBorderColor | (alpha << 24));
+            // Top Shine (Glass feel)
+            context.fill(-4, -4, totalW, -3, 0x44FFFFFF);
+        }
 
-            // Draw Custom Background
-            if (ModConfig.armorBgEnabled) {
-                int alpha = (int)(ModConfig.armorBgOpacity * 255);
-                int bgColor = (alpha << 24) | 0x000000;
-                context.fill(-4, -4, totalW, totalH, bgColor);
-                context.drawBorder(-4, -4, totalW + 4, totalH + 4, (alpha << 24) | 0x00AAFF);
+        int localX = 0, localY = 0;
+        for (int i = 0; i < armorList.size(); i++) {
+            ItemStack item = armorList.get(i);
+            
+            // DRAW HELD ITEM NEXT TO LEGGINGS (Index 2 in reversed list is Leggings)
+            if (i == 2 && ModConfig.heldItemEnabled) {
+                ItemStack mainHand = client.player.getMainHandStack();
+                if (!mainHand.isEmpty()) {
+                    context.drawItem(mainHand, localX - 22, localY);
+                    context.drawBorder(localX - 24, localY - 2, 20, 20, 0x55FFFFFF);
+                }
             }
 
-            int localX = 0, localY = 0;
-
-            for (ItemStack item : armorList) {
-                if (item.isEmpty()) {
-                    localX += spacingX; localY += spacingY; continue;
-                }
-
-                int maxDurability = item.getMaxDamage();
-                int currentDamage = item.getDamage();
-                int durabilityLeft = maxDurability - currentDamage;
-                boolean isDanger = maxDurability > 0 && durabilityLeft <= 15;
+            if (!item.isEmpty()) {
+                int maxDur = item.getMaxDamage();
+                int currentDur = maxDur - item.getDamage();
+                boolean isDanger = maxDur > 0 && currentDur <= 15;
 
                 matrices.push();
-                // SHAKE EFFECT FOR LOW DURABILITY
                 if (isDanger) {
-                    float shakeX = MathHelper.sin(time * 2f) * 1.5f;
-                    float shakeY = MathHelper.cos(time * 2.5f) * 1.5f;
-                    matrices.translate(shakeX, shakeY, 0);
+                    matrices.translate(MathHelper.sin(time * 3f), MathHelper.cos(time * 3f), 0);
                 }
 
                 context.drawItem(item, localX, localY);
-
-                if (maxDurability > 0) {
-                    float durPercent = (float) durabilityLeft / maxDurability;
-                    int textColor = durPercent < 0.2f ? 0xFFFF3333 : (durPercent < 0.5f ? 0xFFFFAA00 : 0xFF00FF00);
-
-                    int textX = ModConfig.armorHudHorizontal ? localX + 2 : localX + 20;
-                    int textY = ModConfig.armorHudHorizontal ? localY + 18 : localY + 4;
-
-                    if (ModConfig.armorHudStyle == 0) {
-                        context.drawTextWithShadow(client.textRenderer, (int)(durPercent * 100) + "%", textX, textY, textColor);
-                    } else if (ModConfig.armorHudStyle == 1) {
-                        int bX = ModConfig.armorHudHorizontal ? localX - 2 : localX + 20;
-                        int bY = ModConfig.armorHudHorizontal ? localY + 18 : localY + 6;
-                        context.fill(bX - 1, bY - 1, bX + 21, bY + 5, 0xFF000000);
-                        context.fill(bX, bY, bX + 20, bY + 4, 0xFF333333);
-                        context.fill(bX, bY, bX + (int)(20 * durPercent), bY + 4, textColor);
-                    } else {
-                        context.drawTextWithShadow(client.textRenderer, durabilityLeft + "", textX, textY, textColor);
-                    }
-
-                    // DANGER ALERT OVERLAY (Blinking ⚠️ symbol)
-                    if (isDanger && (time % 10 < 5)) { // Blinks every few frames
-                        context.drawTextWithShadow(client.textRenderer, "§c§l⚠️", localX + 2, localY + 2, 0xFFFFFF);
-                    }
+                if (maxDur > 0) {
+                    float pct = (float) currentDur / maxDur;
+                    int color = pct < 0.2f ? 0xFFFF3333 : (pct < 0.5f ? 0xFFFFAA00 : 0xFF00FF00);
+                    
+                    if (ModConfig.armorHudStyle == 0) context.drawTextWithShadow(client.textRenderer, (int)(pct*100)+"%", localX+18, localY+4, color);
+                    else if (ModConfig.armorHudStyle == 1) {
+                        context.fill(localX+18, localY+12, localX+38, localY+15, 0xFF000000);
+                        context.fill(localX+18, localY+12, localX+18+(int)(20*pct), localY+15, color);
+                    } else context.drawTextWithShadow(client.textRenderer, currentDur+"", localX+18, localY+4, color);
+                    
+                    if (isDanger && (time % 10 < 5)) context.drawTextWithShadow(client.textRenderer, "⚠", localX+2, localY+2, 0xFFFF0000);
                 }
                 matrices.pop();
-                localX += spacingX; localY += spacingY;
             }
-            matrices.pop();
+            localX += spacingX; localY += spacingY;
         }
-
-        // ==========================================
-        // 2. HELD ITEM RENDERING
-        // ==========================================
-        if (ModConfig.heldItemEnabled) {
-            ItemStack mainHand = client.player.getMainHandStack();
-            if (!mainHand.isEmpty()) {
-                matrices.push();
-                matrices.translate(ModConfig.heldItemX, ModConfig.heldItemY, 500);
-                matrices.scale(ModConfig.heldItemScale, ModConfig.heldItemScale, 1.0f);
-
-                if (ModConfig.armorBgEnabled) {
-                    int alpha = (int)(ModConfig.armorBgOpacity * 255);
-                    context.fill(-4, -4, 24, 24, (alpha << 24) | 0x000000);
-                    context.drawBorder(-4, -4, 28, 28, (alpha << 24) | 0xFF00FF); // Purple border
-                }
-                context.drawItem(mainHand, 2, 2);
-                matrices.pop();
-            }
-        }
+        matrices.pop();
     }
 }
