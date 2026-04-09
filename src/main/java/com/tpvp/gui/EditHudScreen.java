@@ -8,9 +8,8 @@ import org.lwjgl.glfw.GLFW;
 
 public class EditHudScreen extends Screen {
     private final Screen parent;
-    private int draggingId = -1; // -1=None, 0=Radar, 1=Armor
-    private double dragOffsetX = 0;
-    private double dragOffsetY = 0;
+    private int draggingId = -1; // 0=Radar, 1=Armor, 2=HeldItem
+    private double dragOffsetX = 0, dragOffsetY = 0;
 
     public EditHudScreen(Screen parent) {
         super(Text.literal("Edit HUD Positions"));
@@ -21,76 +20,71 @@ public class EditHudScreen extends Screen {
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(this.textRenderer, "§b§lUI LAYOUT EDITOR", this.width / 2, 20, 0xFFFFFF);
-        context.drawCenteredTextWithShadow(this.textRenderer, "§7Click & Drag • Scroll to Resize • ESC to Save", this.width / 2, 35, 0xAAAAAA);
 
-        // Visualize Radar Bounds
-        float rScale = ModConfig.hudScale;
-        int rW = (int)(130 * rScale); int rH = (int)(80 * rScale);
-        context.fill(ModConfig.hudX, ModConfig.hudY, ModConfig.hudX + rW, ModConfig.hudY + rH, 0x4D00AAFF);
-        context.drawBorder(ModConfig.hudX, ModConfig.hudY, rW, rH, 0xFF00AAFF);
-        context.drawTextWithShadow(this.textRenderer, "RADAR", ModConfig.hudX + 2, ModConfig.hudY + 2, 0xFFFFFF);
+        // 0. Radar
+        float rS = ModConfig.hudScale;
+        context.fill(ModConfig.hudX, ModConfig.hudY, ModConfig.hudX + (int)(130*rS), ModConfig.hudY + (int)(80*rS), 0x4D00AAFF);
+        context.drawTextWithShadow(this.textRenderer, "RADAR", ModConfig.hudX, ModConfig.hudY, 0xFFFFFF);
 
-        // Visualize Armor HUD Bounds
-        float aScale = ModConfig.armorHudScale;
-        int aW = (int)((ModConfig.armorHudHorizontal ? 160 : 40) * aScale);
-        int aH = (int)((ModConfig.armorHudHorizontal ? 30 : 80) * aScale);
+        // 1. Armor
+        float aS = ModConfig.armorHudScale;
+        int aW = (int)((ModConfig.armorHudHorizontal ? 160 : 40) * aS);
+        int aH = (int)((ModConfig.armorHudHorizontal ? 30 : 90) * aS);
         context.fill(ModConfig.armorHudX, ModConfig.armorHudY, ModConfig.armorHudX + aW, ModConfig.armorHudY + aH, 0x4D00FF00);
-        context.drawBorder(ModConfig.armorHudX, ModConfig.armorHudY, aW, aH, 0xFF00FF00);
-        context.drawTextWithShadow(this.textRenderer, "ARMOR", ModConfig.armorHudX + 2, ModConfig.armorHudY + 2, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, "ARMOR", ModConfig.armorHudX, ModConfig.armorHudY, 0xFFFFFF);
+
+        // 2. Held Item
+        float hS = ModConfig.heldItemScale;
+        context.fill(ModConfig.heldItemX, ModConfig.heldItemY, ModConfig.heldItemX + (int)(30*hS), ModConfig.heldItemY + (int)(30*hS), 0x4DFF00FF);
+        context.drawTextWithShadow(this.textRenderer, "ITEM", ModConfig.heldItemX, ModConfig.heldItemY, 0xFFFFFF);
 
         super.render(context, mouseX, mouseY, delta);
     }
 
     private int getHoveredHud(double mx, double my) {
-        // Armor Check
-        int aW = (int)((ModConfig.armorHudHorizontal ? 160 : 40) * ModConfig.armorHudScale);
-        int aH = (int)((ModConfig.armorHudHorizontal ? 30 : 80) * ModConfig.armorHudScale);
+        float hS = ModConfig.heldItemScale;
+        if (mx >= ModConfig.heldItemX && mx <= ModConfig.heldItemX + (30*hS) && my >= ModConfig.heldItemY && my <= ModConfig.heldItemY + (30*hS)) return 2;
+        
+        float aS = ModConfig.armorHudScale;
+        int aW = (int)((ModConfig.armorHudHorizontal ? 160 : 40) * aS);
+        int aH = (int)((ModConfig.armorHudHorizontal ? 30 : 90) * aS);
         if (mx >= ModConfig.armorHudX && mx <= ModConfig.armorHudX + aW && my >= ModConfig.armorHudY && my <= ModConfig.armorHudY + aH) return 1;
-        // Radar Check
-        int rW = (int)(130 * ModConfig.hudScale); int rH = (int)(80 * ModConfig.hudScale);
-        if (mx >= ModConfig.hudX && mx <= ModConfig.hudX + rW && my >= ModConfig.hudY && my <= ModConfig.hudY + rH) return 0;
+        
+        float rS = ModConfig.hudScale;
+        if (mx >= ModConfig.hudX && mx <= ModConfig.hudX + (130*rS) && my >= ModConfig.hudY && my <= ModConfig.hudY + (80*rS)) return 0;
         return -1;
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(double mx, double my, int button) {
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-            draggingId = getHoveredHud(mouseX, mouseY);
-            if (draggingId == 0) {
-                dragOffsetX = mouseX - ModConfig.hudX; dragOffsetY = mouseY - ModConfig.hudY; return true;
-            } else if (draggingId == 1) {
-                dragOffsetX = mouseX - ModConfig.armorHudX; dragOffsetY = mouseY - ModConfig.armorHudY; return true;
-            }
+            draggingId = getHoveredHud(mx, my);
+            if (draggingId == 0) { dragOffsetX = mx - ModConfig.hudX; dragOffsetY = my - ModConfig.hudY; return true; }
+            if (draggingId == 1) { dragOffsetX = mx - ModConfig.armorHudX; dragOffsetY = my - ModConfig.armorHudY; return true; }
+            if (draggingId == 2) { dragOffsetX = mx - ModConfig.heldItemX; dragOffsetY = my - ModConfig.heldItemY; return true; }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(mx, my, button);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (draggingId == 0) {
-            ModConfig.hudX = (int) (mouseX - dragOffsetX); ModConfig.hudY = (int) (mouseY - dragOffsetY); return true;
-        } else if (draggingId == 1) {
-            ModConfig.armorHudX = (int) (mouseX - dragOffsetX); ModConfig.armorHudY = (int) (mouseY - dragOffsetY); return true;
-        }
-        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+    public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
+        if (draggingId == 0) { ModConfig.hudX = (int)(mx - dragOffsetX); ModConfig.hudY = (int)(my - dragOffsetY); return true; }
+        if (draggingId == 1) { ModConfig.armorHudX = (int)(mx - dragOffsetX); ModConfig.armorHudY = (int)(my - dragOffsetY); return true; }
+        if (draggingId == 2) { ModConfig.heldItemX = (int)(mx - dragOffsetX); ModConfig.heldItemY = (int)(my - dragOffsetY); return true; }
+        return super.mouseDragged(mx, my, button, dx, dy);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        draggingId = -1; return super.mouseReleased(mouseX, mouseY, button);
-    }
+    public boolean mouseReleased(double mx, double my, int button) { draggingId = -1; return super.mouseReleased(mx, my, button); }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double hAmount, double vAmount) {
-        int hovered = getHoveredHud(mouseX, mouseY);
-        if (hovered == 0) {
-            ModConfig.hudScale += (vAmount > 0) ? 0.05f : -0.05f;
-            ModConfig.hudScale = Math.max(0.5f, Math.min(2.0f, ModConfig.hudScale)); return true;
-        } else if (hovered == 1) {
-            ModConfig.armorHudScale += (vAmount > 0) ? 0.05f : -0.05f;
-            ModConfig.armorHudScale = Math.max(0.5f, Math.min(2.0f, ModConfig.armorHudScale)); return true;
-        }
-        return super.mouseScrolled(mouseX, mouseY, hAmount, vAmount);
+    public boolean mouseScrolled(double mx, double my, double hA, double vA) {
+        int hovered = getHoveredHud(mx, my);
+        float scroll = (vA > 0) ? 0.05f : -0.05f;
+        if (hovered == 0) ModConfig.hudScale = Math.max(0.5f, Math.min(2f, ModConfig.hudScale + scroll));
+        if (hovered == 1) ModConfig.armorHudScale = Math.max(0.5f, Math.min(2f, ModConfig.armorHudScale + scroll));
+        if (hovered == 2) ModConfig.heldItemScale = Math.max(0.5f, Math.min(2f, ModConfig.heldItemScale + scroll));
+        return true;
     }
 
     @Override
