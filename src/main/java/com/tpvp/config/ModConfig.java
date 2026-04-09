@@ -18,21 +18,23 @@ public class ModConfig {
     public static float crownScale = 1.0f;
     public static String taggedPlayerName = ""; 
 
-    // --- ARMOR HUD SETTINGS ---
     public static boolean armorHudEnabled = true;
     public static int armorHudX = 10;
     public static int armorHudY = 150;
     public static float armorHudScale = 1.0f;
     public static boolean armorHudHorizontal = false; 
     public static int armorHudStyle = 0; 
-    
-    // NAYA: Background & Held Item
     public static boolean armorBgEnabled = true;
-    public static float armorBgOpacity = 0.5f; // 0.2 to 1.0
+    public static float armorBgOpacity = 0.5f; 
     public static boolean heldItemEnabled = true;
     public static int heldItemX = 100;
     public static int heldItemY = 150;
     public static float heldItemScale = 1.0f;
+
+    // --- NEW: CROSSHAIR SETTINGS ---
+    public static boolean crosshairEnabled = true;
+    public static int crosshairStyle = 0; // 0=Perfect Plus, 1=Dot, 2=Hollow Circle, 3=T-Shape, 4=Square+Dot
+    public static int crosshairColor = 0; // 0=White, 1=Green, 2=Red, 3=Cyan, 4=Black
 
     public static void load() { }
     public static void save() { }
