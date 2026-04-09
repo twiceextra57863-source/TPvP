@@ -12,66 +12,60 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(InGameHud.class)
 public abstract class InGameHudMixin {
+    private float animationLerp = 0;
 
     @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
     private void onRenderCrosshair(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        if (!ModConfig.crosshairEnabled) return; // Agar off hai toh Vanilla chalega
-
+        if (!ModConfig.crosshairEnabled) return;
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.options.getPerspective().isFirstPerson()) {
-            // Cancel Vanilla Crosshair completely
-            ci.cancel();
+        if (!client.options.getPerspective().isFirstPerson()) return;
 
-            int screenWidth = client.getWindow().getScaledWidth();
-            int screenHeight = client.getWindow().getScaledHeight();
+        ci.cancel();
+        int cx = client.getWindow().getScaledWidth() / 2;
+        int cy = client.getWindow().getScaledHeight() / 2;
+        int[] colors = {0xFFFFFFFF, 0xFF00FF00, 0xFFFF3333, 0xFF00FFFF, 0xFF000000};
+        int color = colors[ModConfig.crosshairColor];
 
-            // 100% PERFECT MATHEMATICAL CENTER
-            int cx = screenWidth / 2;
-            int cy = screenHeight / 2;
+        // Animation logic: Jab attack key press hogi, crosshair expand karega
+        boolean attacking = client.options.attackKey.isPressed();
+        if (attacking) animationLerp = 2.0f;
+        else animationLerp = Math.max(0, animationLerp - 0.2f);
 
-            // Colors
-            int[] colors = {0xFFFFFFFF, 0xFF00FF00, 0xFFFF3333, 0xFF00FFFF, 0xFF000000};
-            int color = colors[ModConfig.crosshairColor];
+        context.getMatrices().push();
+        // Scale down to 0.5 for extra thinness
+        context.getMatrices().translate(cx, cy, 0);
+        context.getMatrices().scale(0.5f, 0.5f, 1.0f);
+        
+        int ani = (int)animationLerp;
 
-            int style = ModConfig.crosshairStyle;
-
-            // PVP CROSSHAIR DESIGNS
-            if (style == 0) {
-                // 0: Perfect PvP Plus (Gap in middle)
-                int gap = 2; int len = 4; int t = 1; // t = thickness
-                context.fill(cx - t, cy - gap - len, cx + t, cy - gap, color); // Top
-                context.fill(cx - t, cy + gap, cx + t, cy + gap + len, color); // Bottom
-                context.fill(cx - gap - len, cy - t, cx - gap, cy + t, color); // Left
-                context.fill(cx + gap, cy - t, cx + gap + len, cy + t, color); // Right
-            } 
-            else if (style == 1) {
-                // 1: Pro Dot (2x2 pixel perfectly centered)
-                context.fill(cx - 1, cy - 1, cx + 1, cy + 1, color);
-            } 
-            else if (style == 2) {
-                // 2: Hollow Circle/Square
-                int rad = 3; int t = 1;
-                context.fill(cx - rad, cy - rad, cx + rad, cy - rad + t, color); // Top
-                context.fill(cx - rad, cy + rad - t, cx + rad, cy + rad, color); // Bottom
-                context.fill(cx - rad, cy - rad, cx - rad + t, cy + rad, color); // Left
-                context.fill(cx + rad - t, cy - rad, cx + rad, cy + rad, color); // Right
-            } 
-            else if (style == 3) {
-                // 3: T-Shape (CS:GO Spray Control Style)
-                int gap = 2; int len = 5; int t = 1;
-                context.fill(cx - t, cy + gap, cx + t, cy + gap + len, color); // Bottom
-                context.fill(cx - gap - len, cy - t, cx - gap, cy + t, color); // Left
-                context.fill(cx + gap, cy - t, cx + gap + len, cy + t, color); // Right
-            } 
-            else if (style == 4) {
-                // 4: Hollow Square + Center Dot (Sniper Focus)
-                int rad = 4; int t = 1;
-                context.fill(cx - rad, cy - rad, cx + rad, cy - rad + t, color); // Top
-                context.fill(cx - rad, cy + rad - t, cx + rad, cy + rad, color); // Bottom
-                context.fill(cx - rad, cy - rad, cx - rad + t, cy + rad, color); // Left
-                context.fill(cx + rad - t, cy - rad, cx + rad, cy + rad, color); // Right
-                context.fill(cx - 1, cy - 1, cx + 1, cy + 1, color); // Center Dot
+        switch (ModConfig.crosshairStyle) {
+            case 0 -> { // Plus Animated
+                int gap = 3 + ani; int len = 8;
+                context.fill(-1, -gap - len, 1, -gap, color);
+                context.fill(-1, gap, 1, gap + len, color);
+                context.fill(-gap - len, -1, -gap, 1, color);
+                context.fill(gap, -1, gap + len, 1, color);
+            }
+            case 1 -> { // Dot Animated (Glows)
+                int size = 2 + ani;
+                context.fill(-size, -size, size, size, color);
+            }
+            case 2 -> { // Circle Animated (Pulses)
+                int r = 6 + ani;
+                context.drawBorder(-r, -r, r * 2, r * 2, color);
+            }
+            case 3 -> { // T-Shape (Recoil feel)
+                int gap = 3; int len = 10;
+                context.fill(-1, gap + ani, 1, gap + len + ani, color);
+                context.fill(-gap - len, -1, -gap, 1, color);
+                context.fill(gap, -1, gap + len, 1, color);
+            }
+            case 4 -> { // Square Dot
+                int r = 5 - ani;
+                context.drawBorder(-r, -r, r * 2, r * 2, color);
+                context.fill(-1, -1, 1, 1, color);
             }
         }
+        context.getMatrices().pop();
     }
 }
