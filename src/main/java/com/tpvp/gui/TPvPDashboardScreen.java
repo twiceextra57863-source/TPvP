@@ -1,253 +1,230 @@
-package com.tpvp.hud;
+package com.tpvp.gui;
 
 import com.tpvp.config.ModConfig;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.network.AbstractClientPlayerEntity;
-import net.minecraft.client.render.*;
-import net.minecraft.client.texture.Sprite;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.decoration.ArmorStandEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.RotationAxis;
-import net.minecraft.util.math.Vec3d;
-import org.joml.Matrix4f;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.text.Text;
 
-public class Indicator3D {
+public class TPvPDashboardScreen extends Screen {
+    private String currentTab = "Combat";
+    private final int sidebarWidth = 150;
 
-    public static void register() {
-        WorldRenderEvents.LAST.register(Indicator3D::onWorldRender);
+    public TPvPDashboardScreen() {
+        super(Text.literal("TPvP Dashboard"));
     }
 
-    private static void onWorldRender(WorldRenderContext context) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null || client.world == null) return;
+    // --- DOMINANT EPIC BUTTON CLASS WITH ITEM ICONS ---
+    private class EpicIconButton extends ButtonWidget {
+        private final ItemStack iconItem;
+        private final boolean isTab;
 
-        Camera camera = context.camera();
-        Vec3d cameraPos = camera.getPos();
-        float tickDelta = context.tickCounter().getTickDelta(true);
-        MatrixStack matrices = context.matrixStack();
-        VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
-
-        // Target Lock Logic
-        PlayerEntity lockedTarget = null;
-        if (ModConfig.targetEnabled) {
-            if (ModConfig.targetMode == 1) { 
-                float minHp = 999f;
-                for (PlayerEntity p : client.world.getPlayers()) {
-                    if (p == client.player || p.isSpectator()) continue;
-                    if (p.distanceTo(client.player) > ModConfig.autoRange) continue;
-                    if (p.getHealth() < minHp) {
-                        minHp = p.getHealth();
-                        lockedTarget = p;
-                    }
-                }
-            } else { 
-                if (!ModConfig.taggedPlayerName.isEmpty()) {
-                    for (PlayerEntity p : client.world.getPlayers()) {
-                        if (p.getName().getString().equals(ModConfig.taggedPlayerName)) {
-                            lockedTarget = p; break;
-                        }
-                    }
-                }
-            }
+        public EpicIconButton(int x, int y, int width, int height, String message, ItemStack iconItem, boolean isTab, PressAction onPress) {
+            super(x, y, width, height, Text.literal(message), onPress, ButtonWidget.DEFAULT_NARRATION_SUPPLIER);
+            this.iconItem = iconItem;
+            this.isTab = isTab;
         }
 
-        double weaponDamage = client.player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
-        if (weaponDamage <= 0) weaponDamage = 1.0;
+        @Override
+        protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
+            boolean hovered = this.isHovered();
+            boolean activeTab = isTab && currentTab.equals(this.getMessage().getString());
+            
+            // Premium Dark Theme Colors
+            int bgColor = hovered || activeTab ? 0x88002233 : 0x66000000; 
+            int borderColor = hovered || activeTab ? 0xFF00AAFF : 0x55FFFFFF; 
 
-        for (Entity entity : client.world.getEntities()) {
-            if (entity instanceof LivingEntity target && entity != client.player) {
-                if (target.isInvisible() || target instanceof ArmorStandEntity) continue;
-                if (target.distanceTo(client.player) > 32.0) continue;
+            context.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bgColor);
+            context.drawBorder(this.getX(), this.getY(), this.width, this.height, borderColor);
 
-                boolean isLocked = (target == lockedTarget);
-                double yOffset = target.getHeight() + 0.825;
-                Vec3d targetPos = target.getLerpedPos(tickDelta);
-                double x = targetPos.x - cameraPos.x;
-                double y = targetPos.y - cameraPos.y + yOffset;
-                double z = targetPos.z - cameraPos.z;
-
-                // --- 1. RENDER EPIC 3D VOXEL TARGET CROWN ---
-                if (isLocked) {
-                    matrices.push();
-                    matrices.translate(x, y + 0.6, z);
-                    
-                    float time = client.world.getTime() + tickDelta;
-                    matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(time * 6f));
-                    matrices.scale(ModConfig.crownScale, ModConfig.crownScale, ModConfig.crownScale);
-
-                    VertexConsumer buffer = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough()); 
-
-                    int cColor = 0xFFFFD700; 
-                    if (ModConfig.crownColor == 1) cColor = 0xFFFF3333; 
-                    else if (ModConfig.crownColor == 2) cColor = 0xFF33FFFF; 
-                    else if (ModConfig.crownColor == 3) cColor = 0xFF33FF33; 
-
-                    if (ModConfig.crownStyle == 0) {
-                        float thick = 0.05f; 
-                        float size = 0.2f;
-                        
-                        // Base Ring
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, 0, -size, size, thick, size, cColor, 255);
-                        // Spikes
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, thick, -size, -size+0.1f, 0.25f, -size+0.1f, cColor, 255); 
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, size-0.1f, thick, -size, size, 0.25f, -size+0.1f, cColor, 255); 
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, thick, size-0.1f, -size+0.1f, 0.25f, size, cColor, 255); 
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, size-0.1f, thick, size-0.1f, size, 0.25f, size, cColor, 255); 
-
-                    } else {
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, -0.1f, -0.1f, -0.1f, 0.1f, 0.1f, 0.1f, cColor, 255);
-                    }
-                    matrices.pop();
-
-                    if (ModConfig.showTargetHealth) {
-                        matrices.push();
-                        matrices.translate(x, y + 0.2, z);
-                        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
-                        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-                        matrices.scale(-0.025F, -0.025F, 0.025F);
-                        String hpTxt = "§lTARGET: §c" + String.format("%.1f ♥", target.getHealth());
-                        client.textRenderer.draw(hpTxt, -client.textRenderer.getWidth(hpTxt)/2f, 0, 0xFFFFFF, false, matrices.peek().getPositionMatrix(), immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x4D000000, 255);
-                        matrices.pop();
-                    }
-                }
-
-                // --- 2. REGULAR 3D INDICATORS ---
-                if (!ModConfig.indicatorEnabled) continue;
-                
-                matrices.push();
-                matrices.translate(x, y, z);
-                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
-                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-                matrices.scale(-0.025F, -0.025F, 0.025F);
-
-                Matrix4f positionMatrix = matrices.peek().getPositionMatrix();
-                int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
-
-                float health = target.getHealth();
-                float maxHealth = target.getMaxHealth();
-                float healthPercent = Math.max(0, Math.min(1, health / maxHealth));
-                int hitsToKill = (int) Math.ceil(health / weaponDamage);
-                int textColor = (healthPercent < 0.3f) ? 0xFFFF3333 : (healthPercent < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00;
-
-                // --------- STYLE 0: REAL MINECRAFT HEARTS ---------
-                if (ModConfig.indicatorStyle == 0) {
-                    int totalHearts = (int) Math.ceil(Math.max(maxHealth, health) / 2.0f);
-                    Sprite fullHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/full"));
-                    Sprite halfHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/half"));
-                    Sprite emptyHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/container"));
-                    VertexConsumer heartConsumer = immediate.getBuffer(RenderLayer.getTextSeeThrough(fullHeart.getAtlasId()));
-                    float heartSize = 9f;
-                    float startX = -(totalHearts * heartSize) / 2f;
-
-                    for (int i = 0; i < totalHearts; i++) {
-                        float hx = startX + (i * heartSize);
-                        drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, emptyHeart, light);
-                        if (health >= (i * 2) + 2) {
-                            drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, fullHeart, light);
-                        } else if (health > (i * 2)) {
-                            drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, halfHeart, light);
-                        }
-                    }
-                } 
-                // --------- STYLE 1: MODERN PROGRESS BAR ---------
-                else if (ModConfig.indicatorStyle == 1) { 
-                    VertexConsumer barConsumer = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
-                    float barWidth = 50f; 
-                    float barHeight = 5f; 
-                    float currentWidth = barWidth * healthPercent;
-                    int barColor = (healthPercent < 0.3f) ? 0xFFFF3333 : (healthPercent < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00; 
-
-                    drawColorQuad(positionMatrix, barConsumer, -barWidth/2 - 1, 0, barWidth + 2, barHeight + 2, 0xFF000000, light);
-                    drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, barWidth, barHeight, 0xFF333333, light);
-                    if (currentWidth > 0) drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, currentWidth, barHeight, barColor, light);
-
-                    String percentText = (int)(healthPercent * 100) + "%";
-                    client.textRenderer.draw(percentText, -client.textRenderer.getWidth(percentText) / 2f, -9, 0xFFFFFF, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, light);
-                }
-                // --------- STYLE 2: HEAD + HITS TO KILL ---------
-                else if (ModConfig.indicatorStyle == 2) {
-                    TextRenderer textRenderer = client.textRenderer;
-                    String text = target instanceof PlayerEntity 
-                                ? target.getName().getString() + " | Hits: " + hitsToKill 
-                                : "Hits to kill: " + hitsToKill;
-                    
-                    float textWidth = textRenderer.getWidth(text);
-                    float textStartX = -textWidth / 2f;
-
-                    if (target instanceof AbstractClientPlayerEntity playerTarget) {
-                        Identifier skin = playerTarget.getSkinTextures().texture();
-                        VertexConsumer headConsumer = immediate.getBuffer(RenderLayer.getTextSeeThrough(skin));
-                        drawTextureQuad(positionMatrix, headConsumer, textStartX - 12, -1, 10, 10, 8f/64f, 8f/64f, 16f/64f, 16f/64f, light);
-                    }
-                    textRenderer.draw(text, textStartX, 0, textColor, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x40000000, light);
-                }
-                matrices.pop();
+            // Draw Item Icon if provided
+            int textOffsetX = 0;
+            if (iconItem != null) {
+                context.drawItem(iconItem, this.getX() + 6, this.getY() + (this.height - 16) / 2);
+                textOffsetX = 20; 
             }
+
+            int textColor = hovered || activeTab ? 0xFF00FFFF : 0xFFDDDDDD;
+            context.drawTextWithShadow(MinecraftClient.getInstance().textRenderer, this.getMessage(), 
+                    this.getX() + textOffsetX + (this.width - textOffsetX) / 2 - MinecraftClient.getInstance().textRenderer.getWidth(this.getMessage()) / 2, 
+                    this.getY() + (this.height - 8) / 2, textColor);
         }
-        immediate.draw();
     }
 
-    // --- HELPER RENDERING METHODS ---
+    @Override
+    protected void init() {
+        this.clearChildren();
 
-    // 10-PARAM METHOD 3D BOXES KE LIYE
-    private static void drawQuad3D(Matrix4f matrix, VertexConsumer consumer, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int argb, int light) {
-        float a = (argb >> 24 & 255) / 255.0F;
-        float r = (argb >> 16 & 255) / 255.0F;
-        float g = (argb >> 8 & 255) / 255.0F;
-        float b = (argb & 255) / 255.0F;
-        consumer.vertex(matrix, minX, minY, minZ).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a).light(light);
-    }
+        // ==========================================
+        // SIDEBAR TABS (WITH ICONS)
+        // ==========================================
+        this.addDrawableChild(new EpicIconButton(10, 50, sidebarWidth - 20, 25, "Combat", new ItemStack(Items.DIAMOND_SWORD), true, button -> { 
+            currentTab = "Combat"; 
+            this.init(); 
+        }));
+        this.addDrawableChild(new EpicIconButton(10, 80, sidebarWidth - 20, 25, "Radar", new ItemStack(Items.COMPASS), true, button -> { 
+            currentTab = "Radar"; 
+            this.init(); 
+        }));
+        this.addDrawableChild(new EpicIconButton(10, 110, sidebarWidth - 20, 25, "Target Lock", new ItemStack(Items.CROSSBOW), true, button -> { 
+            currentTab = "Target Lock"; 
+            this.init(); 
+        }));
+        this.addDrawableChild(new EpicIconButton(10, 140, sidebarWidth - 20, 25, "HUD Layouts", new ItemStack(Items.DIAMOND_CHESTPLATE), true, button -> { 
+            currentTab = "HUD Layouts"; 
+            this.init(); 
+        }));
+        this.addDrawableChild(new EpicIconButton(10, 170, sidebarWidth - 20, 25, "Crosshairs", new ItemStack(Items.SPYGLASS), true, button -> { 
+            currentTab = "Crosshairs"; 
+            this.init(); 
+        }));
 
-    private static void drawCube(Matrix4f matrix, VertexConsumer consumer, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int color, int light) {
-        drawQuad3D(matrix, consumer, minX, minY, minZ, maxX, maxY, minZ, color, light); // Front
-        drawQuad3D(matrix, consumer, minX, minY, maxZ, maxX, maxY, maxZ, color, light); // Back
-        drawQuad3D(matrix, consumer, minX, minY, minZ, minX, maxY, maxZ, color, light); // Left
-        drawQuad3D(matrix, consumer, maxX, minY, minZ, maxX, maxY, maxZ, color, light); // Right
-        drawQuad3D(matrix, consumer, minX, maxY, minZ, maxX, maxY, maxZ, color, light); // Top
-        drawQuad3D(matrix, consumer, minX, minY, minZ, maxX, minY, maxZ, color, light); // Bottom
-    }
-
-    // 8-PARAM METHOD 2D PLANES (HEALTH BAR) KE LIYE
-    private static void drawColorQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
-        drawDoubleSidedQuad(matrix, consumer, x, y, width, height, argb, light);
-    }
-
-    private static void drawDoubleSidedQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
-        float a = (argb >> 24 & 255) / 255.0F;
-        float r = (argb >> 16 & 255) / 255.0F;
-        float g = (argb >> 8 & 255) / 255.0F;
-        float b = (argb & 255) / 255.0F;
+        int rightStartX = sidebarWidth + 20;
         
-        consumer.vertex(matrix, x, y, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x, y + height, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
+        // ==========================================
+        // 1. COMBAT TAB
+        // ==========================================
+        if (currentTab.equals("Combat")) {
+            this.addDrawableChild(new EpicIconButton(rightStartX, 50, 200, 25, "3D Indicator: " + (ModConfig.indicatorEnabled ? "§aON" : "§cOFF"), null, false, button -> { 
+                ModConfig.indicatorEnabled = !ModConfig.indicatorEnabled; 
+                this.init(); 
+            }));
+            
+            String[] styles = {"Hearts", "Modern Bar", "Hits & Head"};
+            this.addDrawableChild(new EpicIconButton(rightStartX, 85, 200, 25, "Style: §b" + styles[ModConfig.indicatorStyle], null, false, button -> { 
+                ModConfig.indicatorStyle = (ModConfig.indicatorStyle + 1) % 3; 
+                this.init(); 
+            }));
+        } 
         
-        consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x, y + height, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x, y, 0).color(r, g, b, a).light(light);
+        // ==========================================
+        // 2. RADAR TAB
+        // ==========================================
+        else if (currentTab.equals("Radar")) {
+            this.addDrawableChild(new EpicIconButton(rightStartX, 50, 200, 25, "Nearby Players: " + (ModConfig.nearbyEnabled ? "§aON" : "§cOFF"), null, false, button -> { 
+                ModConfig.nearbyEnabled = !ModConfig.nearbyEnabled; 
+                this.init(); 
+            }));
+            
+            this.addDrawableChild(new EpicIconButton(rightStartX, 85, 200, 25, "§bEdit Radar Position", new ItemStack(Items.PAINTING), false, button -> { 
+                this.client.setScreen(new EditHudScreen(this)); 
+            }));
+        }
+        
+        // ==========================================
+        // 3. TARGET LOCK TAB
+        // ==========================================
+        else if (currentTab.equals("Target Lock")) {
+            this.addDrawableChild(new EpicIconButton(rightStartX, 50, 140, 20, "Status: " + (ModConfig.targetEnabled ? "§aON" : "§cOFF"), null, false, button -> { 
+                ModConfig.targetEnabled = !ModConfig.targetEnabled; 
+                this.init(); 
+            }));
+            this.addDrawableChild(new EpicIconButton(rightStartX + 150, 50, 140, 20, "Mode: " + (ModConfig.targetMode == 0 ? "§eManual" : "§cAuto HP"), null, false, button -> { 
+                ModConfig.targetMode = (ModConfig.targetMode + 1) % 2; 
+                this.init(); 
+            }));
+            
+            String[] colors = {"§6Gold", "§cRed", "§bDiamond", "§aEmerald"};
+            this.addDrawableChild(new EpicIconButton(rightStartX, 75, 140, 20, "Color: " + colors[ModConfig.crownColor], null, false, button -> { 
+                ModConfig.crownColor = (ModConfig.crownColor + 1) % 4; 
+                this.init(); 
+            }));
+            this.addDrawableChild(new EpicIconButton(rightStartX + 150, 75, 140, 20, "Style: " + (ModConfig.crownStyle==0?"Crown":"Diamond"), null, false, button -> { 
+                ModConfig.crownStyle = (ModConfig.crownStyle + 1) % 2; 
+                this.init(); 
+            }));
+            
+            this.addDrawableChild(new EpicIconButton(rightStartX, 100, 140, 20, "Auto Range: §e" + ModConfig.autoRange + "m", null, false, button -> { 
+                ModConfig.autoRange = ModConfig.autoRange >= 50 ? 10 : ModConfig.autoRange + 10; 
+                this.init(); 
+            }));
+            this.addDrawableChild(new EpicIconButton(rightStartX + 150, 100, 140, 20, "Show Target HP: " + (ModConfig.showTargetHealth ? "§aON" : "§cOFF"), null, false, button -> { 
+                ModConfig.showTargetHealth = !ModConfig.showTargetHealth; 
+                this.init(); 
+            }));
+
+            this.addDrawableChild(new EpicIconButton(rightStartX, 130, 290, 25, "§l🔍 Select & Tag Player", new ItemStack(Items.PLAYER_HEAD), false, button -> { 
+                this.client.setScreen(new SelectTargetScreen(this)); 
+            }));
+            
+            String targetStatus = ModConfig.taggedPlayerName.isEmpty() ? "§7None" : "§a" + ModConfig.taggedPlayerName;
+            if (ModConfig.targetMode == 1) targetStatus = "§eAuto Searching...";
+            this.addDrawableChild(new EpicIconButton(rightStartX, 160, 290, 20, "Current Locked: " + targetStatus, null, false, button -> {}));
+        }
+        
+        // ==========================================
+        // 4. HUD LAYOUTS TAB
+        // ==========================================
+        else if (currentTab.equals("HUD Layouts")) {
+            this.addDrawableChild(new EpicIconButton(rightStartX, 40, 140, 20, "Armor HUD: " + (ModConfig.armorHudEnabled?"§aON":"§cOFF"), null, false, button -> { 
+                ModConfig.armorHudEnabled = !ModConfig.armorHudEnabled; 
+                this.init(); 
+            }));
+            String[] aStyles = {"Percentage", "Status Bar", "Numbers"};
+            this.addDrawableChild(new EpicIconButton(rightStartX + 150, 40, 140, 20, "Design: §b" + aStyles[ModConfig.armorHudStyle], null, false, button -> { 
+                ModConfig.armorHudStyle = (ModConfig.armorHudStyle + 1) % 3; 
+                this.init(); 
+            }));
+            
+            this.addDrawableChild(new EpicIconButton(rightStartX, 65, 140, 20, "Layout: " + (ModConfig.armorHudHorizontal?"§eHoriz ↔":"§dVert ↕"), null, false, button -> { 
+                ModConfig.armorHudHorizontal = !ModConfig.armorHudHorizontal; 
+                this.init(); 
+            }));
+            this.addDrawableChild(new EpicIconButton(rightStartX + 150, 65, 140, 20, "Held Item: " + (ModConfig.heldItemEnabled?"§aON":"§cOFF"), null, false, button -> { 
+                ModConfig.heldItemEnabled = !ModConfig.heldItemEnabled; 
+                this.init(); 
+            }));
+
+            this.addDrawableChild(new EpicIconButton(rightStartX, 90, 140, 20, "HUD BG: " + (ModConfig.armorBgEnabled?"§aON":"§cOFF"), null, false, button -> { 
+                ModConfig.armorBgEnabled = !ModConfig.armorBgEnabled; 
+                this.init(); 
+            }));
+            this.addDrawableChild(new EpicIconButton(rightStartX + 150, 90, 140, 20, "BG Opacity: §e" + (int)(ModConfig.armorBgOpacity*100) + "%", null, false, button -> { 
+                ModConfig.armorBgOpacity += 0.2f; 
+                if(ModConfig.armorBgOpacity > 1.0f) ModConfig.armorBgOpacity = 0.2f; 
+                this.init(); 
+            }));
+
+            this.addDrawableChild(new EpicIconButton(rightStartX, 125, 290, 25, "§bEdit All HUD Positions", new ItemStack(Items.PAINTING), false, button -> { 
+                this.client.setScreen(new EditHudScreen(this)); 
+            }));
+        }
+        
+        // ==========================================
+        // 5. CROSSHAIRS TAB
+        // ==========================================
+        else if (currentTab.equals("Crosshairs")) {
+            this.addDrawableChild(new EpicIconButton(rightStartX, 50, 200, 25, "Custom Crosshair: " + (ModConfig.crosshairEnabled ? "§aON" : "§cOFF"), null, false, button -> { 
+                ModConfig.crosshairEnabled = !ModConfig.crosshairEnabled; 
+                this.init(); 
+            }));
+
+            String[] styles = {"Perfect Plus", "Pro Dot", "Hollow Circle", "T-Shape", "Square + Dot"};
+            this.addDrawableChild(new EpicIconButton(rightStartX, 85, 200, 25, "Style: §b" + styles[ModConfig.crosshairStyle], null, false, button -> { 
+                ModConfig.crosshairStyle = (ModConfig.crosshairStyle + 1) % 5; 
+                this.init(); 
+            }));
+
+            String[] colors = {"§fWhite", "§aGreen", "§cRed", "§bCyan", "§8Black"};
+            this.addDrawableChild(new EpicIconButton(rightStartX, 120, 200, 25, "Color: " + colors[ModConfig.crosshairColor], null, false, button -> { 
+                ModConfig.crosshairColor = (ModConfig.crosshairColor + 1) % 5; 
+                this.init(); 
+            }));
+        }
     }
 
-    private static void drawSpriteQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, Sprite sprite, int light) {
-        drawTextureQuad(matrix, consumer, x, y, width, height, sprite.getMinU(), sprite.getMinV(), sprite.getMaxU(), sprite.getMaxV(), light);
-    }
+    @Override
+    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        context.fillGradient(0, 0, this.width, this.height, 0xDD050505, 0xDD111111);
+        context.fill(0, 0, sidebarWidth, this.height, 0x66000000);
+        context.drawBorder(sidebarWidth, 0, 1, this.height, 0x4400AAFF); 
 
-    private static void drawTextureQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, float u1, float v1, float u2, float v2, int light) {
-        consumer.vertex(matrix, x, y, 0).color(255, 255, 255, 255).texture(u1, v1).light(light).normal(0, 0, 1);
-        consumer.vertex(matrix, x, y + height, 0).color(255, 255, 255, 255).texture(u1, v2).light(light).normal(0, 0, 1);
-        consumer.vertex(matrix, x + width, y + height, 0).color(255, 255, 255, 255).texture(u2, v2).light(light).normal(0, 0, 1);
-        consumer.vertex(matrix, x + width, y, 0).color(255, 255, 255, 255).texture(u2, v1).light(light).normal(0, 0, 1);
+        context.drawCenteredTextWithShadow(this.textRenderer, "§b§lTPvP §f§lCLIENT", sidebarWidth / 2, 20, 0xFFFFFF);
+        context.drawTextWithShadow(this.textRenderer, "§7Category: §f" + currentTab, sidebarWidth + 20, 20, 0xFFFFFF);
+
+        super.render(context, mouseX, mouseY, delta);
     }
-}
+                       }
