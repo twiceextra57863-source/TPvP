@@ -35,7 +35,9 @@ public class Indicator3D {
         MatrixStack matrices = context.matrixStack();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
-        // Target Lock Logic
+        // ==========================================
+        // TARGET LOCK LOGIC
+        // ==========================================
         PlayerEntity lockedTarget = null;
         if (ModConfig.targetEnabled) {
             if (ModConfig.targetMode == 1) { 
@@ -52,7 +54,8 @@ public class Indicator3D {
                 if (!ModConfig.taggedPlayerName.isEmpty()) {
                     for (PlayerEntity p : client.world.getPlayers()) {
                         if (p.getName().getString().equals(ModConfig.taggedPlayerName)) {
-                            lockedTarget = p; break;
+                            lockedTarget = p; 
+                            break;
                         }
                     }
                 }
@@ -70,11 +73,14 @@ public class Indicator3D {
                 boolean isLocked = (target == lockedTarget);
                 double yOffset = target.getHeight() + 0.825;
                 Vec3d targetPos = target.getLerpedPos(tickDelta);
+                
                 double x = targetPos.x - cameraPos.x;
                 double y = targetPos.y - cameraPos.y + yOffset;
                 double z = targetPos.z - cameraPos.z;
 
-                // --- 1. RENDER EPIC 3D VOXEL TARGET CROWN ---
+                // ==========================================
+                // 1. RENDER EPIC 3D VOXEL TARGET CROWN
+                // ==========================================
                 if (isLocked) {
                     matrices.push();
                     matrices.translate(x, y + 0.6, z);
@@ -93,15 +99,11 @@ public class Indicator3D {
                     if (ModConfig.crownStyle == 0) {
                         float thick = 0.05f; 
                         float size = 0.2f;
-                        
-                        // Base Ring
                         drawCube(matrices.peek().getPositionMatrix(), buffer, -size, 0, -size, size, thick, size, cColor, 255);
-                        // Spikes
                         drawCube(matrices.peek().getPositionMatrix(), buffer, -size, thick, -size, -size+0.1f, 0.25f, -size+0.1f, cColor, 255); 
                         drawCube(matrices.peek().getPositionMatrix(), buffer, size-0.1f, thick, -size, size, 0.25f, -size+0.1f, cColor, 255); 
                         drawCube(matrices.peek().getPositionMatrix(), buffer, -size, thick, size-0.1f, -size+0.1f, 0.25f, size, cColor, 255); 
                         drawCube(matrices.peek().getPositionMatrix(), buffer, size-0.1f, thick, size-0.1f, size, 0.25f, size, cColor, 255); 
-
                     } else {
                         drawCube(matrices.peek().getPositionMatrix(), buffer, -0.1f, -0.1f, -0.1f, 0.1f, 0.1f, 0.1f, cColor, 255);
                     }
@@ -119,7 +121,9 @@ public class Indicator3D {
                     }
                 }
 
-                // --- 2. REGULAR 3D INDICATORS ---
+                // ==========================================
+                // 2. REGULAR 3D INDICATORS
+                // ==========================================
                 if (!ModConfig.indicatorEnabled) continue;
                 
                 matrices.push();
@@ -137,7 +141,6 @@ public class Indicator3D {
                 int hitsToKill = (int) Math.ceil(health / weaponDamage);
                 int textColor = (healthPercent < 0.3f) ? 0xFFFF3333 : (healthPercent < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00;
 
-                // --------- STYLE 0: REAL MINECRAFT HEARTS ---------
                 if (ModConfig.indicatorStyle == 0) {
                     int totalHearts = (int) Math.ceil(Math.max(maxHealth, health) / 2.0f);
                     Sprite fullHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/full"));
@@ -157,7 +160,6 @@ public class Indicator3D {
                         }
                     }
                 } 
-                // --------- STYLE 1: MODERN PROGRESS BAR ---------
                 else if (ModConfig.indicatorStyle == 1) { 
                     VertexConsumer barConsumer = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
                     float barWidth = 50f; 
@@ -165,15 +167,15 @@ public class Indicator3D {
                     float currentWidth = barWidth * healthPercent;
                     int barColor = (healthPercent < 0.3f) ? 0xFFFF3333 : (healthPercent < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00; 
 
-                    // 8-param 2D drawColorQuad is used here
                     drawColorQuad(positionMatrix, barConsumer, -barWidth/2 - 1, 0, barWidth + 2, barHeight + 2, 0xFF000000, light);
                     drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, barWidth, barHeight, 0xFF333333, light);
-                    if (currentWidth > 0) drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, currentWidth, barHeight, barColor, light);
+                    if (currentWidth > 0) {
+                        drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, currentWidth, barHeight, barColor, light);
+                    }
 
                     String percentText = (int)(healthPercent * 100) + "%";
                     client.textRenderer.draw(percentText, -client.textRenderer.getWidth(percentText) / 2f, -9, 0xFFFFFF, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, light);
                 }
-                // --------- STYLE 2: HEAD + HITS TO KILL ---------
                 else if (ModConfig.indicatorStyle == 2) {
                     TextRenderer textRenderer = client.textRenderer;
                     String text = target instanceof PlayerEntity 
@@ -196,9 +198,10 @@ public class Indicator3D {
         immediate.draw();
     }
 
-    // --- HELPER RENDERING METHODS ---
+    // ==========================================
+    // HELPER RENDERING METHODS
+    // ==========================================
 
-    // NAYA 10-PARAM METHOD 3D BOXES KE LIYE
     private static void drawQuad3D(Matrix4f matrix, VertexConsumer consumer, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int argb, int light) {
         float a = (argb >> 24 & 255) / 255.0F;
         float r = (argb >> 16 & 255) / 255.0F;
@@ -211,15 +214,14 @@ public class Indicator3D {
     }
 
     private static void drawCube(Matrix4f matrix, VertexConsumer consumer, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int color, int light) {
-        drawQuad3D(matrix, consumer, minX, minY, minZ, maxX, maxY, minZ, color, light); // Front
-        drawQuad3D(matrix, consumer, minX, minY, maxZ, maxX, maxY, maxZ, color, light); // Back
-        drawQuad3D(matrix, consumer, minX, minY, minZ, minX, maxY, maxZ, color, light); // Left
-        drawQuad3D(matrix, consumer, maxX, minY, minZ, maxX, maxY, maxZ, color, light); // Right
-        drawQuad3D(matrix, consumer, minX, maxY, minZ, maxX, maxY, maxZ, color, light); // Top
-        drawQuad3D(matrix, consumer, minX, minY, minZ, maxX, minY, maxZ, color, light); // Bottom
+        drawQuad3D(matrix, consumer, minX, minY, minZ, maxX, maxY, minZ, color, light); 
+        drawQuad3D(matrix, consumer, minX, minY, maxZ, maxX, maxY, maxZ, color, light); 
+        drawQuad3D(matrix, consumer, minX, minY, minZ, minX, maxY, maxZ, color, light); 
+        drawQuad3D(matrix, consumer, maxX, minY, minZ, maxX, maxY, maxZ, color, light); 
+        drawQuad3D(matrix, consumer, minX, maxY, minZ, maxX, maxY, maxZ, color, light); 
+        drawQuad3D(matrix, consumer, minX, minY, minZ, maxX, minY, maxZ, color, light); 
     }
 
-    // PURANA 8-PARAM METHOD 2D PLANES (HEALTH BAR) KE LIYE
     private static void drawColorQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
         drawDoubleSidedQuad(matrix, consumer, x, y, width, height, argb, light);
     }
@@ -230,12 +232,11 @@ public class Indicator3D {
         float g = (argb >> 8 & 255) / 255.0F;
         float b = (argb & 255) / 255.0F;
         
-        // Front
         consumer.vertex(matrix, x, y, 0).color(r, g, b, a).light(light);
         consumer.vertex(matrix, x, y + height, 0).color(r, g, b, a).light(light);
         consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
         consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
-        // Back
+        
         consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
         consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
         consumer.vertex(matrix, x, y + height, 0).color(r, g, b, a).light(light);
