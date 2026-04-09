@@ -40,11 +40,11 @@ public class TPvPDashboardScreen extends Screen {
             context.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bgColor);
             context.drawBorder(this.getX(), this.getY(), this.width, this.height, borderColor);
 
-            // Draw Item Icon if provided (Instead of Emojis!)
+            // Draw Item Icon if provided
             int textOffsetX = 0;
             if (iconItem != null) {
                 context.drawItem(iconItem, this.getX() + 6, this.getY() + (this.height - 16) / 2);
-                textOffsetX = 20; // Shift text to right
+                textOffsetX = 20; 
             }
 
             int textColor = hovered || activeTab ? 0xFF00FFFF : 0xFFDDDDDD;
@@ -62,48 +62,64 @@ public class TPvPDashboardScreen extends Screen {
         this.addDrawableChild(new EpicIconButton(10, 50, sidebarWidth - 20, 25, "Combat", new ItemStack(Items.DIAMOND_SWORD), true, b -> { currentTab = "Combat"; this.init(); }));
         this.addDrawableChild(new EpicIconButton(10, 80, sidebarWidth - 20, 25, "Radar", new ItemStack(Items.COMPASS), true, b -> { currentTab = "Radar"; this.init(); }));
         this.addDrawableChild(new EpicIconButton(10, 110, sidebarWidth - 20, 25, "Target Lock", new ItemStack(Items.CROSSBOW), true, b -> { currentTab = "Target Lock"; this.init(); }));
-        this.addDrawableChild(new EpicIconButton(10, 140, sidebarWidth - 20, 25, "Armor HUD", new ItemStack(Items.DIAMOND_CHESTPLATE), true, b -> { currentTab = "Armor HUD"; this.init(); }));
+        this.addDrawableChild(new EpicIconButton(10, 140, sidebarWidth - 20, 25, "HUD Layouts", new ItemStack(Items.DIAMOND_CHESTPLATE), true, b -> { currentTab = "HUD Layouts"; this.init(); }));
 
         // ----- RIGHT SETTINGS AREA -----
         int rightStartX = sidebarWidth + 20;
         
+        // --- 1. COMBAT TAB ---
         if (currentTab.equals("Combat")) {
             this.addDrawableChild(new EpicIconButton(rightStartX, 50, 200, 25, "3D Indicator: " + (ModConfig.indicatorEnabled ? "§aON" : "§cOFF"), null, false, b -> { ModConfig.indicatorEnabled = !ModConfig.indicatorEnabled; this.init(); }));
             String[] styles = {"Hearts", "Modern Bar", "Hits & Head"};
             this.addDrawableChild(new EpicIconButton(rightStartX, 85, 200, 25, "Style: §b" + styles[ModConfig.indicatorStyle], null, false, b -> { ModConfig.indicatorStyle = (ModConfig.indicatorStyle + 1) % 3; this.init(); }));
         } 
+        // --- 2. RADAR TAB ---
         else if (currentTab.equals("Radar")) {
             this.addDrawableChild(new EpicIconButton(rightStartX, 50, 200, 25, "Nearby Players: " + (ModConfig.nearbyEnabled ? "§aON" : "§cOFF"), null, false, b -> { ModConfig.nearbyEnabled = !ModConfig.nearbyEnabled; this.init(); }));
-            this.addDrawableChild(new EpicIconButton(rightStartX, 85, 200, 25, "§bEdit Layout", new ItemStack(Items.PAINTING), false, b -> { this.client.setScreen(new EditHudScreen(this)); }));
+            this.addDrawableChild(new EpicIconButton(rightStartX, 85, 200, 25, "§bEdit Radar Position", new ItemStack(Items.PAINTING), false, b -> { this.client.setScreen(new EditHudScreen(this)); }));
         }
+        // --- 3. TARGET LOCK TAB ---
         else if (currentTab.equals("Target Lock")) {
             this.addDrawableChild(new EpicIconButton(rightStartX, 50, 140, 20, "Status: " + (ModConfig.targetEnabled ? "§aON" : "§cOFF"), null, false, b -> { ModConfig.targetEnabled = !ModConfig.targetEnabled; this.init(); }));
             this.addDrawableChild(new EpicIconButton(rightStartX + 150, 50, 140, 20, "Mode: " + (ModConfig.targetMode == 0 ? "§eManual" : "§cAuto HP"), null, false, b -> { ModConfig.targetMode = (ModConfig.targetMode + 1) % 2; this.init(); }));
+            
             String[] colors = {"§6Gold", "§cRed", "§bDiamond", "§aEmerald"};
             this.addDrawableChild(new EpicIconButton(rightStartX, 75, 140, 20, "Color: " + colors[ModConfig.crownColor], null, false, b -> { ModConfig.crownColor = (ModConfig.crownColor + 1) % 4; this.init(); }));
             this.addDrawableChild(new EpicIconButton(rightStartX + 150, 75, 140, 20, "Style: " + (ModConfig.crownStyle==0?"Crown":"Diamond"), null, false, b -> { ModConfig.crownStyle = (ModConfig.crownStyle + 1) % 2; this.init(); }));
-            this.addDrawableChild(new EpicIconButton(rightStartX, 105, 290, 25, "§l🔍 Select & Tag Player", new ItemStack(Items.PLAYER_HEAD), false, b -> { this.client.setScreen(new SelectTargetScreen(this)); }));
+            
+            this.addDrawableChild(new EpicIconButton(rightStartX, 100, 140, 20, "Auto Range: §e" + ModConfig.autoRange + "m", null, false, b -> { ModConfig.autoRange = ModConfig.autoRange >= 50 ? 10 : ModConfig.autoRange + 10; this.init(); }));
+            this.addDrawableChild(new EpicIconButton(rightStartX + 150, 100, 140, 20, "Show Target HP: " + (ModConfig.showTargetHealth ? "§aON" : "§cOFF"), null, false, b -> { ModConfig.showTargetHealth = !ModConfig.showTargetHealth; this.init(); }));
+
+            this.addDrawableChild(new EpicIconButton(rightStartX, 130, 290, 25, "§l🔍 Select & Tag Player", new ItemStack(Items.PLAYER_HEAD), false, b -> { this.client.setScreen(new SelectTargetScreen(this)); }));
+            
+            String targetStatus = ModConfig.taggedPlayerName.isEmpty() ? "§7None" : "§a" + ModConfig.taggedPlayerName;
+            if (ModConfig.targetMode == 1) targetStatus = "§eAuto Searching...";
+            this.addDrawableChild(new EpicIconButton(rightStartX, 160, 290, 20, "Current Locked: " + targetStatus, null, false, b -> {}));
         }
-        // --- NEW ARMOR HUD TAB ---
-        else if (currentTab.equals("Armor HUD")) {
-            this.addDrawableChild(new EpicIconButton(rightStartX, 50, 200, 25, "Armor HUD: " + (ModConfig.armorHudEnabled ? "§aON" : "§cOFF"), null, false, b -> { ModConfig.armorHudEnabled = !ModConfig.armorHudEnabled; this.init(); }));
-            String[] aStyles = {"Percentage (%)", "Status Bar", "Numbers (X/Y)"};
-            this.addDrawableChild(new EpicIconButton(rightStartX, 85, 200, 25, "Design: §b" + aStyles[ModConfig.armorHudStyle], null, false, b -> { ModConfig.armorHudStyle = (ModConfig.armorHudStyle + 1) % 3; this.init(); }));
-            this.addDrawableChild(new EpicIconButton(rightStartX, 120, 200, 25, "Layout: " + (ModConfig.armorHudHorizontal ? "§eHorizontal ↔" : "§dVertical ↕"), null, false, b -> { ModConfig.armorHudHorizontal = !ModConfig.armorHudHorizontal; this.init(); }));
-            this.addDrawableChild(new EpicIconButton(rightStartX, 155, 200, 25, "§bEdit Layout Position", new ItemStack(Items.PAINTING), false, b -> { this.client.setScreen(new EditHudScreen(this)); }));
+        // --- 4. HUD LAYOUTS TAB ---
+        else if (currentTab.equals("HUD Layouts")) {
+            this.addDrawableChild(new EpicIconButton(rightStartX, 40, 140, 20, "Armor HUD: " + (ModConfig.armorHudEnabled?"§aON":"§cOFF"), null, false, b -> { ModConfig.armorHudEnabled = !ModConfig.armorHudEnabled; this.init(); }));
+            String[] aStyles = {"Percentage", "Status Bar", "Numbers"};
+            this.addDrawableChild(new EpicIconButton(rightStartX + 150, 40, 140, 20, "Design: §b" + aStyles[ModConfig.armorHudStyle], null, false, b -> { ModConfig.armorHudStyle = (ModConfig.armorHudStyle + 1) % 3; this.init(); }));
+            
+            this.addDrawableChild(new EpicIconButton(rightStartX, 65, 140, 20, "Layout: " + (ModConfig.armorHudHorizontal?"§eHoriz ↔":"§dVert ↕"), null, false, b -> { ModConfig.armorHudHorizontal = !ModConfig.armorHudHorizontal; this.init(); }));
+            this.addDrawableChild(new EpicIconButton(rightStartX + 150, 65, 140, 20, "Held Item: " + (ModConfig.heldItemEnabled?"§aON":"§cOFF"), null, false, b -> { ModConfig.heldItemEnabled = !ModConfig.heldItemEnabled; this.init(); }));
+
+            this.addDrawableChild(new EpicIconButton(rightStartX, 90, 140, 20, "HUD BG: " + (ModConfig.armorBgEnabled?"§aON":"§cOFF"), null, false, b -> { ModConfig.armorBgEnabled = !ModConfig.armorBgEnabled; this.init(); }));
+            this.addDrawableChild(new EpicIconButton(rightStartX + 150, 90, 140, 20, "BG Opacity: §e" + (int)(ModConfig.armorBgOpacity*100) + "%", null, false, b -> { 
+                ModConfig.armorBgOpacity += 0.2f; if(ModConfig.armorBgOpacity > 1.0f) ModConfig.armorBgOpacity = 0.2f; this.init(); 
+            }));
+
+            this.addDrawableChild(new EpicIconButton(rightStartX, 125, 290, 25, "§bEdit All HUD Positions", new ItemStack(Items.PAINTING), false, b -> { this.client.setScreen(new EditHudScreen(this)); }));
         }
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        // Epic Dark Gradient Background
         context.fillGradient(0, 0, this.width, this.height, 0xDD050505, 0xDD111111);
-
-        // Sidebar Background
         context.fill(0, 0, sidebarWidth, this.height, 0x66000000);
-        context.drawBorder(sidebarWidth, 0, 1, this.height, 0x4400AAFF); // Neon Divider
+        context.drawBorder(sidebarWidth, 0, 1, this.height, 0x4400AAFF); 
 
-        // Header Title
         context.drawCenteredTextWithShadow(this.textRenderer, "§b§lTPvP §f§lCLIENT", sidebarWidth / 2, 20, 0xFFFFFF);
         context.drawTextWithShadow(this.textRenderer, "§7Category: §f" + currentTab, sidebarWidth + 20, 20, 0xFFFFFF);
 
