@@ -25,16 +25,13 @@ public class ModConfig {
     public static boolean armorHudHorizontal = false; 
     public static int armorHudStyle = 0; 
     public static boolean armorBgEnabled = true;
-    public static float armorBgOpacity = 0.5f; 
-    public static boolean heldItemEnabled = true;
-    public static int heldItemX = 100;
-    public static int heldItemY = 150;
-    public static float heldItemScale = 1.0f;
+    public static float armorBgOpacity = 0.5f;
+    public static int armorBorderColor = 0xFF00AAFF; // Customizable Border
 
-    // --- NEW: CROSSHAIR SETTINGS ---
+    public static boolean heldItemEnabled = true; // Connected to Armor now
     public static boolean crosshairEnabled = true;
-    public static int crosshairStyle = 0; // 0=Perfect Plus, 1=Dot, 2=Hollow Circle, 3=T-Shape, 4=Square+Dot
-    public static int crosshairColor = 0; // 0=White, 1=Green, 2=Red, 3=Cyan, 4=Black
+    public static int crosshairStyle = 0;
+    public static int crosshairColor = 1;
 
     public static void load() { }
     public static void save() { }
