@@ -63,6 +63,7 @@ public class TPvPDashboardScreen extends Screen {
         this.addDrawableChild(new EpicIconButton(10, 80, sidebarWidth - 20, 25, "Radar", new ItemStack(Items.COMPASS), true, b -> { currentTab = "Radar"; this.init(); }));
         this.addDrawableChild(new EpicIconButton(10, 110, sidebarWidth - 20, 25, "Target Lock", new ItemStack(Items.CROSSBOW), true, b -> { currentTab = "Target Lock"; this.init(); }));
         this.addDrawableChild(new EpicIconButton(10, 140, sidebarWidth - 20, 25, "HUD Layouts", new ItemStack(Items.DIAMOND_CHESTPLATE), true, b -> { currentTab = "HUD Layouts"; this.init(); }));
+        this.addDrawableChild(new EpicIconButton(10, 170, sidebarWidth - 20, 25, "Crosshairs", new ItemStack(Items.SPYGLASS), true, b -> { currentTab = "Crosshairs"; this.init(); }));
 
         // ----- RIGHT SETTINGS AREA -----
         int rightStartX = sidebarWidth + 20;
@@ -111,6 +112,22 @@ public class TPvPDashboardScreen extends Screen {
             }));
 
             this.addDrawableChild(new EpicIconButton(rightStartX, 125, 290, 25, "§bEdit All HUD Positions", new ItemStack(Items.PAINTING), false, b -> { this.client.setScreen(new EditHudScreen(this)); }));
+        }
+        // --- 5. NEW CROSSHAIRS TAB ---
+        else if (currentTab.equals("Crosshairs")) {
+            this.addDrawableChild(new EpicIconButton(rightStartX, 50, 200, 25, "Custom Crosshair: " + (ModConfig.crosshairEnabled ? "§aON" : "§cOFF"), null, false, b -> { 
+                ModConfig.crosshairEnabled = !ModConfig.crosshairEnabled; this.init(); 
+            }));
+
+            String[] styles = {"Perfect Plus", "Pro Dot", "Hollow Circle", "T-Shape (Spray)", "Square + Dot"};
+            this.addDrawableChild(new EpicIconButton(rightStartX, 85, 200, 25, "Style: §b" + styles[ModConfig.crosshairStyle], null, false, b -> { 
+                ModConfig.crosshairStyle = (ModConfig.crosshairStyle + 1) % 5; this.init(); 
+            }));
+
+            String[] colors = {"§fWhite", "§aGreen", "§cRed", "§bCyan", "§8Black"};
+            this.addDrawableChild(new EpicIconButton(rightStartX, 120, 200, 25, "Color: " + colors[ModConfig.crosshairColor], null, false, b -> { 
+                ModConfig.crosshairColor = (ModConfig.crosshairColor + 1) % 5; this.init(); 
+            }));
         }
     }
 
