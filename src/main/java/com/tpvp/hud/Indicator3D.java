@@ -91,26 +91,22 @@ public class Indicator3D {
                     else if (ModConfig.crownColor == 3) cColor = 0xFF33FF33; 
 
                     if (ModConfig.crownStyle == 0) {
-                        // FULLY DETAILED 3D VOXEL CROWN
                         float thick = 0.05f; 
                         float size = 0.2f;
                         
                         // Base Ring
                         drawCube(matrices.peek().getPositionMatrix(), buffer, -size, 0, -size, size, thick, size, cColor, 255);
-                        
                         // Spikes
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, thick, -size, -size+0.1f, 0.25f, -size+0.1f, cColor, 255); // Front-Left
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, size-0.1f, thick, -size, size, 0.25f, -size+0.1f, cColor, 255); // Front-Right
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, thick, size-0.1f, -size+0.1f, 0.25f, size, cColor, 255); // Back-Left
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, size-0.1f, thick, size-0.1f, size, 0.25f, size, cColor, 255); // Back-Right
+                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, thick, -size, -size+0.1f, 0.25f, -size+0.1f, cColor, 255); 
+                        drawCube(matrices.peek().getPositionMatrix(), buffer, size-0.1f, thick, -size, size, 0.25f, -size+0.1f, cColor, 255); 
+                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, thick, size-0.1f, -size+0.1f, 0.25f, size, cColor, 255); 
+                        drawCube(matrices.peek().getPositionMatrix(), buffer, size-0.1f, thick, size-0.1f, size, 0.25f, size, cColor, 255); 
 
                     } else {
-                        // Thick Diamond
                         drawCube(matrices.peek().getPositionMatrix(), buffer, -0.1f, -0.1f, -0.1f, 0.1f, 0.1f, 0.1f, cColor, 255);
                     }
                     matrices.pop();
 
-                    // Text Target Label
                     if (ModConfig.showTargetHealth) {
                         matrices.push();
                         matrices.translate(x, y + 0.2, z);
@@ -169,6 +165,7 @@ public class Indicator3D {
                     float currentWidth = barWidth * healthPercent;
                     int barColor = (healthPercent < 0.3f) ? 0xFFFF3333 : (healthPercent < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00; 
 
+                    // 8-param 2D drawColorQuad is used here
                     drawColorQuad(positionMatrix, barConsumer, -barWidth/2 - 1, 0, barWidth + 2, barHeight + 2, 0xFF000000, light);
                     drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, barWidth, barHeight, 0xFF333333, light);
                     if (currentWidth > 0) drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, currentWidth, barHeight, barColor, light);
@@ -201,28 +198,8 @@ public class Indicator3D {
 
     // --- HELPER RENDERING METHODS ---
 
-    private static void drawCube(Matrix4f matrix, VertexConsumer consumer, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int color, int light) {
-        drawColorQuad(matrix, consumer, minX, minY, minZ, maxX, maxY, minZ, color, light); 
-        drawColorQuad(matrix, consumer, minX, minY, maxZ, maxX, maxY, maxZ, color, light); 
-        drawColorQuad(matrix, consumer, minX, minY, minZ, minX, maxY, maxZ, color, light); 
-        drawColorQuad(matrix, consumer, maxX, minY, minZ, maxX, maxY, maxZ, color, light); 
-        drawColorQuad(matrix, consumer, minX, maxY, minZ, maxX, maxY, maxZ, color, light); 
-        drawColorQuad(matrix, consumer, minX, minY, minZ, maxX, minY, maxZ, color, light); 
-    }
-
-    private static void drawDoubleSidedQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
-        float a = (argb >> 24 & 255) / 255.0F;
-        float r = (argb >> 16 & 255) / 255.0F;
-        float g = (argb >> 8 & 255) / 255.0F;
-        float b = (argb & 255) / 255.0F;
-        
-        consumer.vertex(matrix, x, y, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x, y + height, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
-    }
-
-    private static void drawColorQuad(Matrix4f matrix, VertexConsumer consumer, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int argb, int light) {
+    // NAYA 10-PARAM METHOD 3D BOXES KE LIYE
+    private static void drawQuad3D(Matrix4f matrix, VertexConsumer consumer, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int argb, int light) {
         float a = (argb >> 24 & 255) / 255.0F;
         float r = (argb >> 16 & 255) / 255.0F;
         float g = (argb >> 8 & 255) / 255.0F;
@@ -231,6 +208,38 @@ public class Indicator3D {
         consumer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a).light(light);
         consumer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a).light(light);
         consumer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a).light(light);
+    }
+
+    private static void drawCube(Matrix4f matrix, VertexConsumer consumer, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int color, int light) {
+        drawQuad3D(matrix, consumer, minX, minY, minZ, maxX, maxY, minZ, color, light); // Front
+        drawQuad3D(matrix, consumer, minX, minY, maxZ, maxX, maxY, maxZ, color, light); // Back
+        drawQuad3D(matrix, consumer, minX, minY, minZ, minX, maxY, maxZ, color, light); // Left
+        drawQuad3D(matrix, consumer, maxX, minY, minZ, maxX, maxY, maxZ, color, light); // Right
+        drawQuad3D(matrix, consumer, minX, maxY, minZ, maxX, maxY, maxZ, color, light); // Top
+        drawQuad3D(matrix, consumer, minX, minY, minZ, maxX, minY, maxZ, color, light); // Bottom
+    }
+
+    // PURANA 8-PARAM METHOD 2D PLANES (HEALTH BAR) KE LIYE
+    private static void drawColorQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
+        drawDoubleSidedQuad(matrix, consumer, x, y, width, height, argb, light);
+    }
+
+    private static void drawDoubleSidedQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
+        float a = (argb >> 24 & 255) / 255.0F;
+        float r = (argb >> 16 & 255) / 255.0F;
+        float g = (argb >> 8 & 255) / 255.0F;
+        float b = (argb & 255) / 255.0F;
+        
+        // Front
+        consumer.vertex(matrix, x, y, 0).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, x, y + height, 0).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
+        // Back
+        consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, x, y + height, 0).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, x, y, 0).color(r, g, b, a).light(light);
     }
 
     private static void drawSpriteQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, Sprite sprite, int light) {
