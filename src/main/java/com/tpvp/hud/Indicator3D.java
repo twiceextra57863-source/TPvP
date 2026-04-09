@@ -35,12 +35,12 @@ public class Indicator3D {
         MatrixStack matrices = context.matrixStack();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
-        // ==========================================
-        // TARGET LOCK LOGIC
-        // ==========================================
+        // ------------------------------------------
+        // 1. TARGET SELECTION LOGIC
+        // ------------------------------------------
         PlayerEntity lockedTarget = null;
         if (ModConfig.targetEnabled) {
-            if (ModConfig.targetMode == 1) { 
+            if (ModConfig.targetMode == 1) { // AUTO MODE
                 float minHp = 999f;
                 for (PlayerEntity p : client.world.getPlayers()) {
                     if (p == client.player || p.isSpectator()) continue;
@@ -50,207 +50,147 @@ public class Indicator3D {
                         lockedTarget = p;
                     }
                 }
-            } else { 
+            } else { // MANUAL MODE
                 if (!ModConfig.taggedPlayerName.isEmpty()) {
                     for (PlayerEntity p : client.world.getPlayers()) {
                         if (p.getName().getString().equals(ModConfig.taggedPlayerName)) {
-                            lockedTarget = p; 
-                            break;
+                            lockedTarget = p; break;
                         }
                     }
                 }
             }
         }
 
+        // ------------------------------------------
+        // 2. WORLD ENTITY RENDER LOOP
+        // ------------------------------------------
         double weaponDamage = client.player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
         if (weaponDamage <= 0) weaponDamage = 1.0;
 
         for (Entity entity : client.world.getEntities()) {
             if (entity instanceof LivingEntity target && entity != client.player) {
+                // Filters
                 if (target.isInvisible() || target instanceof ArmorStandEntity) continue;
                 if (target.distanceTo(client.player) > 32.0) continue;
 
                 boolean isLocked = (target == lockedTarget);
                 double yOffset = target.getHeight() + 0.825;
-                Vec3d targetPos = target.getLerpedPos(tickDelta);
-                
-                double x = targetPos.x - cameraPos.x;
-                double y = targetPos.y - cameraPos.y + yOffset;
-                double z = targetPos.z - cameraPos.z;
+                Vec3d tPos = target.getLerpedPos(tickDelta);
+                double x = tPos.x - cameraPos.x;
+                double y = tPos.y - cameraPos.y + yOffset;
+                double z = tPos.z - cameraPos.z;
 
-                // ==========================================
-                // 1. RENDER EPIC 3D VOXEL TARGET CROWN
-                // ==========================================
+                // --- RENDER 3D VOXEL CROWN ---
                 if (isLocked) {
                     matrices.push();
                     matrices.translate(x, y + 0.6, z);
-                    
-                    float time = client.world.getTime() + tickDelta;
-                    matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(time * 6f));
+                    float rotation = (client.world.getTime() + tickDelta) * 6f;
+                    matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(rotation));
                     matrices.scale(ModConfig.crownScale, ModConfig.crownScale, ModConfig.crownScale);
 
                     VertexConsumer buffer = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough()); 
+                    int c = (ModConfig.crownColor == 1) ? 0xFFFF3333 : (ModConfig.crownColor == 2) ? 0xFF33FFFF : (ModConfig.crownColor == 3) ? 0xFF33FF33 : 0xFFFFD700;
 
-                    int cColor = 0xFFFFD700; 
-                    if (ModConfig.crownColor == 1) cColor = 0xFFFF3333; 
-                    else if (ModConfig.crownColor == 2) cColor = 0xFF33FFFF; 
-                    else if (ModConfig.crownColor == 3) cColor = 0xFF33FF33; 
-
-                    if (ModConfig.crownStyle == 0) {
-                        float thick = 0.05f; 
-                        float size = 0.2f;
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, 0, -size, size, thick, size, cColor, 255);
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, thick, -size, -size+0.1f, 0.25f, -size+0.1f, cColor, 255); 
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, size-0.1f, thick, -size, size, 0.25f, -size+0.1f, cColor, 255); 
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, thick, size-0.1f, -size+0.1f, 0.25f, size, cColor, 255); 
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, size-0.1f, thick, size-0.1f, size, 0.25f, size, cColor, 255); 
-                    } else {
-                        drawCube(matrices.peek().getPositionMatrix(), buffer, -0.1f, -0.1f, -0.1f, 0.1f, 0.1f, 0.1f, cColor, 255);
-                    }
+                    // Draw Crown Base
+                    float s = 0.2f, th = 0.05f;
+                    drawCube(matrices.peek().getPositionMatrix(), buffer, -s, 0, -s, s, th, s, c, 255);
+                    // Draw 4 Spikes
+                    drawCube(matrices.peek().getPositionMatrix(), buffer, -s, th, -s, -s+0.08f, 0.25f, -s+0.08f, c, 255);
+                    drawCube(matrices.peek().getPositionMatrix(), buffer, s-0.08f, th, -s, s, 0.25f, -s+0.08f, c, 255);
+                    drawCube(matrices.peek().getPositionMatrix(), buffer, -s, th, s-0.08f, -s+0.08f, 0.25f, s, c, 255);
+                    drawCube(matrices.peek().getPositionMatrix(), buffer, s-0.08f, th, s-0.08f, s, 0.25f, s, c, 255);
+                    
                     matrices.pop();
 
-                    if (ModConfig.showTargetHealth) {
-                        matrices.push();
-                        matrices.translate(x, y + 0.2, z);
-                        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
-                        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-                        matrices.scale(-0.025F, -0.025F, 0.025F);
-                        String hpTxt = "§lTARGET: §c" + String.format("%.1f ♥", target.getHealth());
-                        client.textRenderer.draw(hpTxt, -client.textRenderer.getWidth(hpTxt)/2f, 0, 0xFFFFFF, false, matrices.peek().getPositionMatrix(), immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x4D000000, 255);
-                        matrices.pop();
-                    }
+                    // Target Label
+                    matrices.push();
+                    matrices.translate(x, y + 0.25, z);
+                    matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
+                    matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
+                    matrices.scale(-0.025f, -0.025f, 0.025f);
+                    String label = "§lTARGET LOCK";
+                    client.textRenderer.draw(label, -client.textRenderer.getWidth(label)/2f, 0, 0xFFFFFF, false, matrices.peek().getPositionMatrix(), immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x4D000000, 255);
+                    matrices.pop();
                 }
 
-                // ==========================================
-                // 2. REGULAR 3D INDICATORS
-                // ==========================================
-                if (!ModConfig.indicatorEnabled) continue;
-                
-                matrices.push();
-                matrices.translate(x, y, z);
-                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
-                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-                matrices.scale(-0.025F, -0.025F, 0.025F);
+                // --- RENDER REGULAR INDICATORS ---
+                if (ModConfig.indicatorEnabled) {
+                    matrices.push();
+                    matrices.translate(x, y, z);
+                    matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
+                    matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
+                    matrices.scale(-0.025f, -0.025f, 0.025f);
 
-                Matrix4f positionMatrix = matrices.peek().getPositionMatrix();
-                int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
+                    float hp = target.getHealth(), max = target.getMaxHealth(), pct = hp/max;
+                    int color = (pct < 0.3f) ? 0xFFFF3333 : (pct < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00;
+                    Matrix4f m = matrices.peek().getPositionMatrix();
 
-                float health = target.getHealth();
-                float maxHealth = target.getMaxHealth();
-                float healthPercent = Math.max(0, Math.min(1, health / maxHealth));
-                int hitsToKill = (int) Math.ceil(health / weaponDamage);
-                int textColor = (healthPercent < 0.3f) ? 0xFFFF3333 : (healthPercent < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00;
-
-                if (ModConfig.indicatorStyle == 0) {
-                    int totalHearts = (int) Math.ceil(Math.max(maxHealth, health) / 2.0f);
-                    Sprite fullHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/full"));
-                    Sprite halfHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/half"));
-                    Sprite emptyHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/container"));
-                    VertexConsumer heartConsumer = immediate.getBuffer(RenderLayer.getTextSeeThrough(fullHeart.getAtlasId()));
-                    float heartSize = 9f;
-                    float startX = -(totalHearts * heartSize) / 2f;
-
-                    for (int i = 0; i < totalHearts; i++) {
-                        float hx = startX + (i * heartSize);
-                        drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, emptyHeart, light);
-                        if (health >= (i * 2) + 2) {
-                            drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, fullHeart, light);
-                        } else if (health > (i * 2)) {
-                            drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, halfHeart, light);
+                    if (ModConfig.indicatorStyle == 0) { // HEARTS
+                        int hearts = (int) Math.ceil(max / 2.0f);
+                        Sprite full = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/full"));
+                        Sprite container = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/container"));
+                        VertexConsumer hBuf = immediate.getBuffer(RenderLayer.getTextSeeThrough(full.getAtlasId()));
+                        float startX = -(hearts * 9) / 2f;
+                        for (int i=0; i<hearts; i++) {
+                            drawSpriteQuad(m, hBuf, startX + (i*9), 0, 9, 9, container, 255);
+                            if (hp >= (i*2)+2) drawSpriteQuad(m, hBuf, startX + (i*9), 0, 9, 9, full, 255);
                         }
+                    } 
+                    else if (ModConfig.indicatorStyle == 1) { // BAR
+                        drawColorQuad(m, immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough()), -26, 0, 52, 7, 0xFF000000, 255);
+                        drawColorQuad(m, immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough()), -25, 1, 50 * pct, 5, color | 0xFF000000, 255);
+                        String pTxt = (int)(pct*100) + "%";
+                        client.textRenderer.draw(pTxt, -client.textRenderer.getWidth(pTxt)/2f, -9, 0xFFFFFF, false, m, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, 255);
                     }
-                } 
-                else if (ModConfig.indicatorStyle == 1) { 
-                    VertexConsumer barConsumer = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
-                    float barWidth = 50f; 
-                    float barHeight = 5f; 
-                    float currentWidth = barWidth * healthPercent;
-                    int barColor = (healthPercent < 0.3f) ? 0xFFFF3333 : (healthPercent < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00; 
-
-                    drawColorQuad(positionMatrix, barConsumer, -barWidth/2 - 1, 0, barWidth + 2, barHeight + 2, 0xFF000000, light);
-                    drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, barWidth, barHeight, 0xFF333333, light);
-                    if (currentWidth > 0) {
-                        drawColorQuad(positionMatrix, barConsumer, -barWidth/2, 1, currentWidth, barHeight, barColor, light);
+                    else if (ModConfig.indicatorStyle == 2) { // STATS
+                        int hits = (int) Math.ceil(hp / weaponDamage);
+                        String s = (target instanceof PlayerEntity) ? target.getName().getString() + " | Hits: " + hits : "Hits: " + hits;
+                        client.textRenderer.draw(s, -client.textRenderer.getWidth(s)/2f, 0, color, false, m, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x4D000000, 255);
                     }
-
-                    String percentText = (int)(healthPercent * 100) + "%";
-                    client.textRenderer.draw(percentText, -client.textRenderer.getWidth(percentText) / 2f, -9, 0xFFFFFF, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, light);
+                    matrices.pop();
                 }
-                else if (ModConfig.indicatorStyle == 2) {
-                    TextRenderer textRenderer = client.textRenderer;
-                    String text = target instanceof PlayerEntity 
-                                ? target.getName().getString() + " | Hits: " + hitsToKill 
-                                : "Hits to kill: " + hitsToKill;
-                    
-                    float textWidth = textRenderer.getWidth(text);
-                    float textStartX = -textWidth / 2f;
-
-                    if (target instanceof AbstractClientPlayerEntity playerTarget) {
-                        Identifier skin = playerTarget.getSkinTextures().texture();
-                        VertexConsumer headConsumer = immediate.getBuffer(RenderLayer.getTextSeeThrough(skin));
-                        drawTextureQuad(positionMatrix, headConsumer, textStartX - 12, -1, 10, 10, 8f/64f, 8f/64f, 16f/64f, 16f/64f, light);
-                    }
-                    textRenderer.draw(text, textStartX, 0, textColor, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x40000000, light);
-                }
-                matrices.pop();
             }
         }
         immediate.draw();
     }
 
     // ==========================================
-    // HELPER RENDERING METHODS
+    // RENDERING HELPERS (FULLY EXPANDED)
     // ==========================================
 
-    private static void drawQuad3D(Matrix4f matrix, VertexConsumer consumer, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int argb, int light) {
-        float a = (argb >> 24 & 255) / 255.0F;
-        float r = (argb >> 16 & 255) / 255.0F;
-        float g = (argb >> 8 & 255) / 255.0F;
-        float b = (argb & 255) / 255.0F;
-        consumer.vertex(matrix, minX, minY, minZ).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a).light(light);
+    private static void drawQuad3D(Matrix4f m, VertexConsumer v, float x1, float y1, float z1, float x2, float y2, float z2, int c, int l) {
+        float a=(c>>24&255)/255f, r=(c>>16&255)/255f, g=(c>>8&255)/255f, b=(c&255)/255f;
+        v.vertex(m,x1,y1,z1).color(r,g,b,a).light(l).next();
+        v.vertex(m,x1,y2,z2).color(r,g,b,a).light(l).next();
+        v.vertex(m,x2,y2,z2).color(r,g,b,a).light(l).next();
+        v.vertex(m,x2,y1,z1).color(r,g,b,a).light(l).next();
     }
 
-    private static void drawCube(Matrix4f matrix, VertexConsumer consumer, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int color, int light) {
-        drawQuad3D(matrix, consumer, minX, minY, minZ, maxX, maxY, minZ, color, light); 
-        drawQuad3D(matrix, consumer, minX, minY, maxZ, maxX, maxY, maxZ, color, light); 
-        drawQuad3D(matrix, consumer, minX, minY, minZ, minX, maxY, maxZ, color, light); 
-        drawQuad3D(matrix, consumer, maxX, minY, minZ, maxX, maxY, maxZ, color, light); 
-        drawQuad3D(matrix, consumer, minX, maxY, minZ, maxX, maxY, maxZ, color, light); 
-        drawQuad3D(matrix, consumer, minX, minY, minZ, maxX, minY, maxZ, color, light); 
+    private static void drawCube(Matrix4f m, VertexConsumer v, float x1, float y1, float z1, float x2, float y2, float z2, int c, int l) {
+        drawQuad3D(m, v, x1, y1, z1, x2, y2, z1, c, l); // Front
+        drawQuad3D(m, v, x1, y1, z2, x2, y2, z2, c, l); // Back
+        drawQuad3D(m, v, x1, y1, z1, x1, y2, z2, c, l); // Left
+        drawQuad3D(m, v, x2, y1, z1, x2, y2, z2, c, l); // Right
+        drawQuad3D(m, v, x1, y2, z1, x2, y2, z2, c, l); // Top
+        drawQuad3D(m, v, x1, y1, z1, x2, y1, z2, c, l); // Bottom
     }
 
-    private static void drawColorQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
-        drawDoubleSidedQuad(matrix, consumer, x, y, width, height, argb, light);
+    private static void drawColorQuad(Matrix4f m, VertexConsumer v, float x, float y, float w, float h, int c, int l) {
+        float a=(c>>24&255)/255f, r=(c>>16&255)/255f, g=(c>>8&255)/255f, b=(c&255)/255f;
+        v.vertex(m, x, y, 0).color(r, g, b, a).light(l).next();
+        v.vertex(m, x, y + h, 0).color(r, g, b, a).light(l).next();
+        v.vertex(m, x + w, y + h, 0).color(r, g, b, a).light(l).next();
+        v.vertex(m, x + w, y, 0).color(r, g, b, a).light(l).next();
     }
 
-    private static void drawDoubleSidedQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
-        float a = (argb >> 24 & 255) / 255.0F;
-        float r = (argb >> 16 & 255) / 255.0F;
-        float g = (argb >> 8 & 255) / 255.0F;
-        float b = (argb & 255) / 255.0F;
-        
-        consumer.vertex(matrix, x, y, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x, y + height, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
-        
-        consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x + width, y + height, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x, y + height, 0).color(r, g, b, a).light(light);
-        consumer.vertex(matrix, x, y, 0).color(r, g, b, a).light(light);
+    private static void drawSpriteQuad(Matrix4f m, VertexConsumer v, float x, float y, float w, float h, Sprite s, int l) {
+        drawTextureQuad(m, v, x, y, w, h, s.getMinU(), s.getMinV(), s.getMaxU(), s.getMaxV(), l);
     }
 
-    private static void drawSpriteQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, Sprite sprite, int light) {
-        drawTextureQuad(matrix, consumer, x, y, width, height, sprite.getMinU(), sprite.getMinV(), sprite.getMaxU(), sprite.getMaxV(), light);
-    }
-
-    private static void drawTextureQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, float u1, float v1, float u2, float v2, int light) {
-        consumer.vertex(matrix, x, y, 0).color(255, 255, 255, 255).texture(u1, v1).light(light).normal(0, 0, 1);
-        consumer.vertex(matrix, x, y + height, 0).color(255, 255, 255, 255).texture(u1, v2).light(light).normal(0, 0, 1);
-        consumer.vertex(matrix, x + width, y + height, 0).color(255, 255, 255, 255).texture(u2, v2).light(light).normal(0, 0, 1);
-        consumer.vertex(matrix, x + width, y, 0).color(255, 255, 255, 255).texture(u2, v1).light(light).normal(0, 0, 1);
+    private static void drawTextureQuad(Matrix4f m, VertexConsumer v, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int l) {
+        v.vertex(m, x, y, 0).color(1f, 1f, 1f, 1f).texture(u1, v1).light(l).normal(0, 0, 1).next();
+        v.vertex(m, x, y + h, 0).color(1f, 1f, 1f, 1f).texture(u1, v2).light(l).normal(0, 0, 1).next();
+        v.vertex(m, x + w, y + h, 0).color(1f, 1f, 1f, 1f).texture(u2, v2).light(l).normal(0, 0, 1).next();
+        v.vertex(m, x + w, y, 0).color(1f, 1f, 1f, 1f).texture(u2, v1).light(l).normal(0, 0, 1).next();
     }
 }
