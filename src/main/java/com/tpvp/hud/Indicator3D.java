@@ -74,10 +74,10 @@ public class Indicator3D {
                 double y = targetPos.y - cameraPos.y + yOffset;
                 double z = targetPos.z - cameraPos.z;
 
-                // --- 1. RENDER 3D TARGET CROWN ---
+                // --- 1. RENDER EPIC 3D VOXEL TARGET CROWN ---
                 if (isLocked) {
                     matrices.push();
-                    matrices.translate(x, y + 0.5, z);
+                    matrices.translate(x, y + 0.6, z);
                     
                     float time = client.world.getTime() + tickDelta;
                     matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(time * 6f));
@@ -91,24 +91,26 @@ public class Indicator3D {
                     else if (ModConfig.crownColor == 3) cColor = 0xFF33FF33; 
 
                     if (ModConfig.crownStyle == 0) {
-                        for (int i = 0; i < 4; i++) {
-                            matrices.push();
-                            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(i * 90f));
-                            matrices.translate(0, 0, 0.2f); 
-                            Matrix4f posMatrix = matrices.peek().getPositionMatrix();
-                            drawDoubleSidedQuad(posMatrix, buffer, -0.2f, 0, 0.4f, 0.1f, cColor, 255);
-                            drawDoubleSidedQuad(posMatrix, buffer, -0.2f, 0.1f, 0.1f, 0.2f, cColor, 255);
-                            drawDoubleSidedQuad(posMatrix, buffer, 0.1f, 0.1f, 0.1f, 0.2f, cColor, 255);
-                            matrices.pop();
-                        }
+                        // FULLY DETAILED 3D VOXEL CROWN
+                        float thick = 0.05f; 
+                        float size = 0.2f;
+                        
+                        // Base Ring
+                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, 0, -size, size, thick, size, cColor, 255);
+                        
+                        // Spikes
+                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, thick, -size, -size+0.1f, 0.25f, -size+0.1f, cColor, 255); // Front-Left
+                        drawCube(matrices.peek().getPositionMatrix(), buffer, size-0.1f, thick, -size, size, 0.25f, -size+0.1f, cColor, 255); // Front-Right
+                        drawCube(matrices.peek().getPositionMatrix(), buffer, -size, thick, size-0.1f, -size+0.1f, 0.25f, size, cColor, 255); // Back-Left
+                        drawCube(matrices.peek().getPositionMatrix(), buffer, size-0.1f, thick, size-0.1f, size, 0.25f, size, cColor, 255); // Back-Right
+
                     } else {
-                        Matrix4f posMatrix = matrices.peek().getPositionMatrix();
-                        drawDoubleSidedQuad(posMatrix, buffer, -0.2f, -0.2f, 0.4f, 0.4f, cColor, 255);
-                        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(90f));
-                        drawDoubleSidedQuad(matrices.peek().getPositionMatrix(), buffer, -0.2f, -0.2f, 0.4f, 0.4f, cColor, 255);
+                        // Thick Diamond
+                        drawCube(matrices.peek().getPositionMatrix(), buffer, -0.1f, -0.1f, -0.1f, 0.1f, 0.1f, 0.1f, cColor, 255);
                     }
                     matrices.pop();
 
+                    // Text Target Label
                     if (ModConfig.showTargetHealth) {
                         matrices.push();
                         matrices.translate(x, y + 0.2, z);
@@ -142,21 +144,16 @@ public class Indicator3D {
                 // --------- STYLE 0: REAL MINECRAFT HEARTS ---------
                 if (ModConfig.indicatorStyle == 0) {
                     int totalHearts = (int) Math.ceil(Math.max(maxHealth, health) / 2.0f);
-                    
                     Sprite fullHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/full"));
                     Sprite halfHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/half"));
                     Sprite emptyHeart = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/container"));
-                    
                     VertexConsumer heartConsumer = immediate.getBuffer(RenderLayer.getTextSeeThrough(fullHeart.getAtlasId()));
-                    
                     float heartSize = 9f;
                     float startX = -(totalHearts * heartSize) / 2f;
 
                     for (int i = 0; i < totalHearts; i++) {
                         float hx = startX + (i * heartSize);
-                        // Empty background heart
                         drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, emptyHeart, light);
-                        // Full / Half heart based on health
                         if (health >= (i * 2) + 2) {
                             drawSpriteQuad(positionMatrix, heartConsumer, hx, 0, heartSize, heartSize, fullHeart, light);
                         } else if (health > (i * 2)) {
@@ -194,7 +191,6 @@ public class Indicator3D {
                         VertexConsumer headConsumer = immediate.getBuffer(RenderLayer.getTextSeeThrough(skin));
                         drawTextureQuad(positionMatrix, headConsumer, textStartX - 12, -1, 10, 10, 8f/64f, 8f/64f, 16f/64f, 16f/64f, light);
                     }
-
                     textRenderer.draw(text, textStartX, 0, textColor, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x40000000, light);
                 }
                 matrices.pop();
@@ -203,8 +199,17 @@ public class Indicator3D {
         immediate.draw();
     }
 
-    // --- BUG FIX: ADDED .normal(0, 0, 1) FOR TEXTURES TO RENDER PROPERLY IN 3D WORLD ---
-    
+    // --- HELPER RENDERING METHODS ---
+
+    private static void drawCube(Matrix4f matrix, VertexConsumer consumer, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int color, int light) {
+        drawColorQuad(matrix, consumer, minX, minY, minZ, maxX, maxY, minZ, color, light); 
+        drawColorQuad(matrix, consumer, minX, minY, maxZ, maxX, maxY, maxZ, color, light); 
+        drawColorQuad(matrix, consumer, minX, minY, minZ, minX, maxY, maxZ, color, light); 
+        drawColorQuad(matrix, consumer, maxX, minY, minZ, maxX, maxY, maxZ, color, light); 
+        drawColorQuad(matrix, consumer, minX, maxY, minZ, maxX, maxY, maxZ, color, light); 
+        drawColorQuad(matrix, consumer, minX, minY, minZ, maxX, minY, maxZ, color, light); 
+    }
+
     private static void drawDoubleSidedQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
         float a = (argb >> 24 & 255) / 255.0F;
         float r = (argb >> 16 & 255) / 255.0F;
@@ -217,8 +222,15 @@ public class Indicator3D {
         consumer.vertex(matrix, x + width, y, 0).color(r, g, b, a).light(light);
     }
 
-    private static void drawColorQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, int argb, int light) {
-        drawDoubleSidedQuad(matrix, consumer, x, y, width, height, argb, light);
+    private static void drawColorQuad(Matrix4f matrix, VertexConsumer consumer, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int argb, int light) {
+        float a = (argb >> 24 & 255) / 255.0F;
+        float r = (argb >> 16 & 255) / 255.0F;
+        float g = (argb >> 8 & 255) / 255.0F;
+        float b = (argb & 255) / 255.0F;
+        consumer.vertex(matrix, minX, minY, minZ).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a).light(light);
+        consumer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a).light(light);
     }
 
     private static void drawSpriteQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, Sprite sprite, int light) {
@@ -226,7 +238,6 @@ public class Indicator3D {
     }
 
     private static void drawTextureQuad(Matrix4f matrix, VertexConsumer consumer, float x, float y, float width, float height, float u1, float v1, float u2, float v2, int light) {
-        // EXACT FIX: Added .normal(0, 0, 1) which prevents the buffer crash for textures!
         consumer.vertex(matrix, x, y, 0).color(255, 255, 255, 255).texture(u1, v1).light(light).normal(0, 0, 1);
         consumer.vertex(matrix, x, y + height, 0).color(255, 255, 255, 255).texture(u1, v2).light(light).normal(0, 0, 1);
         consumer.vertex(matrix, x + width, y + height, 0).color(255, 255, 255, 255).texture(u2, v2).light(light).normal(0, 0, 1);
