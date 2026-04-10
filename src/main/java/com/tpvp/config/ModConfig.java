@@ -38,6 +38,11 @@ public class ModConfig {
     public static int crosshairStyle = 0; 
     public static int crosshairColor = 1; // Green
 
+        // ----- YE 3 VARIABLES MISSING THE -----
+    public static int heldItemX = 50;
+    public static int heldItemY = 50;
+    public static float heldItemScale = 1.0f;
+
     public static void load() { }
     public static void save() { }
 }
