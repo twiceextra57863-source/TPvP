@@ -1,14 +1,10 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.tpvp.mixin",
+  "package": "com.yourname.skinchanger.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [
-  ],
   "client": [
-    "TitleScreenMixin",
-    "GameMenuScreenMixin",
-    "InGameHudMixin"
+    "TitleScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1
