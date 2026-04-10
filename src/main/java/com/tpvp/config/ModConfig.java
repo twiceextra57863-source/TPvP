@@ -4,6 +4,8 @@ public class ModConfig {
     // Combat
     public static boolean indicatorEnabled = true;
     public static int indicatorStyle = 1; 
+    public static boolean hitboxEnabled = true; // NEW
+    public static boolean smartCrosshair = true; // NEW
 
     // Radar
     public static boolean nearbyEnabled = true;
@@ -38,7 +40,7 @@ public class ModConfig {
     public static int crosshairStyle = 0; 
     public static int crosshairColor = 1; // Green
 
-        // ----- YE 3 VARIABLES MISSING THE -----
+    // ----- Held Item Coordinates -----
     public static int heldItemX = 50;
     public static int heldItemY = 50;
     public static float heldItemScale = 1.0f;
