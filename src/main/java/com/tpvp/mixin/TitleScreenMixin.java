@@ -1,6 +1,6 @@
-package com.yourname.skinchanger.mixin;
+package com.tpvp.mixin;
 
-import com.yourname.skinchanger.screen.SkinSelectScreen;
+import com.tpvp.gui.TPvPDashboardScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
@@ -18,16 +18,9 @@ public class TitleScreenMixin extends Screen {
 
     @Inject(at = @At("RETURN"), method = "init")
     private void addCustomButton(CallbackInfo info) {
-        // Add button in a good position (below the main menu buttons)
-        int y = this.height / 4 + 96;
-        this.addDrawableChild(ButtonWidget.builder(
-            Text.literal("§6§lChange Skin"), 
-            button -> {
-                if (this.client != null) {
-                    this.client.setScreen(new SkinSelectScreen(this));
-                }
-            })
-            .dimensions(this.width / 2 - 100, y, 200, 20)
-            .build());
+        // Position changed to Top-Left Corner (x = 10, y = 10)
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("§b§lTPvP Client"), button -> {
+            this.client.setScreen(new TPvPDashboardScreen());
+        }).dimensions(10, 10, 100, 20).build());
     }
 }
