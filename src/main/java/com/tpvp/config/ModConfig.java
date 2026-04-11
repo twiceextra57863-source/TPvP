@@ -14,7 +14,7 @@ public class ModConfig {
     public static int armorX = 20;
     public static int armorY = 100;
     public static float armorScale = 1.0f;
-    public static int armorCrackThreshold = 20; // NAYA: Kitne % par armor crack animation dikhega
+    public static int armorCrackThreshold = 20;
 
     public static int radarX = 10;
     public static int radarY = 30;
@@ -28,6 +28,10 @@ public class ModConfig {
     public static int targetMode = 0; 
     public static boolean autoTrack = false;
     public static boolean dragonAuraEnabled = true;
+
+    // --- NAYE EFFECTS SETTINGS ---
+    public static boolean killBannerEnabled = true;
+    public static boolean soulAnimationEnabled = true;
 
     public static void load() {}
     public static void save() {}
