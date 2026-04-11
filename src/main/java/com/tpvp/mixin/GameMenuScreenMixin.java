@@ -20,7 +20,8 @@ public class GameMenuScreenMixin extends Screen {
     private void addDashboardButton(CallbackInfo info) {
         // Pause Menu me Bottom-Right corner
         this.addDrawableChild(ButtonWidget.builder(Text.literal("§bTPvP"), button -> {
-            this.client.setScreen(new TPvPDashboardScreen());
+            // Waha par bhi line aise change kardo:
+this.client.setScreen(new TPvPDashboardScreen(this));
         }).dimensions(this.width - 90, this.height - 30, 80, 20).build());
     }
 }
