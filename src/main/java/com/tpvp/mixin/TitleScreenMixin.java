@@ -20,7 +20,8 @@ public class TitleScreenMixin extends Screen {
     private void addCustomButton(CallbackInfo info) {
         // Position changed to Top-Left Corner (x = 10, y = 10)
         this.addDrawableChild(ButtonWidget.builder(Text.literal("§b§lTPvP Client"), button -> {
-            this.client.setScreen(new TPvPDashboardScreen());
+            // Waha par line aise change kardo:
+this.client.setScreen(new TPvPDashboardScreen(this));
         }).dimensions(10, 10, 100, 20).build());
     }
 }
