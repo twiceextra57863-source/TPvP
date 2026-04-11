@@ -20,40 +20,57 @@ public class InGameHudMixin {
     @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
     private void renderCustomCrosshair(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
         if (!ModConfig.smartCrosshair) return;
-
-        // Stop vanilla crosshair from rendering
         ci.cancel(); 
 
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
 
-        int width = client.getWindow().getScaledWidth();
-        int height = client.getWindow().getScaledHeight();
-        int cx = width / 2;
-        int cy = height / 2;
+        int cx = client.getWindow().getScaledWidth() / 2;
+        int cy = client.getWindow().getScaledHeight() / 2;
 
-        boolean isTargeting = false;
-        
-        // Check if cursor is on an entity and within hit range (3.0 blocks)
+        boolean canHit = false;
         if (client.crosshairTarget != null && client.crosshairTarget.getType() == HitResult.Type.ENTITY) {
             Entity target = ((EntityHitResult) client.crosshairTarget).getEntity();
-            if (target instanceof LivingEntity && client.player.distanceTo(target) <= 3.0f) {
-                isTargeting = true;
-            }
+            if (target instanceof LivingEntity && client.player.distanceTo(target) <= 3.0f) canHit = true;
         }
 
-        // Green color if you can hit them, otherwise White
-        int color = isTargeting ? 0xFF00FF00 : 0xFFFFFFFF; 
+        // Color & Animation
+        int color = canHit ? 0xFF00FF00 : 0xFFFFFFFF; 
+        float cooldown = client.player.getAttackCooldownProgress(tickCounter.getTickDelta(true));
+        float anim = 1.0f - cooldown; // Expands when hitting
+        float s = ModConfig.crosshairSize;
 
-        // Crosshair Shape (Hollow Plus + with Center Dot)
-        int gap = 3;
-        int len = 5;
-        int thick = 1;
+        context.getMatrices().push();
+        context.getMatrices().translate(cx, cy, 0);
+        context.getMatrices().scale(s, s, 1.0f);
 
-        context.fill(cx - thick, cy - gap - len, cx + thick + 1, cy - gap, color); // Top
-        context.fill(cx - thick, cy + gap, cx + thick + 1, cy + gap + len, color); // Bottom
-        context.fill(cx - gap - len, cy - thick, cx - gap, cy + thick + 1, color); // Left
-        context.fill(cx + gap, cy - thick, cx + gap + len, cy + thick + 1, color); // Right
-        context.fill(cx, cy, cx + 1, cy + 1, color); // Center Dot
+        // 3 Pro Styles
+        if (ModConfig.crosshairStyle == 0) { // STYLE 0: Pro Plus
+            int gap = 2 + (int)(anim * 4);
+            int len = 4;
+            context.fill(-1, -gap-len, 1, -gap, color); // Top
+            context.fill(-1, gap, 1, gap+len, color); // Bottom
+            context.fill(-gap-len, -1, -gap, 1, color); // Left
+            context.fill(gap, -1, gap+len, 1, color); // Right
+            if(cooldown == 1.0f) context.fill(0, 0, 1, 1, color); // Dot
+
+        } else if (ModConfig.crosshairStyle == 1) { // STYLE 1: Hollow Dot
+            int r = 2 + (int)(anim * 3);
+            context.fill(-r, -1, r, 1, color);
+            context.fill(-1, -r, 1, r, color);
+            context.fill(-r+1, -r+1, r-1, r-1, 0x00000000); // Clear center
+
+        } else if (ModConfig.crosshairStyle == 2) { // STYLE 2: Angle/Arrows
+            int gap = 3 + (int)(anim * 5);
+            int t = 1;
+            // Top Left
+            context.fill(-gap-3, -gap-t, -gap, -gap, color);
+            context.fill(-gap-t, -gap-3, -gap, -gap, color);
+            // Bottom Right
+            context.fill(gap, gap, gap+3, gap+t, color);
+            context.fill(gap, gap, gap+t, gap+3, color);
+        }
+
+        context.getMatrices().pop();
     }
 }
