@@ -33,7 +33,6 @@ public class Indicator3D {
         MatrixStack matrices = context.matrixStack();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
-        // --- AUTO TRACK LOGIC (Lowest HP) ---
         String activeTarget = ModConfig.taggedPlayerName;
         if (ModConfig.autoTrack) {
             double lowestHp = 9999;
@@ -51,7 +50,6 @@ public class Indicator3D {
         if (weaponDmg <= 0) weaponDmg = 1.0;
 
         for (Entity entity : client.world.getEntities()) {
-            // Filter: Allow players and mobs, Block NPCs/ArmorStands
             if (!(entity instanceof LivingEntity target) || target == client.player || target.isInvisible() || target instanceof ArmorStandEntity) continue;
             if (target.distanceTo(client.player) > 64.0) continue;
 
@@ -60,10 +58,8 @@ public class Indicator3D {
             double y = tPos.y - camPos.y;
             double z = tPos.z - camPos.z;
 
-            // 1. TARGET HIGHLIGHTS (Dragon Aura & Bouncing Arrow)
+            // DRAGON AURA (UPGRADED)
             if (target.getName().getString().equals(activeTarget)) {
-                
-                // DRAGON AURA HELIX
                 if (ModConfig.dragonAuraEnabled) {
                     matrices.push();
                     matrices.translate(x, y, z);
@@ -71,27 +67,46 @@ public class Indicator3D {
                     VertexConsumer lineBuffer = immediate.getBuffer(RenderLayer.getLines());
                     
                     long time = System.currentTimeMillis();
-                    float t = (time % 2000) / 2000.0f; // 0.0 to 1.0 loops every 2s
+                    float t = (time % 2000) / 2000.0f; // Moving factor
                     float height = target.getHeight();
                     float radius = target.getWidth() + 0.3f;
 
-                    // Draw a revolving spiral (Red/Ruby)
-                    for (int i = 0; i < 20; i++) {
-                        float pt = (t + (i / 20.0f)) % 1.0f;
-                        float py = pt * height;
-                        float px = (float) Math.cos(pt * Math.PI * 4) * radius;
-                        float pz = (float) Math.sin(pt * Math.PI * 4) * radius;
-                        
-                        float px2 = (float) Math.cos((pt+0.05f) * Math.PI * 4) * radius;
-                        float pz2 = (float) Math.sin((pt+0.05f) * Math.PI * 4) * radius;
-                        float py2 = ((pt+0.05f) % 1.0f) * height;
-                        
-                        drawLine(mat, lineBuffer, px, py, pz, px2, py2, pz2, 1f, 0.1f, 0.1f, 1f);
+                    float headX = 0, headY = 0, headZ = 0;
+
+                    // Mota (Thick) Dragon Aura banane ke liye Triple Helix draw karenge
+                    for (int h = 0; h < 3; h++) {
+                        float offset = h * 0.05f; // Slight offset for thickness
+                        for (int i = 0; i < 20; i++) {
+                            float pt = (t + (i / 20.0f)) % 1.0f; 
+                            float py = pt * height; // Fixed: 0 to height (Zameen ke andar nahi jayega)
+                            
+                            float px = (float) Math.cos((pt + offset) * Math.PI * 4) * radius;
+                            float pz = (float) Math.sin((pt + offset) * Math.PI * 4) * radius;
+                            
+                            float ptNext = (pt + 0.05f) % 1.0f;
+                            float pyNext = ptNext * height;
+                            float pxNext = (float) Math.cos((ptNext + offset) * Math.PI * 4) * radius;
+                            float pzNext = (float) Math.sin((ptNext + offset) * Math.PI * 4) * radius;
+                            
+                            // Dragon head coordinates (Top most point of the spiral)
+                            if (py > headY) {
+                                headX = px; headY = py; headZ = pz;
+                            }
+                            
+                            // Red/Gold Gradient Line
+                            drawLine(mat, lineBuffer, px, py, pz, pxNext, pyNext, pzNext, 1f, 0.1f, 0f, 1f);
+                        }
                     }
+
+                    // DRAGON HEAD (Ruby Core drawn at the top of the spiral)
+                    VertexConsumer quadBuffer = immediate.getBuffer(RenderLayer.getGui()); // Solid Layer
+                    float hSize = 0.15f;
+                    drawBox(mat, quadBuffer, headX - hSize, headY - hSize, headZ - hSize, headX + hSize, headY + hSize, headZ + hSize, 1f, 0f, 0f, 1f, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+
                     matrices.pop();
                 }
 
-                // BOUNCING ARROW
+                // BOUNCING TARGET ARROW
                 matrices.push();
                 double bounce = Math.sin(System.currentTimeMillis() / 150.0) * 0.2;
                 matrices.translate(x, y + target.getHeight() + 1.8 + bounce, z); 
@@ -103,16 +118,14 @@ public class Indicator3D {
                 matrices.pop();
             }
 
-            // 2. HITBOXES
+            // HITBOXES AND 3-STYLE INDICATORS (Kept perfectly as before)
             if (ModConfig.hitboxEnabled) {
                 matrices.push();
                 matrices.translate(x, y, z);
                 VertexConsumer lineBuffer = immediate.getBuffer(RenderLayer.getLines());
                 Matrix4f matrix = matrices.peek().getPositionMatrix();
-                float w = target.getWidth() / 2.0f;
-                float h = target.getHeight();
-                float r = 1f, g = 0f, b = 0.2f, a = 1f; // Ruby Red Hitbox
-                
+                float w = target.getWidth() / 2.0f, h = target.getHeight();
+                float r = 1f, g = 0f, b = 0.2f, a = 1f; 
                 drawLine(matrix, lineBuffer, -w, 0, -w, w, 0, -w, r, g, b, a); drawLine(matrix, lineBuffer, w, 0, -w, w, 0, w, r, g, b, a);
                 drawLine(matrix, lineBuffer, w, 0, w, -w, 0, w, r, g, b, a); drawLine(matrix, lineBuffer, -w, 0, w, -w, 0, -w, r, g, b, a);
                 drawLine(matrix, lineBuffer, -w, h, -w, w, h, -w, r, g, b, a); drawLine(matrix, lineBuffer, w, h, -w, w, h, w, r, g, b, a);
@@ -122,17 +135,14 @@ public class Indicator3D {
                 matrices.pop();
             }
 
-            // 3. INDICATOR STYLES
             if (ModConfig.indicatorEnabled && target.distanceTo(client.player) < 32.0) {
                 matrices.push();
                 matrices.translate(x, y + target.getHeight() + 1.2, z); 
                 matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
                 matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
                 matrices.scale(-0.025F, -0.025F, 0.025F);
-
                 Matrix4f posMat = matrices.peek().getPositionMatrix();
                 int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
-
                 float health = target.getHealth(), maxHealth = target.getMaxHealth();
                 float hpPercent = Math.max(0, Math.min(1, health / maxHealth));
 
@@ -162,7 +172,6 @@ public class Indicator3D {
                     String text = target.getName().getString() + " | Hits: " + hitsToKill;
                     int txtColor = (hpPercent < 0.3f) ? 0xFF0000 : (hpPercent < 0.6f) ? 0xFFFF00 : 0x00FF00;
                     float stX = -client.textRenderer.getWidth(text) / 2f;
-                    
                     if (target instanceof AbstractClientPlayerEntity pt) {
                         VertexConsumer hc = immediate.getBuffer(RenderLayer.getTextSeeThrough(pt.getSkinTextures().texture()));
                         drawTextureQuad(posMat, hc, stX - 12, -1, 10, 10, 8f/64f, 8f/64f, 16f/64f, 16f/64f, light);
@@ -175,7 +184,6 @@ public class Indicator3D {
         immediate.draw();
     }
 
-    // --- HELPER METHODS ---
     private static void drawLine(Matrix4f m, VertexConsumer v, float x1, float y1, float z1, float x2, float y2, float z2, float r, float g, float b, float a) {
         v.vertex(m, x1, y1, z1).color(r, g, b, a).normal(x2-x1, y2-y1, z2-z1);
         v.vertex(m, x2, y2, z2).color(r, g, b, a).normal(x2-x1, y2-y1, z2-z1);
@@ -188,9 +196,10 @@ public class Indicator3D {
     }
     private static void drawColorQuad(Matrix4f m, VertexConsumer v, float x, float y, float w, float h, int c, int l) {
         float a = (c >> 24 & 255) / 255.0F, r = (c >> 16 & 255) / 255.0F, g = (c >> 8 & 255) / 255.0F, b = (c & 255) / 255.0F;
-        v.vertex(m, x, y, 0).color(r, g, b, a).light(l);
-        v.vertex(m, x, y+h, 0).color(r, g, b, a).light(l);
-        v.vertex(m, x+w, y+h, 0).color(r, g, b, a).light(l);
-        v.vertex(m, x+w, y, 0).color(r, g, b, a).light(l);
+        v.vertex(m, x, y, 0).color(r, g, b, a).light(l); v.vertex(m, x, y+h, 0).color(r, g, b, a).light(l);
+        v.vertex(m, x+w, y+h, 0).color(r, g, b, a).light(l); v.vertex(m, x+w, y, 0).color(r, g, b, a).light(l);
     }
-}
+    private static void drawBox(Matrix4f m, VertexConsumer v, float x1, float y1, float z1, float x2, float y2, float z2, float r, float g, float b, float a, int l) {
+        v.vertex(m, x1, y1, z1).color(r, g, b, a).light(l); v.vertex(m, x1, y2, z1).color(r, g, b, a).light(l); v.vertex(m, x2, y2, z1).color(r, g, b, a).light(l); v.vertex(m, x2, y1, z1).color(r, g, b, a).light(l);
+    }
+                        }
