@@ -23,14 +23,12 @@ public class ArmorHud implements HudRenderCallback {
         int screenW = client.getWindow().getScaledWidth();
         int screenH = client.getWindow().getScaledHeight();
         
-        // Auto Flip Logic (Screen ke edge par jane se rokna)
         boolean flipX = ModConfig.armorX > (screenW / 2);
         boolean flipY = ModConfig.armorY > (screenH - 50);
 
-        // Vanilla me Boots pehle aate hain, hume Helmet pehle chahiye
         List<ItemStack> armorList = new ArrayList<>();
         client.player.getArmorItems().forEach(armorList::add);
-        Collections.reverse(armorList); // Helmet -> Chest -> Legs -> Boots
+        Collections.reverse(armorList); // Order: Helmet -> Chest -> Legs -> Boots
 
         int xOffset = 0;
         int yOffset = 0;
@@ -48,28 +46,24 @@ public class ArmorHud implements HudRenderCallback {
             if (maxDmg > 0) {
                 percent = 100 - (curDmg * 100 / maxDmg);
                 if (percent < 15) {
-                    color = 0xFF0000; // Red
-                    // Shaking Animation agar armor tutne wala hai
+                    color = 0xFF0000;
                     shakeX = (int) (Math.sin(System.currentTimeMillis() / 30.0) * 2);
                     shakeY = (int) (Math.cos(System.currentTimeMillis() / 30.0) * 2);
                 } else if (percent < 50) {
-                    color = 0xFFFF00; // Yellow
+                    color = 0xFFFF00;
                 }
             }
 
-            // Draw Item Icon (With Shake if low durability)
             context.drawItem(item, xOffset + shakeX, yOffset + shakeY);
 
-            // Draw Percentage Text
             if (maxDmg > 0) {
                 String text = percent + "%";
                 int textW = client.textRenderer.getWidth(text);
-                
                 int textX, textY;
                 if (ModConfig.armorVertical) {
                     textX = flipX ? (xOffset - textW - 4) : (xOffset + 18);
                     textY = yOffset + 4;
-                } else { // Horizontal
+                } else { 
                     textX = xOffset + (8 - textW / 2);
                     textY = flipY ? (yOffset - 10) : (yOffset + 18);
                 }
