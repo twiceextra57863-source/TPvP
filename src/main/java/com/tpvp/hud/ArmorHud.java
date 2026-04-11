@@ -28,13 +28,12 @@ public class ArmorHud implements HudRenderCallback {
         client.player.getArmorItems().forEach(armorList::add);
         Collections.reverse(armorList);
 
-        // Find worst armor piece
         int lowestPercent = 100;
         ItemStack worstItem = null;
         for (ItemStack item : armorList) {
             if (item.isEmpty() || item.getMaxDamage() == 0) continue;
             int percent = 100 - (item.getDamage() * 100 / item.getMaxDamage());
-            if (percent < lowestPercent) {
+            if (percent <= ModConfig.armorCrackThreshold && percent < lowestPercent) {
                 lowestPercent = percent;
                 worstItem = item;
             }
@@ -49,27 +48,32 @@ public class ArmorHud implements HudRenderCallback {
 
             if (maxDmg > 0) {
                 percent = 100 - (curDmg * 100 / maxDmg);
-                if (percent < 20) color = 0xFF0000;
+                if (percent <= ModConfig.armorCrackThreshold) color = 0xFF0000;
                 else if (percent < 50) color = 0xFFFF00;
 
-                // Lowest item crack & shake logic
-                if (item == worstItem && percent < 30) {
-                    shakeX = (int) (Math.sin(System.currentTimeMillis() / 20.0) * 2);
-                    shakeY = (int) (Math.cos(System.currentTimeMillis() / 20.0) * 2);
+                if (item == worstItem) {
+                    shakeX = (int) (Math.sin(System.currentTimeMillis() / 20.0) * 1.5);
+                    shakeY = (int) (Math.cos(System.currentTimeMillis() / 20.0) * 1.5);
                 }
             }
 
             context.drawItem(item, xOffset + shakeX, yOffset + shakeY);
 
-            // DRAW RED GLOW & CRACK
-            if (item == worstItem && percent < 30) {
-                float alpha = (float) (Math.sin(System.currentTimeMillis() / 100.0) * 0.4 + 0.3);
-                int aColor = ((int)(alpha * 255) << 24) | 0xFF0000;
-                context.fill(xOffset + shakeX, yOffset + shakeY, xOffset + shakeX + 16, yOffset + shakeY + 16, aColor); // Red Glow
+            // ANIMATED FLOWING CRACK
+            if (item == worstItem) {
+                float time = (System.currentTimeMillis() % 1000) / 1000.0f; // 0.0 to 1.0
                 
-                // Draw diagonal "Crack"
-                context.fill(xOffset + shakeX + 4, yOffset + shakeY + 4, xOffset + shakeX + 12, yOffset + shakeY + 6, 0xFFFF0000);
-                context.fill(xOffset + shakeX + 8, yOffset + shakeY + 4, xOffset + shakeX + 10, yOffset + shakeY + 12, 0xFFFF0000);
+                // Red pulsing glow
+                float alpha = (float) (Math.sin(System.currentTimeMillis() / 100.0) * 0.3 + 0.3);
+                context.fill(xOffset + shakeX, yOffset + shakeY, xOffset + shakeX + 16, yOffset + shakeY + 16, ((int)(alpha * 255) << 24) | 0xFF0000); 
+                
+                // Flowing Energy Line (Niche jati hui red scanning line)
+                int flowY = (int) (time * 16);
+                context.fill(xOffset + shakeX + 2, yOffset + shakeY + flowY, xOffset + shakeX + 14, yOffset + shakeY + flowY + 2, 0xCCFF0000);
+                
+                // Base static crack
+                context.fill(xOffset + shakeX + 4, yOffset + shakeY + 6, xOffset + shakeX + 8, yOffset + shakeY + 8, 0xFFFF0000);
+                context.fill(xOffset + shakeX + 8, yOffset + shakeY + 8, xOffset + shakeX + 12, yOffset + shakeY + 14, 0xFFFF0000);
             }
 
             if (maxDmg > 0) {
