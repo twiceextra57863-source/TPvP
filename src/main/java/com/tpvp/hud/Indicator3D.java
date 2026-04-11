@@ -10,8 +10,9 @@ import net.minecraft.client.render.*;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.decoration.ArmorStandEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
@@ -32,9 +33,27 @@ public class Indicator3D {
         MatrixStack matrices = context.matrixStack();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
+        // ---------------- AUTO TRACK LOGIC ----------------
+        String activeTarget = ModConfig.taggedPlayerName;
+        if (ModConfig.autoTrack) {
+            double lowestHp = 9999;
+            for (Entity e : client.world.getEntities()) {
+                if (e instanceof LivingEntity le && e != client.player && !e.isInvisible() && !(e instanceof ArmorStandEntity)) {
+                    if (client.player.distanceTo(le) < 32.0 && le.getHealth() < lowestHp && le.getHealth() > 0) {
+                        lowestHp = le.getHealth();
+                        activeTarget = le.getName().getString(); // Lowest HP wale pe target set karo
+                    }
+                }
+            }
+        }
+
+        double weaponDmg = client.player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
+        if (weaponDmg <= 0) weaponDmg = 1.0;
+
         for (Entity entity : client.world.getEntities()) {
-            // Sirf asli PlayerEntity ko allow karenge (NPCs aur ArmorStands block)
-            if (!(entity instanceof PlayerEntity target) || target == client.player || target.isInvisible()) continue;
+            // FIX: PlayerEntity hٹا kar LivingEntity kar diya (ab Mobs pe bhi chalega).
+            // ArmorStandEntity filter kar diya taaki NPC dupe na aaye!
+            if (!(entity instanceof LivingEntity target) || target == client.player || target.isInvisible() || target instanceof ArmorStandEntity) continue;
             
             if (target.distanceTo(client.player) > 64.0) continue;
 
@@ -43,30 +62,28 @@ public class Indicator3D {
             double y = tPos.y - camPos.y;
             double z = tPos.z - camPos.z;
 
-            // 1. GIANT BOUNCING TARGET ARROW
-            if (target.getName().getString().equals(ModConfig.taggedPlayerName)) {
+            // 1. BOUNCING ARROW (Active Target)
+            if (target.getName().getString().equals(activeTarget)) {
                 matrices.push();
                 double bounce = Math.sin(System.currentTimeMillis() / 150.0) * 0.2;
-                matrices.translate(x, y + target.getHeight() + 1.8 + bounce, z); // Way above head
-                
+                matrices.translate(x, y + target.getHeight() + 1.8 + bounce, z); 
                 matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
                 matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
-                matrices.scale(-0.1F, -0.1F, 0.1F); // Big Scale
+                matrices.scale(-0.1F, -0.1F, 0.1F); 
                 
                 Matrix4f mat = matrices.peek().getPositionMatrix();
-                client.textRenderer.draw("▼", -client.textRenderer.getWidth("▼") / 2f, 0, 0xFFFF0000, true, mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+                client.textRenderer.draw("▼", -client.textRenderer.getWidth("▼") / 2f, 0, 0xFFFF2222, true, mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, LightmapTextureManager.MAX_LIGHT_COORDINATE);
                 matrices.pop();
             }
 
-            // 2. HITBOX RENDERING
+            // 2. HITBOXES
             if (ModConfig.hitboxEnabled) {
                 matrices.push();
                 matrices.translate(x, y, z);
                 VertexConsumer lineBuffer = immediate.getBuffer(RenderLayer.getLines());
                 Matrix4f matrix = matrices.peek().getPositionMatrix();
-                float w = target.getWidth() / 2.0f;
-                float h = target.getHeight();
-                float r = 1f, g = 0f, b = 0f, a = 1f; // Red Hitbox
+                float w = target.getWidth() / 2.0f, h = target.getHeight();
+                float r = 1f, g = 0f, b = 0.2f, a = 1f; // Ruby Red Hitbox
                 
                 drawLine(matrix, lineBuffer, -w, 0, -w, w, 0, -w, r, g, b, a); drawLine(matrix, lineBuffer, w, 0, -w, w, 0, w, r, g, b, a);
                 drawLine(matrix, lineBuffer, w, 0, w, -w, 0, w, r, g, b, a); drawLine(matrix, lineBuffer, -w, 0, w, -w, 0, -w, r, g, b, a);
@@ -77,10 +94,9 @@ public class Indicator3D {
                 matrices.pop();
             }
 
-            // 3. 3-STYLE INDICATORS (Fixed 2-Names Overlap Bug)
+            // 3. INDICATOR
             if (ModConfig.indicatorEnabled && target.distanceTo(client.player) < 32.0) {
                 matrices.push();
-                // Render higher than vanilla nametag (1.2 blocks above instead of 0.8)
                 matrices.translate(x, y + target.getHeight() + 1.2, z); 
                 matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
                 matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
@@ -89,11 +105,10 @@ public class Indicator3D {
                 Matrix4f posMat = matrices.peek().getPositionMatrix();
                 int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
 
-                // FIXED: Direct `target.getHealth()` kaam karega kyunki ab target PlayerEntity hai.
                 float health = target.getHealth(), maxHealth = target.getMaxHealth();
                 float hpPercent = Math.max(0, Math.min(1, health / maxHealth));
 
-                if (ModConfig.indicatorStyle == 0) { // STYLE 0: HEARTS
+                if (ModConfig.indicatorStyle == 0) { 
                     int tH = (int) Math.ceil(Math.max(maxHealth, health) / 2.0f);
                     Sprite fH = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/full"));
                     Sprite hH = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/half"));
@@ -105,20 +120,17 @@ public class Indicator3D {
                         if (health >= (i*2)+2) drawTextureQuad(posMat, hc, stX + (i*9), 0, 9, 9, fH.getMinU(), fH.getMinV(), fH.getMaxU(), fH.getMaxV(), light);
                         else if (health > (i*2)) drawTextureQuad(posMat, hc, stX + (i*9), 0, 9, 9, hH.getMinU(), hH.getMinV(), hH.getMaxU(), hH.getMaxV(), light);
                     }
-                } else if (ModConfig.indicatorStyle == 1) { // STYLE 1: BAR
+                } else if (ModConfig.indicatorStyle == 1) { 
                     VertexConsumer bc = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
                     float cW = 50f * hpPercent;
                     int bC = (hpPercent < 0.3f) ? 0xFFFF3333 : (hpPercent < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00;
-                    drawColorQuad(posMat, bc, -26, 0, 52, 7, 0xFF000000, light); // Border
-                    drawColorQuad(posMat, bc, -25, 1, 50, 5, 0xFF333333, light); // BG
-                    if (cW > 0) drawColorQuad(posMat, bc, -25, 1, cW, 5, bC, light); // Fill
+                    drawColorQuad(posMat, bc, -26, 0, 52, 7, 0xFF000000, light);
+                    drawColorQuad(posMat, bc, -25, 1, 50, 5, 0xFF333333, light); 
+                    if (cW > 0) drawColorQuad(posMat, bc, -25, 1, cW, 5, bC, light); 
                     String pt = (int)(hpPercent * 100) + "%";
                     client.textRenderer.draw(pt, -client.textRenderer.getWidth(pt) / 2f, -9, 0xFFFFFF, false, posMat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, light);
-                } else if (ModConfig.indicatorStyle == 2) { // STYLE 2: HEAD + HITS
-                    double weaponDamage = client.player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
-                    if (weaponDamage <= 0) weaponDamage = 1.0;
-                    int hitsToKill = (int) Math.ceil(health / weaponDamage);
-                    
+                } else if (ModConfig.indicatorStyle == 2) { 
+                    int hitsToKill = (int) Math.ceil(health / weaponDmg);
                     String text = target.getName().getString() + " | Hits: " + hitsToKill;
                     int txtColor = (hpPercent < 0.3f) ? 0xFF0000 : (hpPercent < 0.6f) ? 0xFFFF00 : 0x00FF00;
                     float stX = -client.textRenderer.getWidth(text) / 2f;
@@ -152,4 +164,4 @@ public class Indicator3D {
         v.vertex(m, x+w, y+h, 0).color(r, g, b, a).light(l);
         v.vertex(m, x+w, y, 0).color(r, g, b, a).light(l);
     }
-            }
+                        }
