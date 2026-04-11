@@ -5,65 +5,55 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
 import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.hit.HitResult;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(InGameHud.class)
-public abstract class InGameHudMixin {
-    private float anim = 0;
+public class InGameHudMixin {
 
     @Inject(method = "renderCrosshair", at = @At("HEAD"), cancellable = true)
-    private void drawCustomCrosshair(DrawContext context, RenderTickCounter tick, CallbackInfo ci) {
-        if (!ModConfig.crosshairEnabled) return;
+    private void renderCustomCrosshair(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
+        if (!ModConfig.smartCrosshair) return;
+
+        // Stop vanilla crosshair from rendering
+        ci.cancel(); 
+
         MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.options.getPerspective().isFirstPerson()) return;
+        if (client.player == null) return;
 
-        ci.cancel(); // Remove Vanilla
-        int cx = client.getWindow().getScaledWidth() / 2;
-        int cy = client.getWindow().getScaledHeight() / 2;
+        int width = client.getWindow().getScaledWidth();
+        int height = client.getWindow().getScaledHeight();
+        int cx = width / 2;
+        int cy = height / 2;
+
+        boolean isTargeting = false;
         
-        int[] colors = {0xFFFFFFFF, 0xFF00FF00, 0xFFFF3333, 0xFF00FFFF, 0xFF000000};
-        int color = colors[ModConfig.crosshairColor];
-
-        // Click Animation Logic
-        if (client.options.attackKey.isPressed()) anim = 3.0f;
-        else anim = Math.max(0, anim - 0.4f);
-
-        context.getMatrices().push();
-        context.getMatrices().translate(cx, cy, 0);
-        context.getMatrices().scale(0.5f, 0.5f, 1.0f); // THIN LOOK
-
-        int a = (int)anim;
-        switch (ModConfig.crosshairStyle) {
-            case 0 -> { // Plus
-                int g = 4 + a; int l = 8;
-                context.fill(-1, -g-l, 1, -g, color);
-                context.fill(-1, g, 1, g+l, color);
-                context.fill(-g-l, -1, -g, 1, color);
-                context.fill(g, -1, g+l, 1, color);
-            }
-            case 1 -> { // Dot
-                int s = 2 + a;
-                context.fill(-s, -s, s, s, color);
-            }
-            case 2 -> { // Circle
-                int r = 6 + a;
-                context.drawBorder(-r, -r, r*2, r*2, color);
-            }
-            case 3 -> { // T-Shape
-                int g = 4; int l = 10;
-                context.fill(-1, g+a, 1, g+l+a, color);
-                context.fill(-g-l, -1, -g, 1, color);
-                context.fill(g, -1, g+l, 1, color);
-            }
-            case 4 -> { // Square
-                int r = 5 - a;
-                context.drawBorder(-r, -r, r*2, r*2, color);
-                context.fill(-1, -1, 1, 1, color);
+        // Check if cursor is on an entity and within hit range (3.0 blocks)
+        if (client.crosshairTarget != null && client.crosshairTarget.getType() == HitResult.Type.ENTITY) {
+            Entity target = ((EntityHitResult) client.crosshairTarget).getEntity();
+            if (target instanceof LivingEntity && client.player.distanceTo(target) <= 3.0f) {
+                isTargeting = true;
             }
         }
-        context.getMatrices().pop();
+
+        // Green color if you can hit them, otherwise White
+        int color = isTargeting ? 0xFF00FF00 : 0xFFFFFFFF; 
+
+        // Crosshair Shape (Hollow Plus + with Center Dot)
+        int gap = 3;
+        int len = 5;
+        int thick = 1;
+
+        context.fill(cx - thick, cy - gap - len, cx + thick + 1, cy - gap, color); // Top
+        context.fill(cx - thick, cy + gap, cx + thick + 1, cy + gap + len, color); // Bottom
+        context.fill(cx - gap - len, cy - thick, cx - gap, cy + thick + 1, color); // Left
+        context.fill(cx + gap, cy - thick, cx + gap + len, cy + thick + 1, color); // Right
+        context.fill(cx, cy, cx + 1, cy + 1, color); // Center Dot
     }
 }
