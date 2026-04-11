@@ -13,6 +13,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.decoration.ArmorStandEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
@@ -59,63 +60,99 @@ public class Indicator3D {
             double y = tPos.y - camPos.y;
             double z = tPos.z - camPos.z;
 
-            // 1. DRAGON AURA (Solid 3D Ribbon Upgrade)
+            // 1. CINEMATIC DRAGON AURA & BOUNCING ARROW
             if (target.getName().getString().equals(activeTarget)) {
+                
+                // --- EPIC DRAGON AURA ANIMATION ---
                 if (ModConfig.dragonAuraEnabled) {
                     matrices.push();
                     matrices.translate(x, y, z);
                     Matrix4f mat = matrices.peek().getPositionMatrix();
+                    VertexConsumer quadBuffer = immediate.getBuffer(RenderLayer.getGui()); // Solid Layer
                     
-                    // Naya: Transparent/Solid layer ka use taaki wo ek Ribbon (Patti) laage, taar nahi
-                    VertexConsumer quadBuffer = immediate.getBuffer(RenderLayer.getGui()); 
+                    // Timing & State Machine (Total Cycle = 4 Seconds)
+                    long cycle = 4000;
+                    float t = (System.currentTimeMillis() % cycle) / (float) cycle;
                     
-                    long time = System.currentTimeMillis();
-                    float t = (time % 2000) / 2000.0f; // 0 to 1 loop
-                    float height = target.getHeight();
-                    float radius = target.getWidth() + 0.3f;
-                    float thickness = 0.15f; // Ribbon ki motai
-
-                    float headX = 0, headY = 0, headZ = 0;
-
-                    // Draw Solid Ribbon (Quads)
-                    int segments = 30; // Smoothness
-                    for (int i = 0; i < segments; i++) {
-                        float pt1 = (t + (i / (float)segments)) % 1.0f; 
-                        float pt2 = (t + ((i+1) / (float)segments)) % 1.0f;
-                        
-                        // Prevent stitching bug (jab top se wapas bottom aata hai toh skip karo)
-                        if (pt2 < pt1) continue; 
-
-                        float py1 = pt1 * height;
-                        float px1 = (float) Math.cos(pt1 * Math.PI * 4) * radius;
-                        float pz1 = (float) Math.sin(pt1 * Math.PI * 4) * radius;
-
-                        float py2 = pt2 * height;
-                        float px2 = (float) Math.cos(pt2 * Math.PI * 4) * radius;
-                        float pz2 = (float) Math.sin(pt2 * Math.PI * 4) * radius;
-
-                        // Save the topmost point for the Dragon Head
-                        if (py2 > headY) { headX = px2; headY = py2; headZ = pz2; }
-
-                        // Draw thick flat plane (Ribbon/Body of dragon)
-                        float r = 1f, g = 0.1f, b = 0.1f, a = 0.8f; // Crimson Red
-                        quadBuffer.vertex(mat, px1, py1, pz1).color(r,g,b,a).light(15728880);
-                        quadBuffer.vertex(mat, px1, py1 + thickness, pz1).color(r,g,b,a).light(15728880);
-                        quadBuffer.vertex(mat, px2, py2 + thickness, pz2).color(r,g,b,a).light(15728880);
-                        quadBuffer.vertex(mat, px2, py2, pz2).color(r,g,b,a).light(15728880);
+                    float progress = 0f;
+                    float shatter = 0f;
+                    float alpha = 0.8f;
+                    
+                    if (t < 0.4f) { // Phase 1: Rise Up (0 to 1.6 sec)
+                        progress = t / 0.4f;
+                    } else if (t < 0.5f) { // Phase 2: Hold & Roar (1.6 to 2.0 sec)
+                        progress = 1.0f;
+                    } else if (t < 0.6f) { // Phase 3: Shatter into Dust (2.0 to 2.4 sec)
+                        progress = 1.0f;
+                        shatter = (t - 0.5f) / 0.1f; // 0 to 1 explosion
+                        alpha = 0.8f * (1.0f - shatter); // Fade out smoothly
+                    } else { // Phase 4: Cooldown (2.4 to 4.0 sec)
+                        alpha = 0.0f;
                     }
 
-                    // Draw Dragon Head (Ruby Block at the top)
-                    float hs = 0.18f; // Head Size
-                    drawBox(mat, quadBuffer, headX - hs, headY - hs, headZ - hs, headX + hs, headY + hs, headZ + hs, 1f, 0f, 0f, 1f, 15728880);
+                    if (alpha > 0.01f) {
+                        float rotSpeed = (System.currentTimeMillis() % 2000) / 2000.0f; 
+                        float maxHeight = target.getHeight() + 0.4f;
+                        float baseRadius = target.getWidth() + 0.5f;
 
+                        float headX = 0, headY = 0, headZ = 0;
+                        boolean drawHead = false;
+
+                        int segments = 40;
+                        int activeSegments = (int) (segments * progress);
+
+                        // Draw Thick Solid Body (Triple Layer)
+                        for (int h = 0; h < 3; h++) {
+                            float offset = h * 0.05f;
+                            for (int i = 0; i < activeSegments; i++) {
+                                float pt1 = (i / (float) segments);
+                                float pt2 = ((i + 1) / (float) segments);
+
+                                float py1 = pt1 * maxHeight;
+                                float px1 = (float) Math.cos((pt1 + rotSpeed + offset) * Math.PI * 4) * baseRadius;
+                                float pz1 = (float) Math.sin((pt1 + rotSpeed + offset) * Math.PI * 4) * baseRadius;
+
+                                float py2 = pt2 * maxHeight;
+                                float px2 = (float) Math.cos((pt2 + rotSpeed + offset) * Math.PI * 4) * baseRadius;
+                                float pz2 = (float) Math.sin((pt2 + rotSpeed + offset) * Math.PI * 4) * baseRadius;
+
+                                // Shatter Dust Effect (Bikhar jana)
+                                if (shatter > 0) {
+                                    float sx = (float) Math.sin(i * 13 + h) * shatter * 2.0f;
+                                    float sy = (float) Math.cos(i * 17 + h) * shatter * 2.0f;
+                                    float sz = (float) Math.sin(i * 23 + h) * shatter * 2.0f;
+                                    px1 += sx; py1 += sy; pz1 += sz;
+                                    px2 += sx; py2 += sy; pz2 += sz;
+                                }
+
+                                // Color Gradient: Red Body -> Golden Head
+                                float r = 1f, g = 0.1f, b = 0.1f;
+                                if (i > segments - 8) { g = 0.6f; b = 0f; } // Gold tip
+
+                                // Draw Quad (Flat 3D Ribbon)
+                                drawQuad(mat, quadBuffer, px1, py1, pz1, px1, py1+0.2f, pz1, px2, py2+0.2f, pz2, px2, py2, pz2, r, g, b, alpha, 15728880);
+
+                                // Save position for 3D Head
+                                if (i == activeSegments - 1 && h == 1) {
+                                    headX = px2; headY = py2; headZ = pz2;
+                                    drawHead = true;
+                                }
+                            }
+                        }
+
+                        // Draw Real 3D Dragon Head (Box)
+                        if (drawHead) {
+                            float hs = 0.2f; // Head Size
+                            draw3DBox(mat, quadBuffer, headX, headY + 0.1f, headZ, hs, 1f, 0.2f, 0f, alpha, 15728880);
+                        }
+                    }
                     matrices.pop();
                 }
 
                 // BOUNCING TARGET ARROW
                 matrices.push();
                 double bounce = Math.sin(System.currentTimeMillis() / 150.0) * 0.2;
-                matrices.translate(x, y + target.getHeight() + 1.8 + bounce, z); 
+                matrices.translate(x, y + target.getHeight() + 2.2 + bounce, z); 
                 matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
                 matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
                 matrices.scale(-0.1F, -0.1F, 0.1F); 
@@ -124,14 +161,14 @@ public class Indicator3D {
                 matrices.pop();
             }
 
-            // 2. HITBOX RENDERING
+            // 2. HITBOXES
             if (ModConfig.hitboxEnabled) {
                 matrices.push();
                 matrices.translate(x, y, z);
                 VertexConsumer lineBuffer = immediate.getBuffer(RenderLayer.getLines());
                 Matrix4f matrix = matrices.peek().getPositionMatrix();
                 float w = target.getWidth() / 2.0f, h = target.getHeight();
-                float r = 1f, g = 0f, b = 0.2f, a = 1f; 
+                float r = 1f, g = 0f, b = 0.2f, a = 1f; // Ruby Red Hitbox
                 
                 drawLine(matrix, lineBuffer, -w, 0, -w, w, 0, -w, r, g, b, a); drawLine(matrix, lineBuffer, w, 0, -w, w, 0, w, r, g, b, a);
                 drawLine(matrix, lineBuffer, w, 0, w, -w, 0, w, r, g, b, a); drawLine(matrix, lineBuffer, -w, 0, w, -w, 0, -w, r, g, b, a);
@@ -152,7 +189,6 @@ public class Indicator3D {
 
                 Matrix4f posMat = matrices.peek().getPositionMatrix();
                 int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
-
                 float health = target.getHealth(), maxHealth = target.getMaxHealth();
                 float hpPercent = Math.max(0, Math.min(1, health / maxHealth));
 
@@ -179,7 +215,7 @@ public class Indicator3D {
                     client.textRenderer.draw(pt, -client.textRenderer.getWidth(pt) / 2f, -9, 0xFFFFFF, false, posMat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, light);
                 } else if (ModConfig.indicatorStyle == 2) { 
                     int hitsToKill = (int) Math.ceil(health / weaponDmg);
-                    String text = target.getName().getString() + " | Hits: " + hitsToKill;
+                    String text = (target instanceof PlayerEntity) ? target.getName().getString() + " | Hits: " + hitsToKill : "Hits: " + hitsToKill;
                     int txtColor = (hpPercent < 0.3f) ? 0xFF0000 : (hpPercent < 0.6f) ? 0xFFFF00 : 0x00FF00;
                     float stX = -client.textRenderer.getWidth(text) / 2f;
                     
@@ -195,10 +231,32 @@ public class Indicator3D {
         immediate.draw();
     }
 
+    // --- PRO 3D RENDERING HELPER METHODS ---
+
     private static void drawLine(Matrix4f m, VertexConsumer v, float x1, float y1, float z1, float x2, float y2, float z2, float r, float g, float b, float a) {
         v.vertex(m, x1, y1, z1).color(r, g, b, a).normal(x2-x1, y2-y1, z2-z1);
         v.vertex(m, x2, y2, z2).color(r, g, b, a).normal(x2-x1, y2-y1, z2-z1);
     }
+    
+    // Draw single flat Quad
+    private static void drawQuad(Matrix4f m, VertexConsumer v, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float r, float g, float b, float a, int l) {
+        v.vertex(m, x1, y1, z1).color(r, g, b, a).light(l);
+        v.vertex(m, x2, y2, z2).color(r, g, b, a).light(l);
+        v.vertex(m, x3, y3, z3).color(r, g, b, a).light(l);
+        v.vertex(m, x4, y4, z4).color(r, g, b, a).light(l);
+    }
+
+    // Draw proper 3D Box (6 faces) for the Dragon Head
+    private static void draw3DBox(Matrix4f m, VertexConsumer v, float x, float y, float z, float size, float r, float g, float b, float a, int l) {
+        float h = size / 2f;
+        drawQuad(m, v, x-h, y-h, z-h, x+h, y-h, z-h, x+h, y+h, z-h, x-h, y+h, z-h, r, g, b, a, l); // Front
+        drawQuad(m, v, x-h, y-h, z+h, x+h, y-h, z+h, x+h, y+h, z+h, x-h, y+h, z+h, r*0.8f, g*0.8f, b*0.8f, a, l); // Back
+        drawQuad(m, v, x-h, y-h, z-h, x-h, y-h, z+h, x-h, y+h, z+h, x-h, y+h, z-h, r*0.9f, g*0.9f, b*0.9f, a, l); // Left
+        drawQuad(m, v, x+h, y-h, z-h, x+h, y-h, z+h, x+h, y+h, z+h, x+h, y+h, z-h, r*0.9f, g*0.9f, b*0.9f, a, l); // Right
+        drawQuad(m, v, x-h, y+h, z-h, x+h, y+h, z-h, x+h, y+h, z+h, x-h, y+h, z+h, r*1.2f, Math.min(1f, g*1.2f), Math.min(1f, b*1.2f), a, l); // Top
+        drawQuad(m, v, x-h, y-h, z-h, x+h, y-h, z-h, x+h, y-h, z+h, x-h, y-h, z+h, r*0.5f, g*0.5f, b*0.5f, a, l); // Bottom
+    }
+
     private static void drawTextureQuad(Matrix4f m, VertexConsumer v, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int l) {
         v.vertex(m, x, y, 0).color(1f, 1f, 1f, 1f).texture(u1, v1).light(l);
         v.vertex(m, x, y+h, 0).color(1f, 1f, 1f, 1f).texture(u1, v2).light(l);
@@ -207,11 +265,6 @@ public class Indicator3D {
     }
     private static void drawColorQuad(Matrix4f m, VertexConsumer v, float x, float y, float w, float h, int c, int l) {
         float a = (c >> 24 & 255) / 255.0F, r = (c >> 16 & 255) / 255.0F, g = (c >> 8 & 255) / 255.0F, b = (c & 255) / 255.0F;
-        v.vertex(m, x, y, 0).color(r, g, b, a).light(l); v.vertex(m, x, y+h, 0).color(r, g, b, a).light(l);
-        v.vertex(m, x+w, y+h, 0).color(r, g, b, a).light(l); v.vertex(m, x+w, y, 0).color(r, g, b, a).light(l);
+        drawQuad(m, v, x, y, 0, x, y+h, 0, x+w, y+h, 0, x+w, y, 0, r, g, b, a, l);
     }
-    private static void drawBox(Matrix4f m, VertexConsumer v, float x1, float y1, float z1, float x2, float y2, float z2, float r, float g, float b, float a, int l) {
-        v.vertex(m, x1, y1, z1).color(r, g, b, a).light(l); v.vertex(m, x1, y2, z1).color(r, g, b, a).light(l); 
-        v.vertex(m, x2, y2, z1).color(r, g, b, a).light(l); v.vertex(m, x2, y1, z1).color(r, g, b, a).light(l);
-    }
-            }
+                                 }
