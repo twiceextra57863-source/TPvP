@@ -6,6 +6,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.item.ItemStack;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -24,15 +25,17 @@ public class ArmorHud implements HudRenderCallback {
         int screenH = client.getWindow().getScaledHeight();
         
         boolean flipX = ModConfig.armorX > (screenW / 2);
-        boolean flipY = ModConfig.armorY > (screenH - 50);
+        boolean flipY = ModConfig.armorY > (screenH - 60);
 
         List<ItemStack> armorList = new ArrayList<>();
         client.player.getArmorItems().forEach(armorList::add);
-        Collections.reverse(armorList); // Order: Helmet -> Chest -> Legs -> Boots
+        Collections.reverse(armorList);
 
         int xOffset = 0;
         int yOffset = 0;
-        int spacing = 20;
+        // FIX: Spacing badha di gayi hai taaki overlap na ho
+        int vSpace = 22; 
+        int hSpace = 32; 
 
         for (ItemStack item : armorList) {
             if (item.isEmpty()) continue;
@@ -70,8 +73,8 @@ public class ArmorHud implements HudRenderCallback {
                 context.drawTextWithShadow(client.textRenderer, text, textX + shakeX, textY + shakeY, color);
             }
 
-            if (ModConfig.armorVertical) yOffset += spacing;
-            else xOffset += spacing;
+            if (ModConfig.armorVertical) yOffset += vSpace;
+            else xOffset += hSpace;
         }
         context.getMatrices().pop();
     }
