@@ -1,6 +1,7 @@
 package com.tpvp.config;
 
 public class ModConfig {
+    // Combat Features
     public static boolean indicatorEnabled = true;
     public static int indicatorStyle = 1; 
     public static boolean hitboxEnabled = true;
@@ -22,12 +23,14 @@ public class ModConfig {
     public static int radarY = 30;
     public static float radarScale = 1.0f;
 
+    // Custom Item Box
     public static int heldItemX = 50;
     public static int heldItemY = 50;
     public static float heldItemScale = 1.0f;
 
-    // Target System
+    // Target System (YAHI MISSING THA!)
     public static String taggedPlayerName = "";
+    public static int targetMode = 0; // Ye line tumhare error ko solve karegi
 
     public static void load() {}
     public static void save() {}
