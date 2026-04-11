@@ -3,21 +3,17 @@ package com.tpvp.gui;
 import com.tpvp.config.ModConfig;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 public class TPvPDashboardScreen extends Screen {
     private final Screen parent;
     private String currentTab = "Combat";
-    
-    // Scrollbar Logic
     private int scrollOffset = 0;
     private boolean isDraggingScroll = false;
 
@@ -29,128 +25,150 @@ public class TPvPDashboardScreen extends Screen {
         super(Text.literal("TPvP Dashboard"));
         this.parent = parent;
     }
-
-    public TPvPDashboardScreen() {
-        this(null);
-    }
+    public TPvPDashboardScreen() { this(null); }
 
     @Override
-    protected void init() {
-        this.clearChildren();
+    public void render(DrawContext context, int mx, int my, float delta) {
+        context.fill(0, 0, this.width, this.height, 0xDD050000); 
+
         int winX = (this.width - winW) / 2;
         int winY = (this.height - winH) / 2;
-        int setX = winX + sideW + 15;
 
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("⚔ Combat"), b -> { currentTab = "Combat"; this.init(); }).dimensions(winX+5, winY+40, sideW-10, 20).build());
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("🎯 Crosshair"), b -> { currentTab = "Crosshair"; this.init(); }).dimensions(winX+5, winY+65, sideW-10, 20).build());
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("💀 Targets"), b -> { currentTab = "Targets"; this.init(); }).dimensions(winX+5, winY+90, sideW-10, 20).build());
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("🛠 Edit HUD"), b -> this.client.setScreen(new EditHudScreen(this))).dimensions(winX+5, winY+115, sideW-10, 20).build());
+        // RED GLASS THEME BACKGROUND
+        context.fill(winX - 2, winY - 2, winX + winW + 2, winY + winH + 2, 0xFFFF2222); 
+        context.fillGradient(winX, winY, winX + winW, winY + winH, 0xEE440000, 0xFF110000); 
+        context.fill(winX, winY, winX + sideW, winY + winH, 0xAA220000); 
+        
+        // ANIMATED SHINE EFFECT
+        long time = System.currentTimeMillis();
+        int shineX = winX + (int) ((time / 3) % (winW * 2)) - winW;
+        context.fillGradient(shineX, winY, shineX + 40, winY + winH, 0x00FFFFFF, 0x22FFFFFF);
 
+        context.drawCenteredTextWithShadow(this.textRenderer, "§c§lTPvP CLIENT", winX + sideW / 2, winY + 15, 0xFFFFFF);
+
+        // CUSTOM TABS RENDERING
+        drawTab(context, "Combat", winX, winY + 40, mx, my);
+        drawTab(context, "Crosshair", winX, winY + 65, mx, my);
+        drawTab(context, "Targets", winX, winY + 90, mx, my);
+        drawTab(context, "Edit HUD", winX, winY + 115, mx, my);
+
+        int setX = winX + sideW + 20;
+        int setY = winY + 40;
+
+        // CUSTOM SWITCHES & SETTINGS
         if (currentTab.equals("Combat")) {
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("Armor Align: " + (ModConfig.armorVertical ? "Vertical" : "Horizontal")), b -> { ModConfig.armorVertical = !ModConfig.armorVertical; this.init(); }).dimensions(setX, winY+40, 140, 20).build());
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("Hitboxes: " + (ModConfig.hitboxEnabled ? "ON" : "OFF")), b -> { ModConfig.hitboxEnabled = !ModConfig.hitboxEnabled; this.init(); }).dimensions(setX+150, winY+40, 140, 20).build());
+            drawToggle(context, "Hitboxes", setX, setY, ModConfig.hitboxEnabled, mx, my);
+            drawToggle(context, "3D Indicator", setX + 150, setY, ModConfig.indicatorEnabled, mx, my);
+            drawToggle(context, "Armor Align (Vert)", setX, setY + 30, ModConfig.armorVertical, mx, my);
             
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("Indicator: " + (ModConfig.indicatorEnabled ? "ON" : "OFF")), b -> { ModConfig.indicatorEnabled = !ModConfig.indicatorEnabled; this.init(); }).dimensions(setX, winY+70, 140, 20).build());
-            String[] styles = {"Heart Style", "Bar Style", "Head + Hits"};
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: " + styles[ModConfig.indicatorStyle]), b -> { ModConfig.indicatorStyle = (ModConfig.indicatorStyle + 1) % 3; this.init(); }).dimensions(setX+150, winY+70, 140, 20).build());
+            context.drawTextWithShadow(this.textRenderer, "Indicator Style: §e" + ModConfig.indicatorStyle, setX, setY + 60, 0xFFFFFF);
+            context.fill(setX, setY + 70, setX + 100, setY + 85, 0xFF550000);
+            context.drawCenteredTextWithShadow(this.textRenderer, "Change Style", setX + 50, setY + 74, 0xFFFFFF);
         
         } else if (currentTab.equals("Crosshair")) {
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("Smart Crosshair: " + (ModConfig.smartCrosshair ? "ON" : "OFF")), b -> { ModConfig.smartCrosshair = !ModConfig.smartCrosshair; this.init(); }).dimensions(setX, winY+40, 140, 20).build());
-            String[] crossStyles = {"Pro Plus", "Hollow Dot", "Pro Angle"};
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: " + crossStyles[ModConfig.crosshairStyle]), b -> { ModConfig.crosshairStyle = (ModConfig.crosshairStyle + 1) % 3; this.init(); }).dimensions(setX+150, winY+40, 140, 20).build());
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("Size: " + String.format("%.1fx", ModConfig.crosshairSize)), b -> { ModConfig.crosshairSize += 0.5f; if(ModConfig.crosshairSize > 3.0f) ModConfig.crosshairSize = 0.5f; this.init(); }).dimensions(setX, winY+70, 140, 20).build());
+            drawToggle(context, "Smart Crosshair", setX, setY, ModConfig.smartCrosshair, mx, my);
+            
+            context.drawTextWithShadow(this.textRenderer, "Style: §e" + ModConfig.crosshairStyle, setX, setY + 30, 0xFFFFFF);
+            context.fill(setX, setY + 40, setX + 80, setY + 55, 0xFF550000);
+            context.drawCenteredTextWithShadow(this.textRenderer, "Change", setX + 40, setY + 44, 0xFFFFFF);
+            
+            context.drawTextWithShadow(this.textRenderer, "Size: " + ModConfig.crosshairSize, setX + 100, setY + 30, 0xFFFFFF);
+            context.fill(setX + 100, setY + 40, setX + 140, setY + 55, 0xFF550000);
+            context.drawCenteredTextWithShadow(this.textRenderer, "Add", setX + 120, setY + 44, 0xFFFFFF);
         
         } else if (currentTab.equals("Targets")) {
-            // Auto Track Toggle
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("Auto-Track Low HP: " + (ModConfig.autoTrack ? "§aON" : "§cOFF")), b -> { ModConfig.autoTrack = !ModConfig.autoTrack; this.init(); }).dimensions(setX, winY+10, 160, 20).build());
-        }
-    }
+            drawToggle(context, "Auto-Track Low HP", setX, winY + 10, ModConfig.autoTrack, mx, my);
+            drawToggle(context, "Dragon Aura", setX + 150, winY + 10, ModConfig.dragonAuraEnabled, mx, my);
 
-    @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.fill(0, 0, this.width, this.height, 0xCC050000); 
-
-        int winX = (this.width - winW) / 2;
-        int winY = (this.height - winH) / 2;
-
-        // RED GLASS THEME
-        context.fill(winX - 2, winY - 2, winX + winW + 2, winY + winH + 2, 0xFFFF3333); // Red Border
-        context.fillGradient(winX, winY, winX + winW, winY + winH, 0xDD330000, 0xEE110000); // Dark Red Glass Inside
-        context.fillGradient(winX, winY, winX + winW, winY + 60, 0x44FFFFFF, 0x00FFFFFF); // Glass Shine Reflection
-        context.fill(winX, winY, winX + sideW, winY + winH, 0xAA220000); // Sidebar Darker
-        
-        context.drawCenteredTextWithShadow(this.textRenderer, "§c§lTPvP CLIENT", winX + sideW / 2, winY + 15, 0xFFFFFF);
-        
-        int setX = winX + sideW + 15;
-
-        // TARGETS MENU
-        if (currentTab.equals("Targets")) {
+            // Targets Menu (Scrollable)
             if (this.client != null && this.client.getNetworkHandler() != null) {
-                Collection<PlayerListEntry> allPlayers = this.client.getNetworkHandler().getPlayerList();
-                List<PlayerListEntry> players = new ArrayList<>(allPlayers);
-                
+                List<PlayerListEntry> players = new ArrayList<>(this.client.getNetworkHandler().getPlayerList());
                 int listY = winY + 40;
-                int maxVisible = 4; // Because body is big
-
                 for (int i = 0; i < players.size(); i++) {
-                    if (i >= scrollOffset && i < scrollOffset + maxVisible) {
+                    if (i >= scrollOffset && i < scrollOffset + 4) {
                         PlayerListEntry p = players.get(i);
                         String pName = p.getProfile().getName();
                         boolean isTagged = ModConfig.taggedPlayerName.equals(pName) && !ModConfig.autoTrack;
                         
-                        context.fill(setX, listY, setX + 280, listY + 50, isTagged ? 0xAAFF3333 : 0x55000000);
+                        context.fill(setX, listY, setX + 280, listY + 50, isTagged ? 0xAAFF2222 : 0x55000000);
                         
-                        // FULL 2D BODY RENDERER (Skin Mapping)
                         Identifier skin = p.getSkinTextures().texture();
-                        int bx = setX + 10, by = listY + 5;
                         context.getMatrices().push();
-                        context.getMatrices().translate(bx, by, 0);
+                        context.getMatrices().translate(setX + 10, listY + 5, 0);
                         context.getMatrices().scale(1.2f, 1.2f, 1.0f);
-                        // Head
-                        context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 0, 8f, 8f, 8, 8, 64, 64);
-                        // Body
-                        context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 8, 20f, 20f, 8, 12, 64, 64);
-                        // Arms
-                        context.drawTexture(RenderLayer::getGuiTextured, skin, 0, 8, 44f, 20f, 4, 12, 64, 64);
-                        context.drawTexture(RenderLayer::getGuiTextured, skin, 12, 8, 32f, 52f, 4, 12, 64, 64);
-                        // Legs
-                        context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 20, 0f, 20f, 4, 12, 64, 64);
-                        context.drawTexture(RenderLayer::getGuiTextured, skin, 8, 20, 16f, 52f, 4, 12, 64, 64);
+                        context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 0, 8f, 8f, 8, 8, 64, 64); // Head
+                        context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 8, 20f, 20f, 8, 12, 64, 64); // Body
                         context.getMatrices().pop();
                         
                         context.drawTextWithShadow(this.textRenderer, isTagged ? "§c§l" + pName : "§f" + pName, setX + 50, listY + 20, 0xFFFFFF);
-                        
                         listY += 55;
                     }
                 }
-
-                // Drag Scrollbar
-                if (players.size() > maxVisible) {
-                    context.fill(setX + 290, winY + 40, setX + 295, winY + 245, 0x55000000); 
-                    int trackHeight = 205;
-                    int thumbH = Math.max(20, trackHeight / (players.size() - maxVisible + 1));
-                    int maxScroll = Math.max(1, players.size() - maxVisible);
-                    int thumbY = winY + 40 + (scrollOffset * (trackHeight - thumbH) / maxScroll);
-                    context.fill(setX + 290, thumbY, setX + 295, thumbY + thumbH, 0xFFFF3333); 
+                if (players.size() > 4) {
+                    context.fill(setX + 290, winY + 40, setX + 295, winY + 245, 0x55000000);
+                    int thumbH = Math.max(20, 205 / (players.size() - 3));
+                    int thumbY = winY + 40 + (scrollOffset * (205 - thumbH) / Math.max(1, players.size() - 4));
+                    context.fill(setX + 290, thumbY, setX + 295, thumbY + thumbH, 0xFFFF2222);
                 }
             }
         }
+        super.render(context, mx, my, delta);
+    }
 
-        super.render(context, mouseX, mouseY, delta);
+    // Custom Tab Drawer
+    private void drawTab(DrawContext context, String name, int x, int y, int mx, int my) {
+        boolean selected = currentTab.equals(name);
+        boolean hovered = mx >= x && mx <= x + sideW && my >= y && my <= y + 20;
+        if (selected) {
+            context.fill(x, y, x + sideW, y + 20, 0x55FF0000);
+            context.fill(x, y, x + 3, y + 20, 0xFFFF0000);
+        } else if (hovered) {
+            context.fill(x, y, x + sideW, y + 20, 0x22FFFFFF);
+        }
+        context.drawTextWithShadow(this.textRenderer, name, x + 15, y + 6, selected ? 0xFF5555 : 0xAAAAAA);
+    }
+
+    // Custom Switch Drawer
+    private void drawToggle(DrawContext context, String label, int x, int y, boolean value, int mx, int my) {
+        context.drawTextWithShadow(this.textRenderer, label, x, y + 2, 0xFFFFFF);
+        int sx = x + 100;
+        context.fill(sx, y, sx + 30, y + 12, value ? 0xFFCC0000 : 0xFF333333); // Pill bg
+        if (value) context.fill(sx + 18, y + 1, sx + 29, y + 11, 0xFFFFFFFF); // Knob ON
+        else context.fill(sx + 1, y + 1, sx + 12, y + 11, 0xFFAAAAAA); // Knob OFF
     }
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         int winX = (this.width - winW) / 2;
         int winY = (this.height - winH) / 2;
-        int setX = winX + sideW + 15;
+        
+        // Tab Clicks
+        if (mx >= winX && mx <= winX + sideW) {
+            if (my >= winY+40 && my <= winY+60) currentTab = "Combat";
+            else if (my >= winY+65 && my <= winY+85) currentTab = "Crosshair";
+            else if (my >= winY+90 && my <= winY+110) currentTab = "Targets";
+            else if (my >= winY+115 && my <= winY+135) this.client.setScreen(new EditHudScreen(this));
+            return true;
+        }
 
-        if (currentTab.equals("Targets")) {
-            // Scrollbar Track Click
-            if (mx >= setX + 290 && mx <= setX + 295 && my >= winY + 40 && my <= winY + 245) {
-                isDraggingScroll = true;
-                return true;
+        int setX = winX + sideW + 20;
+        int setY = winY + 40;
+
+        // Switch Clicks
+        if (currentTab.equals("Combat")) {
+            if (mx >= setX+100 && mx <= setX+130 && my >= setY && my <= setY+12) ModConfig.hitboxEnabled = !ModConfig.hitboxEnabled;
+            if (mx >= setX+250 && mx <= setX+280 && my >= setY && my <= setY+12) ModConfig.indicatorEnabled = !ModConfig.indicatorEnabled;
+            if (mx >= setX+100 && mx <= setX+130 && my >= setY+30 && my <= setY+42) ModConfig.armorVertical = !ModConfig.armorVertical;
+            if (mx >= setX && mx <= setX+100 && my >= setY+70 && my <= setY+85) ModConfig.indicatorStyle = (ModConfig.indicatorStyle + 1) % 3;
+        } else if (currentTab.equals("Crosshair")) {
+            if (mx >= setX+100 && mx <= setX+130 && my >= setY && my <= setY+12) ModConfig.smartCrosshair = !ModConfig.smartCrosshair;
+            if (mx >= setX && mx <= setX+80 && my >= setY+40 && my <= setY+55) ModConfig.crosshairStyle = (ModConfig.crosshairStyle + 1) % 3;
+            if (mx >= setX+100 && mx <= setX+140 && my >= setY+40 && my <= setY+55) {
+                ModConfig.crosshairSize += 0.5f; if (ModConfig.crosshairSize > 3.0f) ModConfig.crosshairSize = 0.5f;
             }
+        } else if (currentTab.equals("Targets")) {
+            if (mx >= setX+100 && mx <= setX+130 && my >= winY+10 && my <= winY+22) ModConfig.autoTrack = !ModConfig.autoTrack;
+            if (mx >= setX+250 && mx <= setX+280 && my >= winY+10 && my <= winY+22) ModConfig.dragonAuraEnabled = !ModConfig.dragonAuraEnabled;
 
             if (this.client != null && this.client.getNetworkHandler() != null) {
                 List<PlayerListEntry> players = new ArrayList<>(this.client.getNetworkHandler().getPlayerList());
@@ -172,38 +190,11 @@ public class TPvPDashboardScreen extends Screen {
     }
 
     @Override
-    public boolean mouseDragged(double mx, double my, int button, double dX, double dY) {
-        if (isDraggingScroll && currentTab.equals("Targets") && this.client != null && this.client.getNetworkHandler() != null) {
-            int players = this.client.getNetworkHandler().getPlayerList().size();
-            int maxVisible = 4;
-            if (players > maxVisible) {
-                int winY = (this.height - winH) / 2;
-                int trackHeight = 205;
-                float percentage = (float) (my - (winY + 40)) / trackHeight;
-                percentage = Math.max(0, Math.min(1, percentage));
-                scrollOffset = Math.round(percentage * (players - maxVisible));
-            }
-            return true;
-        }
-        return super.mouseDragged(mx, my, button, dX, dY);
-    }
-
-    @Override
-    public boolean mouseReleased(double mx, double my, int button) {
-        isDraggingScroll = false;
-        return super.mouseReleased(mx, my, button);
-    }
-
-    @Override
-    public boolean mouseScrolled(double mx, double my, double hAmount, double scroll) {
-        if (currentTab.equals("Targets")) {
-            scrollOffset -= (int) scroll;
-            if (scrollOffset < 0) scrollOffset = 0;
-            return true;
-        }
-        return super.mouseScrolled(mx, my, hAmount, scroll);
+    public boolean mouseScrolled(double mx, double my, double h, double scroll) {
+        if (currentTab.equals("Targets")) { scrollOffset -= (int) scroll; if (scrollOffset < 0) scrollOffset = 0; return true; }
+        return super.mouseScrolled(mx, my, h, scroll);
     }
 
     @Override
     public void close() { ModConfig.save(); if (this.client != null) this.client.setScreen(this.parent); }
-                            }
+}
