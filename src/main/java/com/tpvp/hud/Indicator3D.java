@@ -10,6 +10,7 @@ import net.minecraft.client.render.*;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
@@ -31,8 +32,10 @@ public class Indicator3D {
         MatrixStack matrices = context.matrixStack();
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
-        for (Entity target : client.world.getEntities()) {
-            if (!(target instanceof PlayerEntity) || target == client.player || target.isInvisible()) continue;
+        for (Entity entity : client.world.getEntities()) {
+            // Sirf asli PlayerEntity ko allow karenge (NPCs aur ArmorStands block)
+            if (!(entity instanceof PlayerEntity target) || target == client.player || target.isInvisible()) continue;
+            
             if (target.distanceTo(client.player) > 64.0) continue;
 
             Vec3d tPos = target.getLerpedPos(tickDelta);
@@ -51,7 +54,6 @@ public class Indicator3D {
                 matrices.scale(-0.1F, -0.1F, 0.1F); // Big Scale
                 
                 Matrix4f mat = matrices.peek().getPositionMatrix();
-                // Draw a giant Red "▼"
                 client.textRenderer.draw("▼", -client.textRenderer.getWidth("▼") / 2f, 0, 0xFFFF0000, true, mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, LightmapTextureManager.MAX_LIGHT_COORDINATE);
                 matrices.pop();
             }
@@ -78,7 +80,7 @@ public class Indicator3D {
             // 3. 3-STYLE INDICATORS (Fixed 2-Names Overlap Bug)
             if (ModConfig.indicatorEnabled && target.distanceTo(client.player) < 32.0) {
                 matrices.push();
-                // Bug fix: Render higher than vanilla nametag (1.2 blocks above instead of 0.8)
+                // Render higher than vanilla nametag (1.2 blocks above instead of 0.8)
                 matrices.translate(x, y + target.getHeight() + 1.2, z); 
                 matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
                 matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
@@ -87,6 +89,7 @@ public class Indicator3D {
                 Matrix4f posMat = matrices.peek().getPositionMatrix();
                 int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
 
+                // FIXED: Direct `target.getHealth()` kaam karega kyunki ab target PlayerEntity hai.
                 float health = target.getHealth(), maxHealth = target.getMaxHealth();
                 float hpPercent = Math.max(0, Math.min(1, health / maxHealth));
 
@@ -112,7 +115,10 @@ public class Indicator3D {
                     String pt = (int)(hpPercent * 100) + "%";
                     client.textRenderer.draw(pt, -client.textRenderer.getWidth(pt) / 2f, -9, 0xFFFFFF, false, posMat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, light);
                 } else if (ModConfig.indicatorStyle == 2) { // STYLE 2: HEAD + HITS
-                    int hitsToKill = (int) Math.ceil(health / Math.max(1.0, client.player.getAttributeValue(net.minecraft.entity.attribute.EntityAttributes.ATTACK_DAMAGE)));
+                    double weaponDamage = client.player.getAttributeValue(EntityAttributes.ATTACK_DAMAGE);
+                    if (weaponDamage <= 0) weaponDamage = 1.0;
+                    int hitsToKill = (int) Math.ceil(health / weaponDamage);
+                    
                     String text = target.getName().getString() + " | Hits: " + hitsToKill;
                     int txtColor = (hpPercent < 0.3f) ? 0xFF0000 : (hpPercent < 0.6f) ? 0xFFFF00 : 0x00FF00;
                     float stX = -client.textRenderer.getWidth(text) / 2f;
@@ -146,4 +152,4 @@ public class Indicator3D {
         v.vertex(m, x+w, y+h, 0).color(r, g, b, a).light(l);
         v.vertex(m, x+w, y, 0).color(r, g, b, a).light(l);
     }
-                        }
+            }
