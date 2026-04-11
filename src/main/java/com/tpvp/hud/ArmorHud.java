@@ -17,7 +17,6 @@ public class ArmorHud implements HudRenderCallback {
         context.getMatrices().translate(ModConfig.armorX, ModConfig.armorY, 0);
         context.getMatrices().scale(ModConfig.armorScale, ModConfig.armorScale, 1.0f);
 
-        // Smart Alignment: Check karna ki HUD screen ke right side me hai ya left me
         int screenWidth = client.getWindow().getScaledWidth();
         boolean isRightSide = ModConfig.armorX > (screenWidth / 2);
         
@@ -26,9 +25,8 @@ public class ArmorHud implements HudRenderCallback {
         for (ItemStack item : client.player.getArmorItems()) {
             if (item.isEmpty()) continue;
 
-            // Item Icon Draw Karna
+            // Sirf Item Draw Hoga (Icon)
             context.drawItem(item, 0, yOffset);
-            context.drawItemInSlot(client.textRenderer, item, 0, yOffset);
 
             // Damage Percentage Nikalna
             int maxDamage = item.getMaxDamage();
@@ -37,11 +35,11 @@ public class ArmorHud implements HudRenderCallback {
                 int percent = 100 - (currentDamage * 100 / maxDamage);
                 String text = percent + "%";
                 
-                int color = 0x00FF00; // Green
-                if (percent < 20) color = 0xFF0000; // Red
-                else if (percent < 50) color = 0xFFFF00; // Yellow
+                int color = 0x00FF00;
+                if (percent < 20) color = 0xFF0000;
+                else if (percent < 50) color = 0xFFFF00;
 
-                // Smart Text System: Right side pe text item ke left me aayega
+                // Smart Text Alignment
                 if (isRightSide) {
                     int textWidth = client.textRenderer.getWidth(text);
                     context.drawTextWithShadow(client.textRenderer, text, -textWidth - 4, yOffset + 4, color);
