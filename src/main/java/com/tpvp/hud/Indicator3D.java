@@ -32,7 +32,6 @@ public class Indicator3D {
         VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
 
         for (Entity target : client.world.getEntities()) {
-            // STRICT FILTER: Sirf asli players, NPCs nahi. (ArmorStands ignore honge)
             if (!(target instanceof PlayerEntity) || target == client.player || target.isInvisible()) continue;
             if (target.distanceTo(client.player) > 64.0) continue;
 
@@ -41,49 +40,110 @@ public class Indicator3D {
             double y = tPos.y - camPos.y;
             double z = tPos.z - camPos.z;
 
-            // --- TARGET ARROW (Bouncing & Rotating) ---
+            // 1. GIANT BOUNCING TARGET ARROW
             if (target.getName().getString().equals(ModConfig.taggedPlayerName)) {
                 matrices.push();
-                // Bouncing math
-                double bounce = Math.sin(System.currentTimeMillis() / 150.0) * 0.15;
-                matrices.translate(x, y + target.getHeight() + 1.2 + bounce, z);
+                double bounce = Math.sin(System.currentTimeMillis() / 150.0) * 0.2;
+                matrices.translate(x, y + target.getHeight() + 1.8 + bounce, z); // Way above head
                 
-                // Rotating math
-                float rot = (System.currentTimeMillis() % 3600) / 10.0f;
-                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(rot));
+                matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
+                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
+                matrices.scale(-0.1F, -0.1F, 0.1F); // Big Scale
                 
-                matrices.scale(0.3f, 0.3f, 0.3f);
                 Matrix4f mat = matrices.peek().getPositionMatrix();
-                VertexConsumer triBuffer = immediate.getBuffer(RenderLayer.getGui()); // Solid color layer
-                
-                // Draw 3D Triangle pointing down (Red Color)
-                float r=1f, g=0.2f, b=0.2f, a=1f;
-                triBuffer.vertex(mat, 0, -1, 0).color(r,g,b,a).light(15728880);
-                triBuffer.vertex(mat, -0.5f, 0, -0.5f).color(r,g,b,a).light(15728880);
-                triBuffer.vertex(mat, 0.5f, 0, -0.5f).color(r,g,b,a).light(15728880);
-
-                triBuffer.vertex(mat, 0, -1, 0).color(r,g,b,a).light(15728880);
-                triBuffer.vertex(mat, 0.5f, 0, 0.5f).color(r,g,b,a).light(15728880);
-                triBuffer.vertex(mat, -0.5f, 0, 0.5f).color(r,g,b,a).light(15728880);
+                // Draw a giant Red "▼"
+                client.textRenderer.draw("▼", -client.textRenderer.getWidth("▼") / 2f, 0, 0xFFFF0000, true, mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, LightmapTextureManager.MAX_LIGHT_COORDINATE);
                 matrices.pop();
             }
 
-            // --- STANDARD HITBOX & INDICATOR LOGIC HERE (Same as previous) ---
+            // 2. HITBOX RENDERING
+            if (ModConfig.hitboxEnabled) {
+                matrices.push();
+                matrices.translate(x, y, z);
+                VertexConsumer lineBuffer = immediate.getBuffer(RenderLayer.getLines());
+                Matrix4f matrix = matrices.peek().getPositionMatrix();
+                float w = target.getWidth() / 2.0f;
+                float h = target.getHeight();
+                float r = 1f, g = 0f, b = 0f, a = 1f; // Red Hitbox
+                
+                drawLine(matrix, lineBuffer, -w, 0, -w, w, 0, -w, r, g, b, a); drawLine(matrix, lineBuffer, w, 0, -w, w, 0, w, r, g, b, a);
+                drawLine(matrix, lineBuffer, w, 0, w, -w, 0, w, r, g, b, a); drawLine(matrix, lineBuffer, -w, 0, w, -w, 0, -w, r, g, b, a);
+                drawLine(matrix, lineBuffer, -w, h, -w, w, h, -w, r, g, b, a); drawLine(matrix, lineBuffer, w, h, -w, w, h, w, r, g, b, a);
+                drawLine(matrix, lineBuffer, w, h, w, -w, h, w, r, g, b, a); drawLine(matrix, lineBuffer, -w, h, w, -w, h, -w, r, g, b, a);
+                drawLine(matrix, lineBuffer, -w, 0, -w, -w, h, -w, r, g, b, a); drawLine(matrix, lineBuffer, w, 0, -w, w, h, -w, r, g, b, a);
+                drawLine(matrix, lineBuffer, w, 0, w, w, h, w, r, g, b, a); drawLine(matrix, lineBuffer, -w, 0, w, -w, h, w, r, g, b, a);
+                matrices.pop();
+            }
+
+            // 3. 3-STYLE INDICATORS (Fixed 2-Names Overlap Bug)
             if (ModConfig.indicatorEnabled && target.distanceTo(client.player) < 32.0) {
                 matrices.push();
-                matrices.translate(x, y + target.getHeight() + 0.8, z);
+                // Bug fix: Render higher than vanilla nametag (1.2 blocks above instead of 0.8)
+                matrices.translate(x, y + target.getHeight() + 1.2, z); 
                 matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw()));
                 matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch()));
                 matrices.scale(-0.025F, -0.025F, 0.025F);
 
-                Matrix4f positionMatrix = matrices.peek().getPositionMatrix();
+                Matrix4f posMat = matrices.peek().getPositionMatrix();
                 int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
-                String text = target.getName().getString();
-                
-                client.textRenderer.draw(text, -client.textRenderer.getWidth(text) / 2f, 0, 0xFFFFFF, false, positionMatrix, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x40000000, light);
+
+                float health = target.getHealth(), maxHealth = target.getMaxHealth();
+                float hpPercent = Math.max(0, Math.min(1, health / maxHealth));
+
+                if (ModConfig.indicatorStyle == 0) { // STYLE 0: HEARTS
+                    int tH = (int) Math.ceil(Math.max(maxHealth, health) / 2.0f);
+                    Sprite fH = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/full"));
+                    Sprite hH = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/half"));
+                    Sprite eH = client.getGuiAtlasManager().getSprite(Identifier.ofVanilla("hud/heart/container"));
+                    VertexConsumer hc = immediate.getBuffer(RenderLayer.getTextSeeThrough(fH.getAtlasId()));
+                    float stX = -(tH * 9f) / 2f;
+                    for (int i = 0; i < tH; i++) {
+                        drawTextureQuad(posMat, hc, stX + (i*9), 0, 9, 9, eH.getMinU(), eH.getMinV(), eH.getMaxU(), eH.getMaxV(), light);
+                        if (health >= (i*2)+2) drawTextureQuad(posMat, hc, stX + (i*9), 0, 9, 9, fH.getMinU(), fH.getMinV(), fH.getMaxU(), fH.getMaxV(), light);
+                        else if (health > (i*2)) drawTextureQuad(posMat, hc, stX + (i*9), 0, 9, 9, hH.getMinU(), hH.getMinV(), hH.getMaxU(), hH.getMaxV(), light);
+                    }
+                } else if (ModConfig.indicatorStyle == 1) { // STYLE 1: BAR
+                    VertexConsumer bc = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
+                    float cW = 50f * hpPercent;
+                    int bC = (hpPercent < 0.3f) ? 0xFFFF3333 : (hpPercent < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00;
+                    drawColorQuad(posMat, bc, -26, 0, 52, 7, 0xFF000000, light); // Border
+                    drawColorQuad(posMat, bc, -25, 1, 50, 5, 0xFF333333, light); // BG
+                    if (cW > 0) drawColorQuad(posMat, bc, -25, 1, cW, 5, bC, light); // Fill
+                    String pt = (int)(hpPercent * 100) + "%";
+                    client.textRenderer.draw(pt, -client.textRenderer.getWidth(pt) / 2f, -9, 0xFFFFFF, false, posMat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, light);
+                } else if (ModConfig.indicatorStyle == 2) { // STYLE 2: HEAD + HITS
+                    int hitsToKill = (int) Math.ceil(health / Math.max(1.0, client.player.getAttributeValue(net.minecraft.entity.attribute.EntityAttributes.ATTACK_DAMAGE)));
+                    String text = target.getName().getString() + " | Hits: " + hitsToKill;
+                    int txtColor = (hpPercent < 0.3f) ? 0xFF0000 : (hpPercent < 0.6f) ? 0xFFFF00 : 0x00FF00;
+                    float stX = -client.textRenderer.getWidth(text) / 2f;
+                    
+                    if (target instanceof AbstractClientPlayerEntity pt) {
+                        VertexConsumer hc = immediate.getBuffer(RenderLayer.getTextSeeThrough(pt.getSkinTextures().texture()));
+                        drawTextureQuad(posMat, hc, stX - 12, -1, 10, 10, 8f/64f, 8f/64f, 16f/64f, 16f/64f, light);
+                    }
+                    client.textRenderer.draw(text, stX, 0, txtColor, false, posMat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x40000000, light);
+                }
                 matrices.pop();
             }
         }
         immediate.draw();
     }
-}
+
+    private static void drawLine(Matrix4f m, VertexConsumer v, float x1, float y1, float z1, float x2, float y2, float z2, float r, float g, float b, float a) {
+        v.vertex(m, x1, y1, z1).color(r, g, b, a).normal(x2-x1, y2-y1, z2-z1);
+        v.vertex(m, x2, y2, z2).color(r, g, b, a).normal(x2-x1, y2-y1, z2-z1);
+    }
+    private static void drawTextureQuad(Matrix4f m, VertexConsumer v, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int l) {
+        v.vertex(m, x, y, 0).color(1f, 1f, 1f, 1f).texture(u1, v1).light(l);
+        v.vertex(m, x, y+h, 0).color(1f, 1f, 1f, 1f).texture(u1, v2).light(l);
+        v.vertex(m, x+w, y+h, 0).color(1f, 1f, 1f, 1f).texture(u2, v2).light(l);
+        v.vertex(m, x+w, y, 0).color(1f, 1f, 1f, 1f).texture(u2, v1).light(l);
+    }
+    private static void drawColorQuad(Matrix4f m, VertexConsumer v, float x, float y, float w, float h, int c, int l) {
+        float a = (c >> 24 & 255) / 255.0F, r = (c >> 16 & 255) / 255.0F, g = (c >> 8 & 255) / 255.0F, b = (c & 255) / 255.0F;
+        v.vertex(m, x, y, 0).color(r, g, b, a).light(l);
+        v.vertex(m, x, y+h, 0).color(r, g, b, a).light(l);
+        v.vertex(m, x+w, y+h, 0).color(r, g, b, a).light(l);
+        v.vertex(m, x+w, y, 0).color(r, g, b, a).light(l);
+    }
+                        }
