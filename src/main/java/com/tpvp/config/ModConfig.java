@@ -10,7 +10,7 @@ public class ModConfig {
     // Radar Feature
     public static boolean nearbyEnabled = true;
 
-    // HUD Positioning (Draggable System)
+    // HUD Positioning
     public static int heldItemX = 50;
     public static int heldItemY = 50;
     public static float heldItemScale = 1.0f;
@@ -22,6 +22,10 @@ public class ModConfig {
     public static int radarX = 10;
     public static int radarY = 30;
     public static float radarScale = 1.0f;
+
+    // --- YE DO VARIABLES MISSING THE (Target Screen ke liye) ---
+    public static String taggedPlayerName = "";
+    public static int targetMode = 0; 
 
     public static void load() {}
     public static void save() {}
