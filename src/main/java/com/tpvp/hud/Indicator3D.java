@@ -94,7 +94,8 @@ public class Indicator3D {
                 matrices.scale(-0.5F, -0.5F, 0.5F); // Scale down slightly
                 
                 Matrix4f mat = matrices.peek().getPositionMatrix();
-                VertexConsumer soulBuffer = immediate.getBuffer(RenderLayer.getEntityTranslucentCull(soul.skin));
+                // FIX: getEntityTranslucentCull ki jagah getEntityTranslucent use kiya hai (1.21.2+ Mappings)
+                VertexConsumer soulBuffer = immediate.getBuffer(RenderLayer.getEntityTranslucent(soul.skin));
                 
                 // Draw Full 2D Player Body for the Soul
                 int l = LightmapTextureManager.MAX_LIGHT_COORDINATE;
@@ -352,4 +353,4 @@ public class Indicator3D {
         float a=(c>>24&255)/255.0F, r=(c>>16&255)/255.0F, g=(c>>8&255)/255.0F, b=(c&255)/255.0F;
         drawQuad(m, v, x, y, 0, x, y+h, 0, x+w, y+h, 0, x+w, y, 0, r, g, b, a, l);
     }
-                         }
+                            }
