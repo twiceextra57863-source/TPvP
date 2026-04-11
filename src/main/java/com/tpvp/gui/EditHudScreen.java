@@ -7,154 +7,111 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 public class EditHudScreen extends Screen {
-    
-    // Parent screen ko save karne ke liye (Ye tumhara error fix karega)
     private final Screen parent;
-    
-    // Dragging logic ke variables
     private int draggingId = -1;
     private double dragOffsetX = 0;
     private double dragOffsetY = 0;
 
-    // Modified Constructor (Ab ye parent screen accept karega)
     public EditHudScreen(Screen parent) {
-        super(Text.literal("Edit HUD Elements"));
+        super(Text.literal("Edit HUD"));
         this.parent = parent;
     }
 
     @Override
     protected void init() {
         super.init();
-
-        // Bottom Center me 'Save & Exit' Button
         this.addDrawableChild(ButtonWidget.builder(Text.literal("§a✔ Save & Return"), button -> {
             this.close();
-        }).dimensions(this.width / 2 - 105, this.height - 30, 100, 20).build());
-
-        // Bottom Center me 'Reset Defaults' Button
-        this.addDrawableChild(ButtonWidget.builder(Text.literal("§c✖ Reset Defaults"), button -> {
-            ModConfig.heldItemX = 50;
-            ModConfig.heldItemY = 50;
-            ModConfig.heldItemScale = 1.0f;
-            ModConfig.save();
-        }).dimensions(this.width / 2 + 5, this.height - 30, 100, 20).build());
+        }).dimensions(this.width / 2 - 50, this.height - 30, 100, 20).build());
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        // 1. Dark transparent background
         this.renderBackground(context, mouseX, mouseY, delta);
-
-        // 2. Pro Grid Lines for alignment (Premium feel)
+        
+        // Premium Grid System
         int gridSize = 20;
-        for (int i = 0; i < this.width; i += gridSize) {
-            context.fill(i, 0, i + 1, this.height, 0x1AFFFFFF); // Vertical lines
-        }
-        for (int i = 0; i < this.height; i += gridSize) {
-            context.fill(0, i, this.width, i + 1, 0x1AFFFFFF); // Horizontal lines
-        }
+        for (int i = 0; i < this.width; i += gridSize) context.fill(i, 0, i + 1, this.height, 0x1AFFFFFF);
+        for (int i = 0; i < this.height; i += gridSize) context.fill(0, i, this.width, i + 1, 0x1AFFFFFF);
 
-        // 3. Top Instructions Text
-        context.fill(0, 0, this.width, 40, 0x66000000); // Top bar background
-        context.drawCenteredTextWithShadow(this.textRenderer, "§lHUD Editor Mode", this.width / 2, 10, 0xFFFFFF);
-        context.drawCenteredTextWithShadow(this.textRenderer, "§eClick & Drag to move elements. Scroll wheel to scale them.", this.width / 2, 25, 0xAAAAAA);
+        context.drawCenteredTextWithShadow(this.textRenderer, "§eDrag elements to move. Scroll wheel to scale.", this.width / 2, 20, 0xFFFFFF);
 
-        // 4. Render the Mock HUD Element (Held Item / Stats Box)
-        float scale = ModConfig.heldItemScale;
-        int boxWidth = (int) (60 * scale);
-        int boxHeight = (int) (60 * scale);
-        int x = ModConfig.heldItemX;
-        int y = ModConfig.heldItemY;
-
-        // Background Box with borders based on hover state
-        int borderColor = (draggingId == 1 || getHoveredId(mouseX, mouseY) == 1) ? 0xFF00FF00 : 0xFFFFFFFF; // Green border if hovering/dragging
-        context.fill(x - 1, y - 1, x + boxWidth + 1, y + boxHeight + 1, borderColor);
-        context.fill(x, y, x + boxWidth, y + boxHeight, 0x99000000); // Inner Dark Box
-
-        // Mock Data inside the box
+        // 1. Held Item Mockup
+        float itemScale = ModConfig.heldItemScale;
+        int itemColor = (draggingId == 1 || getHoveredId(mouseX, mouseY) == 1) ? 0x6600FF00 : 0x66FFFFFF;
+        context.fill(ModConfig.heldItemX, ModConfig.heldItemY, ModConfig.heldItemX + (int)(60 * itemScale), ModConfig.heldItemY + (int)(60 * itemScale), itemColor);
         context.getMatrices().push();
-        context.getMatrices().translate(x + 5 * scale, y + 5 * scale, 0);
-        context.getMatrices().scale(scale, scale, 1.0f);
-        context.drawTextWithShadow(this.textRenderer, "§b§lITEM", 0, 0, 0xFFFFFF);
-        context.drawTextWithShadow(this.textRenderer, "Scale: " + String.format("%.1fx", scale), 0, 15, 0xAAAAAA);
-        context.drawTextWithShadow(this.textRenderer, "X: " + x, 0, 30, 0xAAAAAA);
-        context.drawTextWithShadow(this.textRenderer, "Y: " + y, 0, 40, 0xAAAAAA);
+        context.getMatrices().translate(ModConfig.heldItemX, ModConfig.heldItemY, 0);
+        context.getMatrices().scale(itemScale, itemScale, 1.0f);
+        context.drawTextWithShadow(this.textRenderer, "Custom Box", 2, 2, 0xFFFFFF);
+        context.getMatrices().pop();
+
+        // 2. Armor HUD Mockup
+        float armorScale = ModConfig.armorScale;
+        int armorColor = (draggingId == 2 || getHoveredId(mouseX, mouseY) == 2) ? 0x6600FF00 : 0x66FFFFFF;
+        context.fill(ModConfig.armorX, ModConfig.armorY, ModConfig.armorX + (int)(60 * armorScale), ModConfig.armorY + (int)(80 * armorScale), armorColor);
+        context.getMatrices().push();
+        context.getMatrices().translate(ModConfig.armorX, ModConfig.armorY, 0);
+        context.getMatrices().scale(armorScale, armorScale, 1.0f);
+        context.drawTextWithShadow(this.textRenderer, "Armor HUD", 2, 2, 0xFFFFFF);
+        context.getMatrices().pop();
+
+        // 3. Radar HUD Mockup
+        float radarScale = ModConfig.radarScale;
+        int radarColor = (draggingId == 3 || getHoveredId(mouseX, mouseY) == 3) ? 0x6600FF00 : 0x66FFFFFF;
+        context.fill(ModConfig.radarX, ModConfig.radarY, ModConfig.radarX + (int)(130 * radarScale), ModConfig.radarY + (int)(80 * radarScale), radarColor);
+        context.getMatrices().push();
+        context.getMatrices().translate(ModConfig.radarX, ModConfig.radarY, 0);
+        context.getMatrices().scale(radarScale, radarScale, 1.0f);
+        context.drawTextWithShadow(this.textRenderer, "Radar HUD", 2, 2, 0xFFFFFF);
         context.getMatrices().pop();
 
         super.render(context, mouseX, mouseY, delta);
     }
 
-    // Helper method to check which element the mouse is hovering over
     private int getHoveredId(double mx, double my) {
-        float scale = ModConfig.heldItemScale;
-        int w = (int) (60 * scale);
-        int h = (int) (60 * scale);
-        int x = ModConfig.heldItemX;
-        int y = ModConfig.heldItemY;
-
-        if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
-            return 1; // ID 1 = Our Held Item Box
-        }
-        return -1; // Nothing hovered
+        if (mx >= ModConfig.heldItemX && mx <= ModConfig.heldItemX + (60 * ModConfig.heldItemScale) && my >= ModConfig.heldItemY && my <= ModConfig.heldItemY + (60 * ModConfig.heldItemScale)) return 1;
+        if (mx >= ModConfig.armorX && mx <= ModConfig.armorX + (60 * ModConfig.armorScale) && my >= ModConfig.armorY && my <= ModConfig.armorY + (80 * ModConfig.armorScale)) return 2;
+        if (mx >= ModConfig.radarX && mx <= ModConfig.radarX + (130 * ModConfig.radarScale) && my >= ModConfig.radarY && my <= ModConfig.radarY + (80 * ModConfig.radarScale)) return 3;
+        return -1;
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        draggingId = getHoveredId(mouseX, mouseY);
-        
-        if (draggingId == 1) {
-            dragOffsetX = mouseX - ModConfig.heldItemX;
-            dragOffsetY = mouseY - ModConfig.heldItemY;
-            return true;
-        }
-        
-        return super.mouseClicked(mouseX, mouseY, button);
+    public boolean mouseClicked(double mx, double my, int button) {
+        draggingId = getHoveredId(mx, my);
+        if (draggingId == 1) { dragOffsetX = mx - ModConfig.heldItemX; dragOffsetY = my - ModConfig.heldItemY; return true; }
+        if (draggingId == 2) { dragOffsetX = mx - ModConfig.armorX; dragOffsetY = my - ModConfig.armorY; return true; }
+        if (draggingId == 3) { dragOffsetX = mx - ModConfig.radarX; dragOffsetY = my - ModConfig.radarY; return true; }
+        return super.mouseClicked(mx, my, button);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (draggingId == 1) {
-            // Screen ke bahar jane se rokne ke liye bounds check
-            int newX = (int) (mouseX - dragOffsetX);
-            int newY = (int) (mouseY - dragOffsetY);
-            
-            // Limit to screen edges
-            ModConfig.heldItemX = Math.max(0, Math.min(newX, this.width - (int)(60 * ModConfig.heldItemScale)));
-            ModConfig.heldItemY = Math.max(0, Math.min(newY, this.height - (int)(60 * ModConfig.heldItemScale)));
-            return true;
-        }
-        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+    public boolean mouseDragged(double mx, double my, int button, double dX, double dY) {
+        if (draggingId == 1) { ModConfig.heldItemX = (int)(mx - dragOffsetX); ModConfig.heldItemY = (int)(my - dragOffsetY); return true; }
+        if (draggingId == 2) { ModConfig.armorX = (int)(mx - dragOffsetX); ModConfig.armorY = (int)(my - dragOffsetY); return true; }
+        if (draggingId == 3) { ModConfig.radarX = (int)(mx - dragOffsetX); ModConfig.radarY = (int)(my - dragOffsetY); return true; }
+        return super.mouseDragged(mx, my, button, dX, dY);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (draggingId != -1) {
-            draggingId = -1;
-            ModConfig.save(); // Save configuration on release
-            return true;
-        }
-        return super.mouseReleased(mouseX, mouseY, button);
+    public boolean mouseReleased(double mx, double my, int button) {
+        draggingId = -1; 
+        ModConfig.save(); 
+        return super.mouseReleased(mx, my, button);
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double scroll) {
-        int hovered = getHoveredId(mouseX, mouseY);
-        if (hovered == 1) {
-            // Scroll to scale (Min 0.5x, Max 3.0x)
-            float newScale = ModConfig.heldItemScale + (float) (scroll * 0.1);
-            ModConfig.heldItemScale = Math.max(0.5f, Math.min(3.0f, newScale));
-            ModConfig.save();
-            return true;
-        }
-        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, scroll);
+    public boolean mouseScrolled(double mx, double my, double hAmount, double scroll) {
+        int id = getHoveredId(mx, my);
+        if (id == 1) ModConfig.heldItemScale = Math.max(0.5f, Math.min(2.0f, ModConfig.heldItemScale + (float)(scroll * 0.1)));
+        if (id == 2) ModConfig.armorScale = Math.max(0.5f, Math.min(2.0f, ModConfig.armorScale + (float)(scroll * 0.1)));
+        if (id == 3) ModConfig.radarScale = Math.max(0.5f, Math.min(2.0f, ModConfig.radarScale + (float)(scroll * 0.1)));
+        return super.mouseScrolled(mx, my, hAmount, scroll);
     }
 
-    // Escape dabane par pichle screen par wapas jane ka system
     @Override
     public void close() {
-        ModConfig.save();
-        if (this.client != null) {
-            this.client.setScreen(this.parent); // Purane menu ko open kar dega
-        }
+        ModConfig.save(); 
+        if (this.client != null) this.client.setScreen(this.parent);
     }
 }
