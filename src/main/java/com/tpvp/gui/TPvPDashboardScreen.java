@@ -174,4 +174,4 @@ public class TPvPDashboardScreen extends Screen {
 
     @Override
     public void close() { ModConfig.save(); if (this.client != null) this.client.setScreen(this.parent); }
-    }
+                        }
