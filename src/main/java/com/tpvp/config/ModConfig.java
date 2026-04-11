@@ -14,6 +14,7 @@ public class ModConfig {
     public static int armorX = 20;
     public static int armorY = 100;
     public static float armorScale = 1.0f;
+    public static int armorCrackThreshold = 20; // NAYA: Kitne % par armor crack animation dikhega
 
     public static int radarX = 10;
     public static int radarY = 30;
@@ -26,8 +27,6 @@ public class ModConfig {
     public static String taggedPlayerName = "";
     public static int targetMode = 0; 
     public static boolean autoTrack = false;
-    
-    // NEW AURA SETTING
     public static boolean dragonAuraEnabled = true;
 
     public static void load() {}
