@@ -1,151 +1,169 @@
 package com.tpvp.gui;
 
 import com.tpvp.config.ModConfig;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
+import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.text.Text;
 
-public class TPvPDashboardScreen extends Screen {
-    private final Screen parent; // Escape menu par wapas jane ke liye
-    private String currentTab = "Combat";
+import java.util.Collection;
 
-    // Menu ke dimensions (Floating Window)
-    private final int windowWidth = 420;
-    private final int windowHeight = 240;
-    private final int sidebarWidth = 130;
+public class TPvPDashboardScreen extends Screen {
+    private final Screen parent;
+    private String currentTab = "Combat";
+    private int scrollOffset = 0;
+
+    private final int winW = 440;
+    private final int winH = 260;
+    private final int sideW = 120;
 
     public TPvPDashboardScreen(Screen parent) {
         super(Text.literal("TPvP Dashboard"));
         this.parent = parent;
     }
 
-    public TPvPDashboardScreen() {
-        this(null); // Agar direct Title Screen se khule
-    }
-
     @Override
     protected void init() {
         this.clearChildren();
+        int winX = (this.width - winW) / 2;
+        int winY = (this.height - winH) / 2;
+        int setX = winX + sideW + 15;
 
-        // Floating window ke coordinates (Screen ke center me)
-        int winX = (this.width - windowWidth) / 2;
-        int winY = (this.height - windowHeight) / 2;
-        
-        int settingsX = winX + sidebarWidth + 15;
-        int settingsY = winY + 40;
+        // TABS
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("⚔ Combat"), b -> { currentTab = "Combat"; this.init(); }).dimensions(winX+5, winY+40, sideW-10, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("🎯 Crosshair"), b -> { currentTab = "Crosshair"; this.init(); }).dimensions(winX+5, winY+65, sideW-10, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("💀 Targets"), b -> { currentTab = "Targets"; this.init(); }).dimensions(winX+5, winY+90, sideW-10, 20).build());
+        this.addDrawableChild(ButtonWidget.builder(Text.literal("🛠 Edit HUD"), b -> this.client.setScreen(new EditHudScreen(this))).dimensions(winX+5, winY+115, sideW-10, 20).build());
 
-        // SETTINGS BUTTONS (Sirf Right Side me show honge)
         if (currentTab.equals("Combat")) {
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("3D Indicator: " + (ModConfig.indicatorEnabled ? "§aON" : "§cOFF")), b -> {
-                ModConfig.indicatorEnabled = !ModConfig.indicatorEnabled; this.init();
-            }).dimensions(settingsX, settingsY, 120, 20).build());
-
-            String[] styles = {"Heart Style", "Bar Style", "Head + Hits"};
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: §e" + styles[ModConfig.indicatorStyle]), b -> {
-                ModConfig.indicatorStyle = (ModConfig.indicatorStyle + 1) % 3; this.init();
-            }).dimensions(settingsX + 130, settingsY, 120, 20).build());
-
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("Smart Crosshair: " + (ModConfig.smartCrosshair ? "§aON" : "§cOFF")), b -> {
-                ModConfig.smartCrosshair = !ModConfig.smartCrosshair; this.init();
-            }).dimensions(settingsX, settingsY + 30, 120, 20).build());
-
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("PvP Hitboxes: " + (ModConfig.hitboxEnabled ? "§aON" : "§cOFF")), b -> {
-                ModConfig.hitboxEnabled = !ModConfig.hitboxEnabled; this.init();
-            }).dimensions(settingsX + 130, settingsY + 30, 120, 20).build());
-
-        } else if (currentTab.equals("Radar")) {
-            this.addDrawableChild(ButtonWidget.builder(Text.literal("Nearby Players: " + (ModConfig.nearbyEnabled ? "§aON" : "§cOFF")), b -> {
-                ModConfig.nearbyEnabled = !ModConfig.nearbyEnabled; this.init();
-            }).dimensions(settingsX, settingsY, 250, 20).build());
+            this.addDrawableChild(ButtonWidget.builder(Text.literal("Armor Align: " + (ModConfig.armorVertical ? "Vertical" : "Horizontal")), b -> { ModConfig.armorVertical = !ModConfig.armorVertical; this.init(); }).dimensions(setX, winY+40, 140, 20).build());
+            this.addDrawableChild(ButtonWidget.builder(Text.literal("Hitboxes: " + (ModConfig.hitboxEnabled ? "ON" : "OFF")), b -> { ModConfig.hitboxEnabled = !ModConfig.hitboxEnabled; this.init(); }).dimensions(setX+150, winY+40, 140, 20).build());
+        
+        } else if (currentTab.equals("Crosshair")) {
+            String[] styles = {"Pro Plus", "Hollow Dot", "Pro Angle"};
+            this.addDrawableChild(ButtonWidget.builder(Text.literal("Style: " + styles[ModConfig.crosshairStyle]), b -> { ModConfig.crosshairStyle = (ModConfig.crosshairStyle + 1) % 3; this.init(); }).dimensions(setX, winY+40, 140, 20).build());
+            this.addDrawableChild(ButtonWidget.builder(Text.literal("Size: " + String.format("%.1fx", ModConfig.crosshairSize)), b -> { 
+                ModConfig.crosshairSize += 0.5f; if(ModConfig.crosshairSize > 3.0f) ModConfig.crosshairSize = 0.5f; this.init(); 
+            }).dimensions(setX+150, winY+40, 140, 20).build());
         }
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        // 1. Dynamic Gradient Background (Puri screen par dark blur jaisa effect)
-        context.fillGradient(0, 0, this.width, this.height, 0xDD000000, 0xAA001133);
+        // FIX FOR TITLE SCREEN OPACITY BUG: Solid background instead of gradient
+        context.fill(0, 0, this.width, this.height, 0xEE111111); 
 
-        int winX = (this.width - windowWidth) / 2;
-        int winY = (this.height - windowHeight) / 2;
+        int winX = (this.width - winW) / 2;
+        int winY = (this.height - winH) / 2;
 
-        // 2. Window Border (Glowing Aqua Line)
-        context.fill(winX - 2, winY - 2, winX + windowWidth + 2, winY + windowHeight + 2, 0xFF00FFAA);
+        context.fill(winX - 2, winY - 2, winX + winW + 2, winY + winH + 2, 0xFF00FFAA); // Border
+        context.fill(winX, winY, winX + winW, winY + winH, 0xFF151515); // Main
+        context.fill(winX, winY, winX + sideW, winY + winH, 0xFF0A0A0A); // Sidebar
         
-        // 3. Main Window Background (Right Side)
-        context.fill(winX, winY, winX + windowWidth, winY + windowHeight, 0xFF151515);
+        context.drawCenteredTextWithShadow(this.textRenderer, "§b§lTPvP CLIENT", winX + sideW / 2, winY + 15, 0xFFFFFF);
         
-        // 4. Sidebar Background (Left Side - Thoda zyada dark)
-        context.fill(winX, winY, winX + sidebarWidth, winY + windowHeight, 0xFF0A0A0A);
-        
-        // 5. Sidebar & Main Area separator line
-        context.fill(winX + sidebarWidth, winY, winX + sidebarWidth + 1, winY + windowHeight, 0x55FFFFFF);
+        int setX = winX + sideW + 15;
 
-        // Header Title
-        context.drawCenteredTextWithShadow(this.textRenderer, "§b§lTPvP CLIENT", winX + sidebarWidth / 2, winY + 15, 0xFFFFFF);
-        
-        // Settings Header
-        context.drawTextWithShadow(this.textRenderer, "§l" + currentTab.toUpperCase() + " SETTINGS", winX + sidebarWidth + 20, winY + 15, 0xFFFFFF);
-        context.fill(winX + sidebarWidth + 20, winY + 28, winX + windowWidth - 20, winY + 29, 0x33FFFFFF); // Underline
+        // LIVE CROSSHAIR PREVIEW
+        if (currentTab.equals("Crosshair")) {
+            context.fill(setX, winY+80, setX + 290, winY + 220, 0xFF000000); // Black Preview Box
+            context.drawCenteredTextWithShadow(this.textRenderer, "Live Preview", setX + 145, winY + 85, 0xAAAAAA);
+            
+            int cx = setX + 145;
+            int cy = winY + 150;
+            float s = ModConfig.crosshairSize;
+            int color = 0xFFFFFFFF;
+            
+            context.getMatrices().push();
+            context.getMatrices().translate(cx, cy, 0);
+            context.getMatrices().scale(s, s, 1.0f);
+            
+            if (ModConfig.crosshairStyle == 0) {
+                context.fill(-1, -6, 1, -2, color); context.fill(-1, 2, 1, 6, color);
+                context.fill(-6, -1, -2, 1, color); context.fill(2, -1, 6, 1, color);
+                context.fill(0, 0, 1, 1, color);
+            } else if (ModConfig.crosshairStyle == 1) {
+                context.fill(-2, -1, 2, 1, color); context.fill(-1, -2, 1, 2, color);
+                context.fill(-1, -1, 1, 1, 0x00000000);
+            } else if (ModConfig.crosshairStyle == 2) {
+                context.fill(-6, -4, -3, -3, color); context.fill(-4, -6, -3, -3, color);
+                context.fill(3, 3, 6, 4, color); context.fill(3, 3, 4, 6, color);
+            }
+            context.getMatrices().pop();
+        }
 
-        // --- CUSTOM TABS RENDERING ---
-        drawCustomTab(context, mouseX, mouseY, "Combat", Items.DIAMOND_SWORD.getDefaultStack(), winX, winY + 40);
-        drawCustomTab(context, mouseX, mouseY, "Radar", Items.COMPASS.getDefaultStack(), winX, winY + 70);
-        drawCustomTab(context, mouseX, mouseY, "Edit HUD", Items.PAINTING.getDefaultStack(), winX, winY + 100);
+        // TARGETS TAB (Scrollable Player List)
+        if (currentTab.equals("Targets")) {
+            context.drawTextWithShadow(this.textRenderer, "Select a player to Target", setX, winY + 15, 0xFFFFFF);
+            if (this.client != null && this.client.getNetworkHandler() != null) {
+                Collection<PlayerListEntry> players = this.client.getNetworkHandler().getPlayerList();
+                int listY = winY + 40;
+                int count = 0;
+                for (PlayerListEntry p : players) {
+                    if (count >= scrollOffset && count < scrollOffset + 6) { // Max 6 on screen
+                        String pName = p.getProfile().getName();
+                        boolean isTagged = ModConfig.taggedPlayerName.equals(pName);
+                        
+                        // Background row
+                        context.fill(setX, listY, setX + 280, listY + 25, isTagged ? 0x6600FF00 : 0x33FFFFFF);
+                        
+                        // Player Head
+                        context.drawTexture(net.minecraft.client.render.RenderLayer::getGuiTextured, p.getSkinTextures().texture(), setX + 5, listY + 4, 8f, 8f, 16, 16, 64, 64);
+                        
+                        context.drawTextWithShadow(this.textRenderer, pName, setX + 30, listY + 8, 0xFFFFFF);
+                        
+                        // Click logic for rows handled in mouseClicked
+                        listY += 30;
+                    }
+                    count++;
+                }
+            } else {
+                context.drawTextWithShadow(this.textRenderer, "§cJoin a server to see players.", setX, winY + 50, 0xFFFFFF);
+            }
+        }
 
-        // Buttons draw karna
         super.render(context, mouseX, mouseY, delta);
     }
 
-    // Helper Method to draw premium looking tabs with Minecraft Items
-    private void drawCustomTab(DrawContext context, int mx, int my, String tabName, ItemStack icon, int x, int y) {
-        boolean isSelected = currentTab.equals(tabName);
-        boolean isHovered = mx >= x && mx <= x + sidebarWidth && my >= y && my <= y + 25;
+    @Override
+    public boolean mouseClicked(double mx, double my, int button) {
+        int winX = (this.width - winW) / 2;
+        int winY = (this.height - winH) / 2;
+        int setX = winX + sideW + 15;
 
-        // Background Highlight
-        if (isSelected) {
-            context.fill(x, y, x + sidebarWidth, y + 25, 0x4400FFAA); // Aqua selection highlight
-            context.fill(x, y, x + 3, y + 25, 0xFF00FFAA); // Thick left accent bar
-        } else if (isHovered) {
-            context.fill(x, y, x + sidebarWidth, y + 25, 0x22FFFFFF); // Subtle white hover
+        // Target Selection Logic
+        if (currentTab.equals("Targets") && this.client != null && this.client.getNetworkHandler() != null) {
+            Collection<PlayerListEntry> players = this.client.getNetworkHandler().getPlayerList();
+            int listY = winY + 40;
+            int count = 0;
+            for (PlayerListEntry p : players) {
+                if (count >= scrollOffset && count < scrollOffset + 6) {
+                    if (mx >= setX && mx <= setX + 280 && my >= listY && my <= listY + 25) {
+                        String name = p.getProfile().getName();
+                        if (ModConfig.taggedPlayerName.equals(name)) ModConfig.taggedPlayerName = ""; // Untag
+                        else ModConfig.taggedPlayerName = name; // Tag
+                        return true;
+                    }
+                    listY += 30;
+                }
+                count++;
+            }
         }
-
-        // Draw 3D Minecraft Item
-        context.drawItem(icon, x + 10, y + 4);
-        
-        // Draw Text
-        int textColor = isSelected ? 0x00FFAA : (isHovered ? 0xFFFFFF : 0xAAAAAA);
-        context.drawTextWithShadow(this.textRenderer, tabName, x + 32, y + 8, textColor);
+        return super.mouseClicked(mx, my, button);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        int winX = (this.width - windowWidth) / 2;
-        int winY = (this.height - windowHeight) / 2;
-
-        // Custom Click Detection for Tabs
-        if (mouseX >= winX && mouseX <= winX + sidebarWidth) {
-            if (mouseY >= winY + 40 && mouseY <= winY + 65) {
-                currentTab = "Combat"; this.init(); return true;
-            }
-            if (mouseY >= winY + 70 && mouseY <= winY + 95) {
-                currentTab = "Radar"; this.init(); return true;
-            }
-            if (mouseY >= winY + 100 && mouseY <= winY + 125) {
-                this.client.setScreen(new EditHudScreen(this)); // Open Edit HUD Screen
-                return true;
-            }
+    public boolean mouseScrolled(double mx, double my, double hAmount, double scroll) {
+        if (currentTab.equals("Targets")) {
+            scrollOffset -= (int) scroll;
+            if (scrollOffset < 0) scrollOffset = 0;
+            return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseScrolled(mx, my, hAmount, scroll);
     }
 
     @Override
-    public void close() {
-        ModConfig.save();
-        if (this.client != null) {
-            this.client.setScreen(this.parent); // Escape dabane par pichli screen pe jaye
-        }
-    }
+    public void close() { ModConfig.save(); if (this.client != null) this.client.setScreen(this.parent); }
 }
