@@ -31,6 +31,39 @@ public class TargetAuraRenderer {
 
             matrices.push(); matrices.translate(x, y, z);
             Matrix4f mat = matrices.peek().getPositionMatrix();
+package com.tpvp.hud;
+
+import com.tpvp.config.ModConfig;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
+import net.minecraft.client.render.*;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.RotationAxis;
+import org.joml.Matrix4f;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class TargetAuraRenderer {
+    public static final Map<Integer, Long> totemPopMap = new HashMap<>();
+
+    public static void render(LivingEntity target, MatrixStack matrices, VertexConsumerProvider.Immediate immediate, Camera camera, double x, double y, double z, String activeTarget) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        String tName = target.getName().getString();
+
+        // ---------------------------------------------------------
+        // 1. DRAGON AURA (ENEMIES) 
+        // ---------------------------------------------------------
+        if (tName.equals(activeTarget) && ModConfig.dragonAuraEnabled) {
+            long popTime = totemPopMap.getOrDefault(target.getId(), 0L);
+            long now = System.currentTimeMillis();
+            boolean isTotemPop = (now - popTime) < 3000;
+
+            matrices.push(); matrices.translate(x, y, z);
+            Matrix4f mat = matrices.peek().getPositionMatrix();
             VertexConsumer quadBuffer = immediate.getBuffer(RenderLayer.getGui()); 
             
             float h = target.getHeight(), radius = target.getWidth() + 0.4f;
@@ -43,7 +76,6 @@ public class TargetAuraRenderer {
             long cycle = 6000; 
             float t = (System.currentTimeMillis() % cycle) / (float) cycle;
             
-            // FIX: 'yOff' is properly defined here before being used!
             float progress = 0f, shatter = 0f, alpha = 0.8f, yOff = 0f; 
             float lookYaw = target.getYaw(); 
             
@@ -117,40 +149,48 @@ public class TargetAuraRenderer {
         }
 
         // ---------------------------------------------------------
-        // 2. FRIEND PET DOLL
+        // 2. FRIEND PET DOLL (Cute Companion System)
         // ---------------------------------------------------------
         if (tName.equals(ModConfig.taggedFriendName) && ModConfig.dragonAuraEnabled) {
+            
             boolean isStill = target.getVelocity().lengthSquared() < 0.01 && target.distanceTo(client.player) < 5.0;
             long now = System.currentTimeMillis();
             
             matrices.push();
             float dollX, dollY, dollZ;
+            
             float hover = (float) Math.sin(now / 300.0) * 0.2f; 
-            float dollRot = (now % 4000) / 4000.0f * 360f; 
+            float dollRot = 0f;
             
             if (isStill) {
+                // Return to Player and Hug/Handshake 
                 dollX = (float) (x + Math.cos(Math.toRadians(target.getYaw() + 90)) * 1.5);
                 dollZ = (float) (z + Math.sin(Math.toRadians(target.getYaw() + 90)) * 1.5);
                 dollY = (float) (y + target.getHeight() / 2 + hover);
-                dollRot = -camera.getYaw(); 
+                dollRot = -camera.getYaw(); // Look at you
             } else {
+                // Fly behind the friend (Chura ke bhagna)
                 dollX = (float) (x + Math.cos(Math.toRadians(target.getYaw() - 90)) * 1.5);
                 dollZ = (float) (z + Math.sin(Math.toRadians(target.getYaw() - 90)) * 1.5);
-                dollY = (float) (y + target.getHeight() + hover + 0.5f); 
-                dollRot = target.getYaw(); 
+                dollY = (float) (y + target.getHeight() + hover + 0.5f); // Up high
+                dollRot = target.getYaw(); // Look same direction
             }
 
             matrices.translate(dollX, dollY, dollZ);
             matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(dollRot));
+            
             matrices.scale(0.3F, 0.3F, 0.3F);
             matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180f)); 
             
             Identifier fSkin = (target instanceof AbstractClientPlayerEntity pt) ? pt.getSkinTextures().texture() : Identifier.ofVanilla("textures/entity/steve.png");
-            float armP = isStill ? -120f : (float) Math.sin(now / 100.0) * 60f; 
-            float legP = isStill ? 0f : (float) Math.sin(now / 100.0) * 45f;
-            float headP = isStill ? -20f : 0f; 
+            
+            // Animation Limbs
+            float armP = isStill ? -120f : (float) Math.sin(now / 100.0) * 60f; // Hug pose vs Flapping
+            float legP = isStill ? 0f : (float) Math.sin(now / 100.0) * 45f; // Kicking when flying
+            float headP = isStill ? -20f : 0f; // Look up cute
 
             RenderUtils3D.drawDoll(matrices, immediate, fSkin, 1.0f, armP, legP, headP, 0f);
+            
             matrices.pop();
 
             matrices.push(); double bounce = Math.sin(System.currentTimeMillis() / 150.0) * 0.2; matrices.translate(x, y + target.getHeight() + 1.8 + bounce, z); 
@@ -159,4 +199,4 @@ public class TargetAuraRenderer {
             matrices.pop();
         }
     }
-                                                        }
+                }
