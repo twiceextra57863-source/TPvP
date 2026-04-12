@@ -11,10 +11,11 @@ public class KillBannerHud implements HudRenderCallback {
     public static int killStreak = 0;
     public static long lastKillTime = 0;
 
+    // Call this method whenever someone dies near the player
     public static void addKill() {
         long now = System.currentTimeMillis();
-        if (now - lastKillTime < 10000) killStreak++;
-        else killStreak = 1;
+        if (now - lastKillTime < 10000) killStreak++; // Double kill, Triple kill...
+        else killStreak = 1; // Reset to First Blood
         lastKillTime = now;
     }
 
@@ -23,15 +24,15 @@ public class KillBannerHud implements HudRenderCallback {
         if (!ModConfig.killBannerEnabled || killStreak == 0) return;
 
         long elapsed = System.currentTimeMillis() - lastKillTime;
-        if (elapsed > 3000) return; 
+        if (elapsed > 3000) return; // 3 second baad gayab
 
         MinecraftClient client = MinecraftClient.getInstance();
         int screenW = client.getWindow().getScaledWidth();
         
-        float popIn = Math.min(1.0f, elapsed / 250.0f); 
-        float fadeOut = elapsed > 2500 ? (3000 - elapsed) / 500.0f : 1.0f; 
+        float popIn = Math.min(1.0f, elapsed / 200.0f); // Fast slide in
+        float fadeOut = elapsed > 2500 ? (3000 - elapsed) / 500.0f : 1.0f; // Smooth fade out
         
-        int cy = (int) (40 + (10 * (1.0f - popIn))); 
+        int cy = (int) (40 + (15 * (1.0f - popIn))); // Slide down effect
         int cx = screenW / 2;
 
         String text = "";
@@ -52,12 +53,12 @@ public class KillBannerHud implements HudRenderCallback {
 
         context.getMatrices().push();
         
-        // Sleek Thin Line
+        // Dynamic Glowing Thin Line
         float lineWidth = 120.0f * popIn;
         context.fill((int)(cx - lineWidth), cy + 10, (int)(cx + lineWidth), cy + 11, finalColor);
-        context.fill((int)(cx - lineWidth), cy - 14, (int)(cx + lineWidth), cy + 10, aColor | 0x000000); 
+        context.fill((int)(cx - lineWidth), cy - 14, (int)(cx + lineWidth), cy + 10, aColor | 0x33000000); 
 
-        // Main Text
+        // Title Text
         context.getMatrices().push();
         context.getMatrices().translate(cx, cy - 10, 0);
         context.getMatrices().scale(1.5f, 1.5f, 1.0f);
