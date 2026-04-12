@@ -9,13 +9,13 @@ public class CombatTabRenderer {
         screen.drawToggle(context, "3D Indicator", setX + 150, setY, ModConfig.indicatorEnabled);
         screen.drawToggle(context, "Armor Align (Vert)", setX, setY + 30, ModConfig.armorVertical);
         
-        context.drawTextWithShadow(screen.textRenderer, "Indicator Style: §e" + ModConfig.indicatorStyle, setX + 150, setY + 30, 0xFFFFFF);
+        context.drawTextWithShadow(screen.getTextRenderer(), "Indicator Style: §e" + ModConfig.indicatorStyle, setX + 150, setY + 30, 0xFFFFFF);
         context.fill(setX + 150, setY + 40, setX + 250, setY + 55, 0xFF550000);
-        context.drawCenteredTextWithShadow(screen.textRenderer, "Change Style", setX + 200, setY + 44, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(screen.getTextRenderer(), "Change Style", setX + 200, setY + 44, 0xFFFFFF);
 
-        context.drawTextWithShadow(screen.textRenderer, "Armor Crack: §c" + ModConfig.armorCrackThreshold + "%", setX, setY + 60, 0xFFFFFF);
+        context.drawTextWithShadow(screen.getTextRenderer(), "Armor Crack: §c" + ModConfig.armorCrackThreshold + "%", setX, setY + 60, 0xFFFFFF);
         context.fill(setX, setY + 70, setX + 100, setY + 85, 0xFF550000);
-        context.drawCenteredTextWithShadow(screen.textRenderer, "Add +10%", setX + 50, setY + 74, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(screen.getTextRenderer(), "Add +10%", setX + 50, setY + 74, 0xFFFFFF);
     }
 
     public static boolean mouseClicked(double mx, double my, int setX, int setY) {
