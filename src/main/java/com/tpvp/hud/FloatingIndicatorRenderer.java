@@ -37,16 +37,21 @@ public class FloatingIndicatorRenderer {
             VertexConsumer hc = immediate.getBuffer(RenderLayer.getTextSeeThrough(fH.getAtlasId())); 
             float stX = -(tH * 9f) / 2f;
             for (int i = 0; i < tH; i++) {
-                RenderUtils3D.drawTextureQuad(pM, hc, stX+(i*9), 0, 9, 9, eH.getMinU(), eH.getMinV(), eH.getMaxU(), eH.getMaxV(), 1f,1f,1f,1f, l);
-                if (health >= (i*2)+2) RenderUtils3D.drawTextureQuad(pM, hc, stX+(i*9), 0, 9, 9, fH.getMinU(), fH.getMinV(), fH.getMaxU(), fH.getMaxV(), 1f,1f,1f,1f, l);
-                else if (health > (i*2)) RenderUtils3D.drawTextureQuad(pM, hc, stX+(i*9), 0, 9, 9, hH.getMinU(), hH.getMinV(), hH.getMaxU(), hH.getMaxV(), 1f,1f,1f,1f, l);
+                // FIX: Used proper 'float' notations (e.g. 0f, 9f) to match RenderUtils3D
+                RenderUtils3D.drawTextureQuad(pM, hc, stX+(i*9f), 0f, 9f, 9f, eH.getMinU(), eH.getMinV(), eH.getMaxU(), eH.getMaxV(), 1f, 1f, 1f, 1f, l);
+                if (health >= (i*2)+2) RenderUtils3D.drawTextureQuad(pM, hc, stX+(i*9f), 0f, 9f, 9f, fH.getMinU(), fH.getMinV(), fH.getMaxU(), fH.getMaxV(), 1f, 1f, 1f, 1f, l);
+                else if (health > (i*2)) RenderUtils3D.drawTextureQuad(pM, hc, stX+(i*9f), 0f, 9f, 9f, hH.getMinU(), hH.getMinV(), hH.getMaxU(), hH.getMaxV(), 1f, 1f, 1f, 1f, l);
             }
         } else if (ModConfig.indicatorStyle == 1) { 
-            float cW = 50f * hpPercent; int bC = (hpPercent < 0.3f) ? 0xFFFF3333 : (hpPercent < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00;
+            float cW = 50f * hpPercent; 
+            int bC = (hpPercent < 0.3f) ? 0xFFFF3333 : (hpPercent < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00;
             VertexConsumer bc = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
-            RenderUtils3D.drawColorQuad(pM, bc, -26, 0, 52, 7, 0xFF000000, l); 
-            RenderUtils3D.drawColorQuad(pM, bc, -25, 1, 50, 5, 0xFF333333, l); 
-            if (cW > 0) RenderUtils3D.drawColorQuad(pM, bc, -25, 1, cW, 5, bC, l); 
+            
+            // FIX: Used proper 'float' notations
+            RenderUtils3D.drawColorQuad(pM, bc, -26f, 0f, 52f, 7f, 0xFF000000, l); 
+            RenderUtils3D.drawColorQuad(pM, bc, -25f, 1f, 50f, 5f, 0xFF333333, l); 
+            if (cW > 0) RenderUtils3D.drawColorQuad(pM, bc, -25f, 1f, cW, 5f, bC, l); 
+            
             String pt = (int)(hpPercent * 100) + "%"; 
             client.textRenderer.draw(pt, -client.textRenderer.getWidth(pt)/2f, -9, 0xFFFFFF, false, pM, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, l);
         } else if (ModConfig.indicatorStyle == 2) { 
@@ -55,10 +60,10 @@ public class FloatingIndicatorRenderer {
             int txtColor = (hpPercent < 0.3f) ? 0xFF0000 : (hpPercent < 0.6f) ? 0xFFFF00 : 0x00FF00; 
             float stX = -client.textRenderer.getWidth(text) / 2f;
             if (target instanceof AbstractClientPlayerEntity pt) {
-                RenderUtils3D.drawTextureQuad(pM, immediate.getBuffer(RenderLayer.getTextSeeThrough(pt.getSkinTextures().texture())), stX - 12, -1, 10, 10, 8f/64f, 8f/64f, 16f/64f, 16f/64f, 1f,1f,1f,1f, l);
+                RenderUtils3D.drawTextureQuad(pM, immediate.getBuffer(RenderLayer.getTextSeeThrough(pt.getSkinTextures().texture())), stX - 12f, -1f, 10f, 10f, 8f/64f, 8f/64f, 16f/64f, 16f/64f, 1f, 1f, 1f, 1f, l);
             }
             client.textRenderer.draw(text, stX, 0, txtColor, false, pM, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x40000000, l);
         }
         matrices.pop();
     }
-                  }
+}
