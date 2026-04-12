@@ -3,9 +3,11 @@ package com.tpvp.hud;
 import com.tpvp.config.ModConfig;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
 
@@ -19,7 +21,9 @@ public class TargetAuraRenderer {
         MinecraftClient client = MinecraftClient.getInstance();
         String tName = target.getName().getString();
 
-        // DRAGON AURA (Enemies)
+        // ---------------------------------------------------------
+        // 1. DRAGON AURA (ENEMIES) - WITH ROAR & BELLY
+        // ---------------------------------------------------------
         if (tName.equals(activeTarget) && ModConfig.dragonAuraEnabled) {
             long popTime = totemPopMap.getOrDefault(target.getId(), 0L);
             long now = System.currentTimeMillis();
@@ -29,79 +33,149 @@ public class TargetAuraRenderer {
             Matrix4f mat = matrices.peek().getPositionMatrix();
             VertexConsumer quadBuffer = immediate.getBuffer(RenderLayer.getGui()); 
             
-            float h = target.getHeight(), radius = target.getWidth() + 0.3f;
+            float h = target.getHeight(), radius = target.getWidth() + 0.4f;
             float headX = 0, headY = 0, headZ = 0;
-            float yOff = 0f, rotMult = 1f, shatter = 0f, alpha = 0.8f;
+            
+            // Dragon Color Settings (Configurable)
+            float dr = 1f, dg = 0.1f, db = 0.1f; // 0=Ruby Red
+            if (ModConfig.dragonColor == 1) { dr = 0.6f; dg = 0f; db = 1f; } // 1=Void Purple
+            else if (ModConfig.dragonColor == 2) { dr = 0f; dg = 0.8f; db = 1f; } // 2=Frost Blue
+
+            // Cinematic Timing
+            long cycle = 6000; // 6 sec cycle
+            float t = (System.currentTimeMillis() % cycle) / (float) cycle;
+            
+            float progress = 0f, shatter = 0f, alpha = 0.8f;
+            float lookYaw = target.getYaw(); // Dragon looks where player looks
             
             if (isTotemPop) {
                 float popT = (now - popTime) / 3000.0f;
-                if (popT < 0.5f) { radius += popT * 5.0f; yOff = popT * 10.0f; rotMult = 5.0f; } 
-                else { shatter = (popT - 0.5f) / 0.5f; alpha = 0.8f * (1.0f - shatter); }
+                if (popT < 0.2f) { progress = 1.0f; yOff = (popT / 0.2f) * 6.0f; } // Shoot Up
+                else if (popT < 0.5f) { progress = 1.0f; yOff = 6.0f - (((popT - 0.2f) / 0.3f) * 6.0f); } // Dive Down
+                else { shatter = (popT - 0.5f) / 0.5f; alpha = 0.8f * (1.0f - shatter); } // Blast Dust
             } else {
-                float tNorm = (now % 4000) / 4000.0f;
-                if (tNorm > 0.6f) { shatter = (tNorm - 0.6f) / 0.1f; if (shatter > 1.0f) { shatter = 1.0f; alpha = 0f; } else alpha = 0.8f * (1.0f - shatter); }
+                if (t < 0.3f) { progress = t / 0.3f; } // Rise Up
+                else if (t < 0.6f) { // PAUSE & ROAR (Facing Player Direction)
+                    progress = 1.0f;
+                    headX = (float) Math.cos(Math.toRadians(lookYaw + 90)) * radius;
+                    headZ = (float) Math.sin(Math.toRadians(lookYaw + 90)) * radius;
+                    headY = h + 0.2f;
+                } 
+                else if (t < 0.8f) { // SHATTER (Upward Dust)
+                    progress = 1.0f; 
+                    shatter = (t - 0.6f) / 0.2f; 
+                    alpha = 0.8f * (1.0f - shatter); 
+                } else { alpha = 0f; } // Cooldown
             }
 
             if (alpha > 0.05f) {
-                float tRot = ((now % 2000) / 2000.0f) * rotMult;
-                for (int layer = 0; layer < 3; layer++) {
-                    for (int i = 0; i < 30; i++) {
-                        float pt1 = (i / 30.0f), pt2 = ((i + 1) / 30.0f);
-                        float py1 = pt1 * h + yOff, px1 = (float) Math.cos((pt1 + tRot) * Math.PI * 4) * radius, pz1 = (float) Math.sin((pt1 + tRot) * Math.PI * 4) * radius;
-                        float py2 = pt2 * h + yOff, px2 = (float) Math.cos((pt2 + tRot) * Math.PI * 4) * radius, pz2 = (float) Math.sin((pt2 + tRot) * Math.PI * 4) * radius;
+                float rotSpeed = (now % 2000) / 2000.0f;
+                int segments = 30;
+                int activeSegs = (int)(segments * progress);
+                boolean drawHead = (t >= 0.3f && t < 0.6f && !isTotemPop); // Lock head during roar
 
+                for (int layer = 0; layer < 3; layer++) {
+                    float offset = layer * 0.05f;
+                    for (int i = 0; i < activeSegs; i++) {
+                        float pt1 = (i / (float) segments), pt2 = ((i + 1) / (float) segments);
+                        
+                        float py1 = pt1 * h;
+                        float px1 = (float) Math.cos((pt1 + rotSpeed + offset) * Math.PI * 4) * radius;
+                        float pz1 = (float) Math.sin((pt1 + rotSpeed + offset) * Math.PI * 4) * radius;
+
+                        float py2 = pt2 * h;
+                        float px2 = (float) Math.cos((pt2 + rotSpeed + offset) * Math.PI * 4) * radius;
+                        float pz2 = (float) Math.sin((pt2 + rotSpeed + offset) * Math.PI * 4) * radius;
+
+                        // UPWARD DUST SCATTER (Epic Shatter)
                         if (shatter > 0) {
-                            px1 += (float) Math.sin(i * 13) * shatter * 4.0f; py1 += (float) Math.cos(i * 17) * shatter * 4.0f; pz1 += (float) Math.sin(i * 23) * shatter * 4.0f;
-                            px2 += (float) Math.sin(i * 13) * shatter * 4.0f; py2 += (float) Math.cos(i * 17) * shatter * 4.0f; pz2 += (float) Math.sin(i * 23) * shatter * 4.0f;
+                            float sx = (float) Math.sin(i * 13) * shatter * 3.0f;
+                            float sy = shatter * 5.0f; // DUST GOES UP!
+                            float sz = (float) Math.sin(i * 23) * shatter * 3.0f;
+                            px1 += sx; py1 += sy; pz1 += sz;
+                            px2 += sx; py2 += sy; pz2 += sz;
                         }
-                        if (layer == 1 && i == 29) { headX = px2; headY = py2; headZ = pz2; }
-                        float red = 1f, green = isTotemPop ? 0.8f : 0.1f, blue = isTotemPop ? 0.2f : 0.1f;
-                        RenderUtils3D.drawQuad(mat, quadBuffer, px1, py1, pz1, px1, py1+0.15f, pz1, px2, py2+0.15f, pz2, px2, py2, pz2, red, green, blue, alpha, 15728880);
+
+                        if (!drawHead && layer == 1 && i == activeSegs - 1) { headX = px2; headY = py2; headZ = pz2; drawHead = true; }
+
+                        float cr = dr, cg = dg, cb = db;
+                        // Dragon Belly (Lighter inside Color)
+                        if (layer == 0) { cr *= 0.5f; cg *= 0.5f; cb *= 0.5f; } // Darker inner scales
+                        
+                        // Golden Tip
+                        if (i > segments - 5) { cg = 0.8f; cb = 0f; } 
+                        if (isTotemPop) { cg = 0.8f; cb = 0.2f; } 
+
+                        RenderUtils3D.drawQuad(mat, quadBuffer, px1, py1, pz1, px1, py1+0.15f, pz1, px2, py2+0.15f, pz2, px2, py2, pz2, cr, cg, cb, alpha, 15728880);
                     }
                 }
-                if (shatter == 0) RenderUtils3D.draw3DBox(mat, quadBuffer, headX, headY+0.1f, headZ, 0.2f, 1f, isTotemPop ? 0.8f : 0f, 0f, alpha, 15728880);
+                // Head Rendering
+                if (drawHead && shatter == 0) {
+                    RenderUtils3D.draw3DBox(mat, quadBuffer, headX, headY+0.1f, headZ, 0.2f, 1f, isTotemPop ? 0.8f : 0f, 0f, alpha, 15728880);
+                }
             }
             matrices.pop();
 
-            // Bouncing Arrow
-            matrices.push(); 
-            double bounce = Math.sin(System.currentTimeMillis() / 150.0) * 0.2; 
-            matrices.translate(x, y + target.getHeight() + 1.8 + bounce, z); 
-            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw())); 
-            matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch())); 
-            matrices.scale(-0.1F, -0.1F, 0.1F); 
+            // Target Down Arrow
+            matrices.push(); double bounce = Math.sin(System.currentTimeMillis() / 150.0) * 0.2; matrices.translate(x, y + target.getHeight() + 1.8 + bounce, z); 
+            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw())); matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch())); matrices.scale(-0.1F, -0.1F, 0.1F); 
             client.textRenderer.draw("▼", -client.textRenderer.getWidth("▼") / 2f, 0, 0xFFFF2222, true, matrices.peek().getPositionMatrix(), immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, 15728880);
             matrices.pop();
         }
 
-        // FRIEND HALO
+        // ---------------------------------------------------------
+        // 2. FRIEND PET DOLL (Cute Companion System)
+        // ---------------------------------------------------------
         if (tName.equals(ModConfig.taggedFriendName) && ModConfig.dragonAuraEnabled) {
+            
+            // Check if Friend has been standing still near you
+            boolean isStill = target.getVelocity().lengthSquared() < 0.01 && target.distanceTo(client.player) < 5.0;
+            long now = System.currentTimeMillis();
+            
             matrices.push();
-            matrices.translate(x, y + target.getHeight() / 2, z); 
-            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw())); 
-            long time = System.currentTimeMillis();
-            float t = (time % 3000) / 3000.0f; 
-            float radius = 1.0f + (float)Math.sin(time / 200.0) * 0.1f; 
-            float shatter = 0f, alpha = 0.8f;
+            float dollX, dollY, dollZ;
             
-            if (t > 0.7f) { shatter = (t - 0.7f) / 0.3f; alpha = 0.8f * (1.0f - shatter); radius += shatter * 2.0f; } 
-            else if (t < 0.3f) { radius -= (0.3f - t) * 2.0f; }
-
-            Matrix4f mat = matrices.peek().getPositionMatrix();
-            VertexConsumer lineBuffer = immediate.getBuffer(RenderLayer.getLines());
+            // Math for floating doll
+            float hover = (float) Math.sin(now / 300.0) * 0.2f; // Cute bouncing
+            float dollRot = (now % 4000) / 4000.0f * 360f; // Spinning slowly
             
-            for (int i = 0; i < 360; i += 10) {
-                float r1 = (float) Math.toRadians(i), r2 = (float) Math.toRadians(i + 10);
-                float px1 = (float) Math.cos(r1) * radius, py1 = (float) Math.sin(r1) * radius;
-                float px2 = (float) Math.cos(r2) * radius, py2 = (float) Math.sin(r2) * radius;
-
-                if (shatter > 0 || t < 0.3f) {
-                    float sx = (float) Math.sin(i * 13) * 0.5f, sy = (float) Math.cos(i * 17) * 0.5f;
-                    px1 += sx; py1 += sy; px2 += sx; py2 += sy;
-                }
-                RenderUtils3D.drawLine(mat, lineBuffer, px1, py1, -0.5f, px2, py2, -0.5f); // Used helper
+            if (isStill) {
+                // Return to Player and Hug/Handshake (Front of Friend)
+                dollX = (float) (x + Math.cos(Math.toRadians(target.getYaw() + 90)) * 1.5);
+                dollZ = (float) (z + Math.sin(Math.toRadians(target.getYaw() + 90)) * 1.5);
+                dollY = (float) (y + target.getHeight() / 2 + hover);
+                dollRot = -camera.getYaw(); // Look at camera/you
+            } else {
+                // Fly behind the friend (Chura ke bhagna)
+                dollX = (float) (x + Math.cos(Math.toRadians(target.getYaw() - 90)) * 1.5);
+                dollZ = (float) (z + Math.sin(Math.toRadians(target.getYaw() - 90)) * 1.5);
+                dollY = (float) (y + target.getHeight() + hover + 0.5f); // Follow up high
+                dollRot = target.getYaw(); // Look in direction of running
             }
+
+            matrices.translate(dollX, dollY, dollZ);
+            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(dollRot));
+            
+            // Miniature Scale (Pet size)
+            matrices.scale(0.3F, 0.3F, 0.3F);
+            matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180f)); 
+            
+            Identifier fSkin = (target instanceof AbstractClientPlayerEntity pt) ? pt.getSkinTextures().texture() : Identifier.ofVanilla("textures/entity/steve.png");
+            
+            // Animation Limbs
+            float armP = isStill ? -120f : (float) Math.sin(now / 100.0) * 60f; // Hug pose if still, Flapping if running
+            float legP = isStill ? 0f : (float) Math.sin(now / 100.0) * 45f;
+            float headP = isStill ? -20f : 0f; // Look cute
+
+            RenderUtils3D.drawDoll(matrices, immediate, fSkin, 1.0f, armP, legP, headP, 0f);
+            
+            matrices.pop();
+
+            // Friend Name Tag (Green Arrow)
+            matrices.push(); double bounce = Math.sin(System.currentTimeMillis() / 150.0) * 0.2; matrices.translate(x, y + target.getHeight() + 1.8 + bounce, z); 
+            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw())); matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch())); matrices.scale(-0.1F, -0.1F, 0.1F); 
+            client.textRenderer.draw("▼", -client.textRenderer.getWidth("▼") / 2f, 0, 0xFF00FF00, true, matrices.peek().getPositionMatrix(), immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, 15728880);
             matrices.pop();
         }
     }
-}
+                }
