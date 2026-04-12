@@ -26,14 +26,16 @@ public class ModConfig {
 
     public static String taggedPlayerName = "";
     public static String taggedFriendName = ""; 
+    public static int targetMode = 0; 
+
+    // THEMES & FEATURES
     public static boolean autoTrack = false;
     public static boolean dragonAuraEnabled = true;
     public static int dragonColor = 0; // 0=Ruby Red, 1=Void Purple, 2=Frost Blue
-
-    // FIX: Restored this missing variable for your SelectTargetScreen!
-    public static int targetMode = 0; 
-
+    
     public static boolean killBannerEnabled = true;
+    public static int bannerColorTheme = 0; // 0=Blood Red, 1=Royal Gold, 2=Toxic Green
+    
     public static boolean soulAnimationEnabled = true;
 
     public static void load() {}
