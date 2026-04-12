@@ -15,18 +15,17 @@ public class TargetsTabRenderer {
     public static boolean isDraggingScroll = false;
 
     public static void render(TPvPDashboardScreen screen, DrawContext context, int setX, int winY, int mx, int my) {
-        // TOGGLE BUTTONS
         context.fill(setX, winY + 10, setX + 120, winY + 25, showingFriends ? 0xFF00AA00 : 0xFFAA0000);
-        context.drawCenteredTextWithShadow(screen.textRenderer, showingFriends ? "List: FRIENDS" : "List: ENEMIES", setX + 60, winY + 14, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(screen.getTextRenderer(), showingFriends ? "List: FRIENDS" : "List: ENEMIES", setX + 60, winY + 14, 0xFFFFFF);
         
         screen.drawToggle(context, "Dragon Aura", setX + 150, winY + 10, ModConfig.dragonAuraEnabled);
 
-        if (screen.client != null && screen.client.getNetworkHandler() != null) {
-            List<PlayerListEntry> players = new ArrayList<>(screen.client.getNetworkHandler().getPlayerList());
+        if (screen.getMinecraftClient() != null && screen.getMinecraftClient().getNetworkHandler() != null) {
+            List<PlayerListEntry> players = new ArrayList<>(screen.getMinecraftClient().getNetworkHandler().getPlayerList());
             int listY = winY + 40;
             
             for (int i = 0; i < players.size(); i++) {
-                if (i >= scrollOffset && i < scrollOffset + 4) { // Show 4 per page
+                if (i >= scrollOffset && i < scrollOffset + 4) { 
                     PlayerListEntry p = players.get(i);
                     String pName = p.getProfile().getName();
                     
@@ -39,20 +38,19 @@ public class TargetsTabRenderer {
                     context.getMatrices().push();
                     context.getMatrices().translate(setX + 10, listY + 5, 0);
                     context.getMatrices().scale(1.2f, 1.2f, 1.0f);
-                    context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 0, 8f, 8f, 8, 8, 64, 64); // Head
-                    context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 8, 20f, 20f, 8, 12, 64, 64); // Body
-                    context.drawTexture(RenderLayer::getGuiTextured, skin, 0, 8, 44f, 20f, 4, 12, 64, 64); // Right Arm
-                    context.drawTexture(RenderLayer::getGuiTextured, skin, 12, 8, 36f, 52f, 4, 12, 64, 64); // Left Arm
-                    context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 20, 0f, 20f, 4, 12, 64, 64); // Right Leg
-                    context.drawTexture(RenderLayer::getGuiTextured, skin, 8, 20, 20f, 52f, 4, 12, 64, 64); // Left Leg
+                    context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 0, 8f, 8f, 8, 8, 64, 64); 
+                    context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 8, 20f, 20f, 8, 12, 64, 64); 
+                    context.drawTexture(RenderLayer::getGuiTextured, skin, 0, 8, 44f, 20f, 4, 12, 64, 64); 
+                    context.drawTexture(RenderLayer::getGuiTextured, skin, 12, 8, 36f, 52f, 4, 12, 64, 64); 
+                    context.drawTexture(RenderLayer::getGuiTextured, skin, 4, 20, 0f, 20f, 4, 12, 64, 64); 
+                    context.drawTexture(RenderLayer::getGuiTextured, skin, 8, 20, 20f, 52f, 4, 12, 64, 64); 
                     context.getMatrices().pop();
                     
-                    context.drawTextWithShadow(screen.textRenderer, isTagged ? "§l" + pName : "§f" + pName, setX + 50, listY + 20, 0xFFFFFF);
+                    context.drawTextWithShadow(screen.getTextRenderer(), isTagged ? "§l" + pName : "§f" + pName, setX + 50, listY + 20, 0xFFFFFF);
                     listY += 55;
                 }
             }
 
-            // Scrollbar Render
             if (players.size() > 4) {
                 context.fill(setX + 290, winY + 40, setX + 295, winY + 245, 0x55000000); 
                 int thumbH = Math.max(20, 205 / (players.size() - 3));
@@ -63,17 +61,12 @@ public class TargetsTabRenderer {
     }
 
     public static boolean mouseClicked(TPvPDashboardScreen screen, double mx, double my, int setX, int winY) {
-        // Toggle Friends
         if (mx >= setX && mx <= setX + 120 && my >= winY + 10 && my <= winY + 25) { showingFriends = !showingFriends; return true; }
-        // Toggle Dragon
         if (mx >= setX+260 && mx <= setX+290 && my >= winY+10 && my <= winY+22) { ModConfig.dragonAuraEnabled = !ModConfig.dragonAuraEnabled; return true; }
-
-        // Track Click
         if (mx >= setX + 290 && mx <= setX + 295 && my >= winY + 40 && my <= winY + 245) { isDraggingScroll = true; return true; }
 
-        // Player Click
-        if (screen.client != null && screen.client.getNetworkHandler() != null) {
-            List<PlayerListEntry> players = new ArrayList<>(screen.client.getNetworkHandler().getPlayerList());
+        if (screen.getMinecraftClient() != null && screen.getMinecraftClient().getNetworkHandler() != null) {
+            List<PlayerListEntry> players = new ArrayList<>(screen.getMinecraftClient().getNetworkHandler().getPlayerList());
             int listY = winY + 40;
             for (int i = 0; i < players.size(); i++) {
                 if (i >= scrollOffset && i < scrollOffset + 4) {
@@ -96,8 +89,8 @@ public class TargetsTabRenderer {
     }
 
     public static boolean mouseDragged(TPvPDashboardScreen screen, double mx, double my, int winY) {
-        if (isDraggingScroll && screen.client != null && screen.client.getNetworkHandler() != null) {
-            int players = screen.client.getNetworkHandler().getPlayerList().size();
+        if (isDraggingScroll && screen.getMinecraftClient() != null && screen.getMinecraftClient().getNetworkHandler() != null) {
+            int players = screen.getMinecraftClient().getNetworkHandler().getPlayerList().size();
             if (players > 4) {
                 float percentage = (float) (my - (winY + 40)) / 205f;
                 scrollOffset = Math.round(Math.max(0, Math.min(1, percentage)) * (players - 4));
