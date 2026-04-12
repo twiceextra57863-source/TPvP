@@ -8,8 +8,8 @@ public class EffectsTabRenderer {
         screen.drawToggle(context, "MOBA Kill Banners", setX, setY, ModConfig.killBannerEnabled);
         screen.drawToggle(context, "3D Soul Ritual", setX + 150, setY, ModConfig.soulAnimationEnabled);
         
-        context.drawTextWithShadow(screen.textRenderer, "§7Get an epic screen banner when you kill players!", setX, setY + 25, 0xAAAAAA);
-        context.drawTextWithShadow(screen.textRenderer, "§7Dead players ascend to heaven as 3D wavy souls.", setX, setY + 40, 0xAAAAAA);
+        context.drawTextWithShadow(screen.getTextRenderer(), "§7Get an epic screen banner when you kill players!", setX, setY + 25, 0xAAAAAA);
+        context.drawTextWithShadow(screen.getTextRenderer(), "§7Dead players ascend to heaven as 3D wavy souls.", setX, setY + 40, 0xAAAAAA);
     }
 
     public static boolean mouseClicked(double mx, double my, int setX, int setY) {
