@@ -7,17 +7,16 @@ public class CrosshairTabRenderer {
     public static void render(TPvPDashboardScreen screen, DrawContext context, int setX, int setY, int mx, int my, int winY) {
         screen.drawToggle(context, "Smart Crosshair", setX, setY, ModConfig.smartCrosshair);
         
-        context.drawTextWithShadow(screen.textRenderer, "Style: §e" + ModConfig.crosshairStyle, setX, setY + 30, 0xFFFFFF);
+        context.drawTextWithShadow(screen.getTextRenderer(), "Style: §e" + ModConfig.crosshairStyle, setX, setY + 30, 0xFFFFFF);
         context.fill(setX, setY + 40, setX + 80, setY + 55, 0xFF550000);
-        context.drawCenteredTextWithShadow(screen.textRenderer, "Change", setX + 40, setY + 44, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(screen.getTextRenderer(), "Change", setX + 40, setY + 44, 0xFFFFFF);
         
-        context.drawTextWithShadow(screen.textRenderer, "Size: " + ModConfig.crosshairSize, setX + 100, setY + 30, 0xFFFFFF);
+        context.drawTextWithShadow(screen.getTextRenderer(), "Size: " + ModConfig.crosshairSize, setX + 100, setY + 30, 0xFFFFFF);
         context.fill(setX + 100, setY + 40, setX + 140, setY + 55, 0xFF550000);
-        context.drawCenteredTextWithShadow(screen.textRenderer, "Add", setX + 120, setY + 44, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(screen.getTextRenderer(), "Add", setX + 120, setY + 44, 0xFFFFFF);
 
-        // LIVE CROSSHAIR PREVIEW
         context.fill(setX, winY + 110, setX + 300, winY + 240, 0xFF000000); 
-        context.drawCenteredTextWithShadow(screen.textRenderer, "Live Crosshair Preview", setX + 150, winY + 120, 0xAAAAAA);
+        context.drawCenteredTextWithShadow(screen.getTextRenderer(), "Live Crosshair Preview", setX + 150, winY + 120, 0xAAAAAA);
         
         int cx = setX + 150, cy = winY + 180;
         float s = ModConfig.crosshairSize;
@@ -44,11 +43,7 @@ public class CrosshairTabRenderer {
     public static boolean mouseClicked(double mx, double my, int setX, int setY) {
         if (mx >= setX+110 && mx <= setX+140 && my >= setY && my <= setY+12) { ModConfig.smartCrosshair = !ModConfig.smartCrosshair; return true; }
         if (mx >= setX && mx <= setX+80 && my >= setY+40 && my <= setY+55) { ModConfig.crosshairStyle = (ModConfig.crosshairStyle + 1) % 3; return true; }
-        if (mx >= setX+100 && mx <= setX+140 && my >= setY+40 && my <= setY+55) { 
-            ModConfig.crosshairSize += 0.5f; 
-            if (ModConfig.crosshairSize > 3.0f) ModConfig.crosshairSize = 0.5f; 
-            return true;
-        }
+        if (mx >= setX+100 && mx <= setX+140 && my >= setY+40 && my <= setY+55) { ModConfig.crosshairSize += 0.5f; if (ModConfig.crosshairSize > 3.0f) ModConfig.crosshairSize = 0.5f; return true;}
         return false;
     }
 }
