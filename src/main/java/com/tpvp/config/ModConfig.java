@@ -16,19 +16,22 @@ public class ModConfig {
     public static float armorScale = 1.0f;
     public static int armorCrackThreshold = 20;
 
-    public static int radarX = 10, radarY = 30;
+    public static int radarX = 10;
+    public static int radarY = 30;
     public static float radarScale = 1.0f;
-    public static int heldItemX = 50, heldItemY = 50;
+
+    public static int heldItemX = 50;
+    public static int heldItemY = 50;
     public static float heldItemScale = 1.0f;
 
-    // TARGET SYSTEM
     public static String taggedPlayerName = "";
     public static String taggedFriendName = ""; 
     public static boolean autoTrack = false;
-    
-    // DRAGON SETTINGS
     public static boolean dragonAuraEnabled = true;
     public static int dragonColor = 0; // 0=Ruby Red, 1=Void Purple, 2=Frost Blue
+
+    // FIX: Restored this missing variable for your SelectTargetScreen!
+    public static int targetMode = 0; 
 
     public static boolean killBannerEnabled = true;
     public static boolean soulAnimationEnabled = true;
