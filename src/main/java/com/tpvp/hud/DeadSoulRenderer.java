@@ -2,16 +2,20 @@ package com.tpvp.hud;
 
 import com.tpvp.config.ModConfig;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
-import net.minecraft.client.render.*;
+import net.minecraft.client.render.Camera;
+import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
-import org.joml.Matrix4f;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 public class DeadSoulRenderer {
     public static final Map<Integer, Float> lastHealthMap = new HashMap<>();
@@ -29,13 +33,29 @@ public class DeadSoulRenderer {
         if (lastHealthMap.containsKey(id)) {
             float lastHealth = lastHealthMap.get(id);
             if (lastHealth > 0 && health <= 0) {
-                if (target.distanceTo(clientPlayer) < 30.0) {
-                    Identifier vSkin = (target instanceof AbstractClientPlayerEntity pt) ? pt.getSkinTextures().texture() : Identifier.ofVanilla("textures/entity/steve.png");
-                    Identifier cSkin = ((AbstractClientPlayerEntity)clientPlayer).getSkinTextures().texture();
-                    KillBannerHud.addKill(clientPlayer.getName().getString(), cSkin, target.getName().getString(), vSkin); 
+                
+                // 100% ACCURATE KILLER DETECTION
+                String killerName = "Environment";
+                Identifier kSkin = Identifier.ofVanilla("textures/entity/steve.png");
+                
+                LivingEntity attacker = target.getAttacker();
+                if (attacker instanceof AbstractClientPlayerEntity pk) {
+                    killerName = pk.getName().getString();
+                    kSkin = pk.getSkinTextures() != null ? pk.getSkinTextures().texture() : kSkin;
+                } else if (target.distanceTo(clientPlayer) < 10.0) {
+                    killerName = clientPlayer.getName().getString(); // Fallback if close
+                    kSkin = ((AbstractClientPlayerEntity)clientPlayer).getSkinTextures().texture();
                 }
-                if (target instanceof AbstractClientPlayerEntity pt) {
-                    activeSouls.add(new DeadSoul(target.getPos(), pt.getSkinTextures() != null ? pt.getSkinTextures().texture() : Identifier.ofVanilla("textures/entity/steve.png"))); 
+
+                String vName = target.getName().getString();
+                Identifier vSkin = (target instanceof AbstractClientPlayerEntity pt) ? (pt.getSkinTextures() != null ? pt.getSkinTextures().texture() : kSkin) : kSkin;
+
+                // Send to Banner (Pass true if Victim was tagged Friend)
+                boolean isFriend = vName.equals(ModConfig.taggedFriendName);
+                KillBannerHud.addKill(killerName, kSkin, vName, vSkin, isFriend); 
+                
+                if (target instanceof AbstractClientPlayerEntity) {
+                    activeSouls.add(new DeadSoul(target.getPos(), vSkin)); 
                 }
             }
         }
@@ -50,63 +70,35 @@ public class DeadSoulRenderer {
         while (iter.hasNext()) {
             DeadSoul soul = iter.next();
             long age = now - soul.startTime;
-            if (age > 5000) { iter.remove(); continue; } 
+            if (age > 6000) { iter.remove(); continue; } // Exists for 6 seconds
 
-            float life = age / 5000.0f; 
-            double upY = life * 6.0; 
+            float life = age / 6000.0f; 
+            double upY = life * 8.0; 
+            
+            // FULL OPACITY (As requested, no fade out until very end)
+            float alpha = life > 0.8f ? (1.0f - life) / 0.2f : 1.0f; 
             
             matrices.push();
             matrices.translate(soul.pos.x - camPos.x, soul.pos.y - camPos.y + upY, soul.pos.z - camPos.z);
-            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(life * 360f * 4f)); 
+            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw())); // Face Camera
+            
+            // "LOVE IS WASTE OF TIME" (PK) CRAZY RAGDOLL DANCE MATH
+            // Jhatke khayega (High frequency sine waves)
+            float jhatka = (float) Math.sin(life * 80) * 15f; 
+            matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(jhatka)); 
+            
+            // Fix orientation (Straight up, not upside down)
             matrices.scale(0.8F, 0.8F, 0.8F); 
             matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180f)); 
             
-            VertexConsumer buffer = immediate.getBuffer(RenderLayer.getEntityTranslucent(soul.skin));
-            int l = LightmapTextureManager.MAX_LIGHT_COORDINATE;
-            
-            float armPitch = (float) Math.sin(life * Math.PI) * 160f; 
-            float legPitch = (float) Math.sin(life * Math.PI) * 90f; 
-            float headPitch = (float) Math.sin(life * Math.PI) * -45f; 
+            // Flailing Limbs
+            float armP = (float) Math.sin(life * 50) * 120f + (float) Math.cos(life * 30) * 45f;
+            float legP = (float) Math.cos(life * 40) * 90f;
+            float headP = (float) Math.sin(life * 35) * 40f;
+            float headY = (float) Math.cos(life * 25) * 30f;
 
-            // Head
-            matrices.push(); matrices.translate(0, -1.5f, 0); matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(headPitch));
-            drawSkinBox(matrices.peek().getPositionMatrix(), buffer, -0.25f, -0.25f, -0.25f, 0.5f, 0.5f, 0.5f, 8, 8, 8, 8, l);
-            matrices.pop();
-
-            // Body
-            matrices.push(); matrices.translate(0, -0.75f, 0);
-            drawSkinBox(matrices.peek().getPositionMatrix(), buffer, -0.25f, -0.375f, -0.125f, 0.5f, 0.75f, 0.25f, 20, 16, 8, 12, l);
-            matrices.pop();
-
-            // Right Arm
-            matrices.push(); matrices.translate(-0.375f, -1.0f, 0); matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-armPitch));
-            drawSkinBox(matrices.peek().getPositionMatrix(), buffer, -0.125f, 0, -0.125f, 0.25f, 0.75f, 0.25f, 44, 16, 4, 12, l);
-            matrices.pop();
-
-            // Left Arm
-            matrices.push(); matrices.translate(0.375f, -1.0f, 0); matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-armPitch));
-            drawSkinBox(matrices.peek().getPositionMatrix(), buffer, -0.125f, 0, -0.125f, 0.25f, 0.75f, 0.25f, 36, 52, 4, 12, l);
-            matrices.pop();
-
-            // Right Leg
-            matrices.push(); matrices.translate(-0.125f, -0.375f, 0); matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-legPitch));
-            drawSkinBox(matrices.peek().getPositionMatrix(), buffer, -0.125f, 0, -0.125f, 0.25f, 0.75f, 0.25f, 0, 16, 4, 12, l);
-            matrices.pop();
-
-            // Left Leg
-            matrices.push(); matrices.translate(0.125f, -0.375f, 0); matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-legPitch));
-            drawSkinBox(matrices.peek().getPositionMatrix(), buffer, -0.125f, 0, -0.125f, 0.25f, 0.75f, 0.25f, 16, 52, 4, 12, l);
-            matrices.pop();
-
+            RenderUtils3D.drawDoll(matrices, immediate, soul.skin, alpha, armP, legP, headP, headY);
             matrices.pop();
         }
-    }
-
-    private static void drawSkinBox(Matrix4f m, VertexConsumer v, float x, float y, float z, float w, float h, float d, float u, float vTex, float texW, float texH, int l) {
-        float pU = 1f/64f; 
-        RenderUtils3D.drawSoulQuad(m, v, x, y, z-d, x+w, y, z-d, x+w, y+h, z-d, x, y+h, z-d, (u+d)*pU, (vTex+d)*pU, (u+d+w)*pU, (vTex+d+h)*pU, 1f,1f,1f,1f, l);
-        RenderUtils3D.drawSoulQuad(m, v, x+w, y, z, x, y, z, x, y+h, z, x+w, y+h, z, (u+d+w+d)*pU, (vTex+d)*pU, (u+d+w+d+w)*pU, (vTex+d+h)*pU, 1f,1f,1f,1f, l);
-        RenderUtils3D.drawSoulQuad(m, v, x, y, z, x, y, z-d, x, y+h, z-d, x, y+h, z, u*pU, (vTex+d)*pU, (u+d)*pU, (vTex+d+h)*pU, 1f,1f,1f,1f, l);
-        RenderUtils3D.drawSoulQuad(m, v, x+w, y, z-d, x+w, y, z, x+w, y+h, z, x+w, y+h, z-d, (u+d+w)*pU, (vTex+d)*pU, (u+d+w+d)*pU, (vTex+d+h)*pU, 1f,1f,1f,1f, l);
     }
 }
