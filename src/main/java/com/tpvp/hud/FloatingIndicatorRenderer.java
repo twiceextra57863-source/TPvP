@@ -37,7 +37,6 @@ public class FloatingIndicatorRenderer {
             VertexConsumer hc = immediate.getBuffer(RenderLayer.getTextSeeThrough(fH.getAtlasId())); 
             float stX = -(tH * 9f) / 2f;
             for (int i = 0; i < tH; i++) {
-                // FIX: Used proper 'float' notations (e.g. 0f, 9f) to match RenderUtils3D
                 RenderUtils3D.drawTextureQuad(pM, hc, stX+(i*9f), 0f, 9f, 9f, eH.getMinU(), eH.getMinV(), eH.getMaxU(), eH.getMaxV(), 1f, 1f, 1f, 1f, l);
                 if (health >= (i*2)+2) RenderUtils3D.drawTextureQuad(pM, hc, stX+(i*9f), 0f, 9f, 9f, fH.getMinU(), fH.getMinV(), fH.getMaxU(), fH.getMaxV(), 1f, 1f, 1f, 1f, l);
                 else if (health > (i*2)) RenderUtils3D.drawTextureQuad(pM, hc, stX+(i*9f), 0f, 9f, 9f, hH.getMinU(), hH.getMinV(), hH.getMaxU(), hH.getMaxV(), 1f, 1f, 1f, 1f, l);
@@ -47,7 +46,6 @@ public class FloatingIndicatorRenderer {
             int bC = (hpPercent < 0.3f) ? 0xFFFF3333 : (hpPercent < 0.6f) ? 0xFFFFAA00 : 0xFF00FF00;
             VertexConsumer bc = immediate.getBuffer(RenderLayer.getTextBackgroundSeeThrough());
             
-            // FIX: Used proper 'float' notations
             RenderUtils3D.drawColorQuad(pM, bc, -26f, 0f, 52f, 7f, 0xFF000000, l); 
             RenderUtils3D.drawColorQuad(pM, bc, -25f, 1f, 50f, 5f, 0xFF333333, l); 
             if (cW > 0) RenderUtils3D.drawColorQuad(pM, bc, -25f, 1f, cW, 5f, bC, l); 
@@ -66,4 +64,4 @@ public class FloatingIndicatorRenderer {
         }
         matrices.pop();
     }
-}
+            }
