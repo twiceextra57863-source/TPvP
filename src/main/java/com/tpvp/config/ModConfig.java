@@ -24,12 +24,12 @@ public class ModConfig {
     public static int heldItemY = 50;
     public static float heldItemScale = 1.0f;
 
+    // TARGET SYSTEM (Friends & Enemies)
     public static String taggedPlayerName = "";
-    public static int targetMode = 0; 
+    public static String taggedFriendName = ""; // NAYA FRIEND TARGET
     public static boolean autoTrack = false;
     public static boolean dragonAuraEnabled = true;
 
-    // --- NAYE EFFECTS SETTINGS ---
     public static boolean killBannerEnabled = true;
     public static boolean soulAnimationEnabled = true;
 
