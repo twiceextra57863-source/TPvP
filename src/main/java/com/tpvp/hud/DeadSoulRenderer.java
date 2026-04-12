@@ -34,28 +34,20 @@ public class DeadSoulRenderer {
             float lastHealth = lastHealthMap.get(id);
             if (lastHealth > 0 && health <= 0) {
                 
-                // 100% ACCURATE KILLER DETECTION
-                String killerName = "Environment";
-                Identifier kSkin = Identifier.ofVanilla("textures/entity/steve.png");
-                
+                // --- ACCURATE KILLER DETECTION ---
                 LivingEntity attacker = target.getAttacker();
-                if (attacker instanceof AbstractClientPlayerEntity pk) {
-                    killerName = pk.getName().getString();
-                    kSkin = pk.getSkinTextures() != null ? pk.getSkinTextures().texture() : kSkin;
-                } else if (target.distanceTo(clientPlayer) < 10.0) {
-                    killerName = clientPlayer.getName().getString(); // Fallback if close
-                    kSkin = ((AbstractClientPlayerEntity)clientPlayer).getSkinTextures().texture();
-                }
-
-                String vName = target.getName().getString();
-                Identifier vSkin = (target instanceof AbstractClientPlayerEntity pt) ? (pt.getSkinTextures() != null ? pt.getSkinTextures().texture() : kSkin) : kSkin;
-
-                // Send to Banner (Pass true if Victim was tagged Friend)
-                boolean isFriend = vName.equals(ModConfig.taggedFriendName);
-                KillBannerHud.addKill(killerName, kSkin, vName, vSkin, isFriend); 
+                boolean isFriend = target.getName().getString().equals(ModConfig.taggedFriendName);
                 
-                if (target instanceof AbstractClientPlayerEntity) {
-                    activeSouls.add(new DeadSoul(target.getPos(), vSkin)); 
+                if (attacker == clientPlayer || isFriend) {
+                    String killerName = attacker != null ? attacker.getName().getString() : "Environment";
+                    Identifier kSkin = (attacker instanceof AbstractClientPlayerEntity pk) ? pk.getSkinTextures().texture() : Identifier.ofVanilla("textures/entity/steve.png");
+                    Identifier vSkin = (target instanceof AbstractClientPlayerEntity pt) ? pt.getSkinTextures().texture() : Identifier.ofVanilla("textures/entity/steve.png");
+
+                    KillBannerHud.addKill(killerName, kSkin, target.getName().getString(), vSkin, isFriend); 
+                }
+                
+                if (target instanceof AbstractClientPlayerEntity pt) {
+                    activeSouls.add(new DeadSoul(target.getPos(), pt.getSkinTextures().texture())); 
                 }
             }
         }
@@ -70,31 +62,31 @@ public class DeadSoulRenderer {
         while (iter.hasNext()) {
             DeadSoul soul = iter.next();
             long age = now - soul.startTime;
-            if (age > 6000) { iter.remove(); continue; } // Exists for 6 seconds
+            if (age > 6000) { iter.remove(); continue; } // 6 seconds long
 
             float life = age / 6000.0f; 
-            double upY = life * 8.0; 
+            double upY = life * 8.0; // Fly up high
             
-            // FULL OPACITY (As requested, no fade out until very end)
+            // Fades only at the very end
             float alpha = life > 0.8f ? (1.0f - life) / 0.2f : 1.0f; 
             
             matrices.push();
             matrices.translate(soul.pos.x - camPos.x, soul.pos.y - camPos.y + upY, soul.pos.z - camPos.z);
-            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw())); // Face Camera
+            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw())); 
             
-            // "LOVE IS WASTE OF TIME" (PK) CRAZY RAGDOLL DANCE MATH
-            // Jhatke khayega (High frequency sine waves)
-            float jhatka = (float) Math.sin(life * 80) * 15f; 
-            matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(jhatka)); 
+            // "PK" Jhatka Wiggle
+            float wiggleX = (float) Math.sin(life * 80) * 15f; 
+            float wiggleZ = (float) Math.cos(life * 90) * 15f;
+            matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(wiggleX)); 
+            matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(wiggleZ)); 
             
-            // Fix orientation (Straight up, not upside down)
             matrices.scale(0.8F, 0.8F, 0.8F); 
-            matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180f)); 
+            matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180f)); // Upright fix
             
-            // Flailing Limbs
-            float armP = (float) Math.sin(life * 50) * 120f + (float) Math.cos(life * 30) * 45f;
-            float legP = (float) Math.cos(life * 40) * 90f;
-            float headP = (float) Math.sin(life * 35) * 40f;
+            // PK Dance Limbs
+            float armP = (float) Math.sin(life * 50) * 120f + 45f; // Arms flailing up
+            float legP = (float) Math.cos(life * 40) * 90f; // Legs kicking
+            float headP = (float) Math.sin(life * 35) * 40f; 
             float headY = (float) Math.cos(life * 25) * 30f;
 
             RenderUtils3D.drawDoll(matrices, immediate, soul.skin, alpha, armP, legP, headP, headY);
