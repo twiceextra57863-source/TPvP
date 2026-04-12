@@ -17,13 +17,26 @@ public class HitboxRenderer {
         VertexConsumer lb = immediate.getBuffer(RenderLayer.getLines()); 
         Matrix4f m = matrices.peek().getPositionMatrix();
         
-        float tw = target.getWidth() / 2.0f, th = target.getHeight();
-        RenderUtils3D.drawLine(m,lb, -tw,0,-tw, tw,0,-tw); RenderUtils3D.drawLine(m,lb, tw,0,-tw, tw,0,tw); 
-        RenderUtils3D.drawLine(m,lb, tw,0,tw, -tw,0,tw); RenderUtils3D.drawLine(m,lb, -tw,0,tw, -tw,0,-tw);
-        RenderUtils3D.drawLine(m,lb, -tw,th,-tw, tw,th,-tw); RenderUtils3D.drawLine(m,lb, tw,th,-tw, tw,th,tw); 
-        RenderUtils3D.drawLine(m,lb, tw,th,tw, -tw,th,tw); RenderUtils3D.drawLine(m,lb, -tw,th,tw, -tw,th,-tw);
-        RenderUtils3D.drawLine(m,lb, -tw,0,-tw, -tw,th,-tw); RenderUtils3D.drawLine(m,lb, tw,0,-tw, tw,th,-tw); 
-        RenderUtils3D.drawLine(m,lb, tw,0,tw, tw,th,tw); RenderUtils3D.drawLine(m,lb, -tw,0,tw, -tw,th,tw);
+        float tw = target.getWidth() / 2.0f;
+        float th = target.getHeight();
+        
+        // FIX: Passed the Ruby Red Color (r,g,b,a) correctly!
+        float r = 1f, g = 0f, b = 0.2f, a = 1f; 
+        
+        RenderUtils3D.drawLine(m, lb, -tw, 0, -tw, tw, 0, -tw, r, g, b, a); 
+        RenderUtils3D.drawLine(m, lb, tw, 0, -tw, tw, 0, tw, r, g, b, a); 
+        RenderUtils3D.drawLine(m, lb, tw, 0, tw, -tw, 0, tw, r, g, b, a); 
+        RenderUtils3D.drawLine(m, lb, -tw, 0, tw, -tw, 0, -tw, r, g, b, a);
+        
+        RenderUtils3D.drawLine(m, lb, -tw, th, -tw, tw, th, -tw, r, g, b, a); 
+        RenderUtils3D.drawLine(m, lb, tw, th, -tw, tw, th, tw, r, g, b, a); 
+        RenderUtils3D.drawLine(m, lb, tw, th, tw, -tw, th, tw, r, g, b, a); 
+        RenderUtils3D.drawLine(m, lb, -tw, th, tw, -tw, th, -tw, r, g, b, a);
+        
+        RenderUtils3D.drawLine(m, lb, -tw, 0, -tw, -tw, th, -tw, r, g, b, a); 
+        RenderUtils3D.drawLine(m, lb, tw, 0, -tw, tw, th, -tw, r, g, b, a); 
+        RenderUtils3D.drawLine(m, lb, tw, 0, tw, tw, th, tw, r, g, b, a); 
+        RenderUtils3D.drawLine(m, lb, -tw, 0, tw, -tw, th, tw, r, g, b, a);
         
         matrices.pop();
     }
