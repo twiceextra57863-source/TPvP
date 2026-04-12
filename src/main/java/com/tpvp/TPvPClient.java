@@ -13,12 +13,12 @@ public class TPvPClient implements ClientModInitializer {
     public void onInitializeClient() {
         ModConfig.load();
         
-        // 3D Registers
+        // 3D Rendering Registers
         Indicator3D.register();
         
         // 2D HUD Registers
         HudRenderCallback.EVENT.register(new NearbyPlayersHud());
         HudRenderCallback.EVENT.register(new ArmorHud());
-        HudRenderCallback.EVENT.register(new KillBannerHud()); // Kill Banner Registered!
+        HudRenderCallback.EVENT.register(new KillBannerHud()); // KILL BANNER REGISTERED!
     }
 }
