@@ -17,11 +17,13 @@ public class ModConfig {
 
     public static int radarX = 10, radarY = 30;
     public static float radarScale = 1.0f;
+    
     public static int heldItemX = 50, heldItemY = 50;
     public static float heldItemScale = 1.0f;
 
-    // NAYA: Kill Feed Position
-    public static int killFeedX = 10, killFeedY = 50;
+    // NAYA: Kill Feed (Notification) Coordinates
+    public static int killFeedX = 10;
+    public static int killFeedY = 50;
 
     public static String taggedPlayerName = "";
     public static String taggedFriendName = ""; 
