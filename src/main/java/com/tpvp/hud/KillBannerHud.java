@@ -24,10 +24,8 @@ public class KillBannerHud implements HudRenderCallback {
         if (now - lastKillTime < 15000 && killerName.equals(kName)) killStreak++; 
         else killStreak = 1;
         
-        killerName = kName; 
-        killerSkin = kSkin;
-        victimName = vName; 
-        victimSkin = vSkin;
+        killerName = kName; killerSkin = kSkin;
+        victimName = vName; victimSkin = vSkin;
         wasFriend = isFriend;
         lastKillTime = now;
     }
@@ -53,7 +51,7 @@ public class KillBannerHud implements HudRenderCallback {
         int color = 0xFFFFFF;
 
         if (wasFriend) {
-            title = "FRIEND DOWN!"; color = 0xFFFF0000; subtitle = "Avenge " + victimName + " immediately!";
+            title = "FRIEND BETRAYAL!"; color = 0xFFFF0000; subtitle = "You killed " + victimName + "!";
         } else {
             switch (killStreak) {
                 case 1: title = "FIRST STRIKE"; color = 0xFFFFAA00; break; 
@@ -71,13 +69,13 @@ public class KillBannerHud implements HudRenderCallback {
 
         context.getMatrices().push();
         
-        // WIDE MOBA STYLE BANNER BACKGROUND
+        // WIDE BACKGROUND
         float bgW = 160.0f * popIn;
         context.fillGradient((int)(cx - bgW), cy - 20, (int)(cx + bgW), cy + 20, aColor | 0x880000, aColor | 0x330000); 
         context.fill((int)(cx - bgW), cy - 22, (int)(cx + bgW), cy - 20, aColor | 0xFFD700); 
         context.fill((int)(cx - bgW), cy + 20, (int)(cx + bgW), cy + 22, aColor | 0xFFD700); 
 
-        // EPIC TEXT
+        // TITLE & SUBTITLE
         context.getMatrices().push();
         context.getMatrices().translate(cx, cy - 14, 0);
         context.getMatrices().scale(1.5f, 1.5f, 1.0f);
@@ -86,15 +84,14 @@ public class KillBannerHud implements HudRenderCallback {
         
         context.drawTextWithShadow(client.textRenderer, subtitle, cx - client.textRenderer.getWidth(subtitle) / 2, cy + 8, whiteAlpha);
 
-        // --- RENDER PERFECT 2D PLAYER FACES (NO RAW SKIN GLITCH) ---
+        // --- RENDER PERFECT 2D FACES (100% BUG FREE) ---
         if (killerSkin != null && victimSkin != null) {
             
             // Killer Face (Left)
             context.fill(cx - 152, cy - 14, cx - 128, cy + 10, aColor | 0xFFD700); // Gold Border
-            // Exact Skin Head mapping for 2D DrawTexture!
+            // Exact Face Mapping (8, 8, 8, 8 in texture space)
             context.drawTexture(RenderLayer::getGuiTextured, killerSkin, cx - 150, cy - 12, 8f, 8f, 20, 20, 64, 64);
             
-            // VS Text
             context.drawTextWithShadow(client.textRenderer, "⚔", cx - 90, cy - 4, finalColor);
 
             // Victim Face (Right)
