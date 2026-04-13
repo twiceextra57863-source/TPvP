@@ -23,6 +23,7 @@ public class TargetAuraRenderer {
         // 1. DRAGON AURA (ENEMIES)
         // ---------------------------------------------------------
         if (tName.equals(activeTarget) && ModConfig.dragonAuraEnabled) {
+            // ... (Same exact working Dragon code as previous)
             long popTime = totemPopMap.getOrDefault(target.getId(), 0L);
             long now = System.currentTimeMillis();
             boolean isTotemPop = (now - popTime) < 3000;
@@ -98,7 +99,6 @@ public class TargetAuraRenderer {
             }
             matrices.pop();
 
-            // Down Arrow
             matrices.push(); double bounce = Math.sin(System.currentTimeMillis() / 150.0) * 0.2; matrices.translate(x, y + target.getHeight() + 1.8 + bounce, z); 
             matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw())); matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(camera.getPitch())); matrices.scale(-0.1F, -0.1F, 0.1F); 
             client.textRenderer.draw("▼", -client.textRenderer.getWidth("▼") / 2f, 0, 0xFFFF2222, true, matrices.peek().getPositionMatrix(), immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0x00000000, 15728880);
@@ -106,38 +106,47 @@ public class TargetAuraRenderer {
         }
 
         // ---------------------------------------------------------
-        // 2. FRIEND BLUE FEET AURA (NEW SYSTEM)
+        // 2. DIVINE FRIEND AURA (Golden Halo)
         // ---------------------------------------------------------
         if (tName.equals(ModConfig.taggedFriendName) && ModConfig.dragonAuraEnabled) {
-            
             matrices.push();
-            matrices.translate(x, y + 0.05, z); // Just slightly above ground at feet
+            matrices.translate(x, y + 0.1, z); // Just above feet
             
-            float time = (System.currentTimeMillis() % 2000) / 2000.0f; // 0 to 1 loop
+            long now = System.currentTimeMillis();
+            float rot = (now % 3000) / 3000.0f * 360f; // Spin continuously
+            float hover = (float) Math.sin(now / 500.0) * 0.2f + 0.5f; // Float up and down
+            
+            matrices.translate(0, hover, 0); // Apply hover
+            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(rot)); 
+            
             Matrix4f mat = matrices.peek().getPositionMatrix();
             VertexConsumer lineBuffer = immediate.getBuffer(RenderLayer.getLines());
-            float radius = target.getWidth() + 0.3f;
+            
+            float radius = target.getWidth() + 0.4f;
 
-            // Draw a spinning wavy blue circle (Water/Heal effect)
-            for(int i = 0; i < 360; i += 10) {
-                float rad1 = (float)Math.toRadians(i - (time * 360));
-                float rad2 = (float)Math.toRadians(i + 10 - (time * 360));
+            // Draw a Golden Glowing Ring with particles rising
+            for(int i = 0; i < 360; i += 20) {
+                float r1 = (float)Math.toRadians(i);
+                float r2 = (float)Math.toRadians(i + 20);
                 
-                float px1 = (float)Math.cos(rad1) * radius;
-                float pz1 = (float)Math.sin(rad1) * radius;
-                float px2 = (float)Math.cos(rad2) * radius;
-                float pz2 = (float)Math.sin(rad2) * radius;
+                float px1 = (float)Math.cos(r1) * radius;
+                float pz1 = (float)Math.sin(r1) * radius;
+                float px2 = (float)Math.cos(r2) * radius;
+                float pz2 = (float)Math.sin(r2) * radius;
                 
-                // Add vertical wave for a "Particle ring" feel
-                float py1 = (float)Math.sin(rad1 * 5 + time * Math.PI * 2) * 0.2f;
-                float py2 = (float)Math.sin(rad2 * 5 + time * Math.PI * 2) * 0.2f;
+                // Base Ring
+                RenderUtils3D.drawLine(mat, lineBuffer, px1, 0, pz1, px2, 0, pz2, 1.0f, 0.9f, 0.2f, 1.0f); // Gold
 
-                // Bright Blue Color
-                RenderUtils3D.drawLine(mat, lineBuffer, px1, py1, pz1, px2, py2, pz2, 0.0f, 0.7f, 1.0f, 1.0f); 
+                // Flying Light Particles
+                if (i % 40 == 0) {
+                    float upY = (now % 1000) / 1000.0f * 2.0f; // Fly up 2 blocks
+                    float fade = 1.0f - (upY / 2.0f);
+                    RenderUtils3D.drawLine(mat, lineBuffer, px1, upY, pz1, px1, upY + 0.2f, pz1, 1.0f, 0.9f, 0.2f, fade);
+                }
             }
             matrices.pop();
 
-            // Friend Name Tag (Green Arrow)
+            // Green Friend Marker
             matrices.push(); 
             double bounce = Math.sin(System.currentTimeMillis() / 150.0) * 0.2; 
             matrices.translate(x, y + target.getHeight() + 1.8 + bounce, z); 
