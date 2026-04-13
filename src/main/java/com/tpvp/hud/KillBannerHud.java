@@ -24,8 +24,10 @@ public class KillBannerHud implements HudRenderCallback {
         if (now - lastKillTime < 15000 && killerName.equals(kName)) killStreak++; 
         else killStreak = 1;
         
-        killerName = kName; killerSkin = kSkin;
-        victimName = vName; victimSkin = vSkin;
+        killerName = kName; 
+        killerSkin = kSkin;
+        victimName = vName; 
+        victimSkin = vSkin;
         wasFriend = isFriend;
         lastKillTime = now;
     }
@@ -50,17 +52,16 @@ public class KillBannerHud implements HudRenderCallback {
         String subtitle = killerName + " eliminated " + victimName;
         int color = 0xFFFFFF;
 
-        // 6 UNIQUE CUSTOM TEXTS!
         if (wasFriend) {
-            title = "FRIEND FALLEN!"; color = 0xFFFF0000; subtitle = "Avenge " + victimName + " immediately!";
+            title = "FRIEND DOWN!"; color = 0xFFFF0000; subtitle = "Avenge " + victimName + " immediately!";
         } else {
             switch (killStreak) {
-                case 1: title = "FIRST STRIKE"; color = 0xFFFFAA00; break; // Gold
-                case 2: title = "TWIN TAKEDOWN"; color = 0xFFFF5555; subtitle = "Double Down!"; break; // Red
-                case 3: title = "TRINITY SMASH"; color = 0xFFFF33FF; subtitle = "Unstoppable Force!"; break; // Purple
-                case 4: title = "QUADRA CRUSH"; color = 0xFF33FFFF; subtitle = "Total Annihilation!"; break; // Aqua
-                case 5: title = "PENTA WIPE"; color = 0xFFFF0000; subtitle = "Unbelievable!!"; break; // Dark Red
-                default: title = "OBLITERATION!"; color = 0xFFFFD700; subtitle = "LEGENDARY!!"; break; // Deep Gold
+                case 1: title = "FIRST STRIKE"; color = 0xFFFFAA00; break; 
+                case 2: title = "TWIN TAKEDOWN"; color = 0xFFFF5555; subtitle = "Double Down!"; break; 
+                case 3: title = "TRINITY SMASH"; color = 0xFFFF33FF; subtitle = "Unstoppable Force!"; break; 
+                case 4: title = "QUADRA CRUSH"; color = 0xFF33FFFF; subtitle = "Total Annihilation!"; break; 
+                case 5: title = "PENTA WIPE"; color = 0xFFFF0000; subtitle = "Unbelievable!!"; break; 
+                default: title = "OBLITERATION!"; color = 0xFFFFD700; subtitle = "LEGENDARY!!"; break; 
             }
         }
 
@@ -72,9 +73,7 @@ public class KillBannerHud implements HudRenderCallback {
         
         // WIDE MOBA STYLE BANNER BACKGROUND
         float bgW = 160.0f * popIn;
-        // Base Red Gradient
         context.fillGradient((int)(cx - bgW), cy - 20, (int)(cx + bgW), cy + 20, aColor | 0x880000, aColor | 0x330000); 
-        // Golden Borders
         context.fill((int)(cx - bgW), cy - 22, (int)(cx + bgW), cy - 20, aColor | 0xFFD700); 
         context.fill((int)(cx - bgW), cy + 20, (int)(cx + bgW), cy + 22, aColor | 0xFFD700); 
 
@@ -87,18 +86,20 @@ public class KillBannerHud implements HudRenderCallback {
         
         context.drawTextWithShadow(client.textRenderer, subtitle, cx - client.textRenderer.getWidth(subtitle) / 2, cy + 8, whiteAlpha);
 
-        // RENDER PLAYER FACES ON EDGES
+        // --- RENDER PERFECT 2D PLAYER FACES (NO RAW SKIN GLITCH) ---
         if (killerSkin != null && victimSkin != null) {
+            
             // Killer Face (Left)
-            context.fill(cx - 162, cy - 18, cx - 128, cy + 18, aColor | 0xFFD700); // Gold Border
-            context.drawTexture(RenderLayer::getGuiTextured, killerSkin, cx - 160, cy - 16, 8f, 8f, 32, 32, 64, 64);
+            context.fill(cx - 152, cy - 14, cx - 128, cy + 10, aColor | 0xFFD700); // Gold Border
+            // Exact Skin Head mapping for 2D DrawTexture!
+            context.drawTexture(RenderLayer::getGuiTextured, killerSkin, cx - 150, cy - 12, 8f, 8f, 20, 20, 64, 64);
             
             // VS Text
             context.drawTextWithShadow(client.textRenderer, "⚔", cx - 90, cy - 4, finalColor);
 
             // Victim Face (Right)
-            context.fill(cx + 128, cy - 18, cx + 162, cy + 18, aColor | 0xFF0000); // Red Border
-            context.drawTexture(RenderLayer::getGuiTextured, victimSkin, cx + 130, cy - 16, 8f, 8f, 32, 32, 64, 64);
+            context.fill(cx + 128, cy - 14, cx + 152, cy + 10, aColor | 0xFF0000); // Red Border
+            context.drawTexture(RenderLayer::getGuiTextured, victimSkin, cx + 130, cy - 12, 8f, 8f, 20, 20, 64, 64);
         }
 
         context.getMatrices().pop();
