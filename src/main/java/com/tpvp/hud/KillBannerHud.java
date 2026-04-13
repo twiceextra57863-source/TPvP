@@ -2,12 +2,15 @@ package com.tpvp.hud;
 
 import com.tpvp.config.ModConfig;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+package com.tpvp.hud;
+
+import com.tpvp.config.ModConfig;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.math.RotationAxis;
 
 public class KillBannerHud implements HudRenderCallback {
     
@@ -18,11 +21,11 @@ public class KillBannerHud implements HudRenderCallback {
     public static Identifier killerSkin = null;
     public static String victimName = "";
     public static Identifier victimSkin = null;
-    public static boolean wasFriend = false;
+    public static boolean wasFriend = false; 
 
     public static void addKill(String kName, Identifier kSkin, String vName, Identifier vSkin, boolean isFriend) {
         long now = System.currentTimeMillis();
-        if (now - lastKillTime < 15000) killStreak++; 
+        if (now - lastKillTime < 15000 && killerName.equals(kName)) killStreak++; 
         else killStreak = 1;
         
         killerName = kName; killerSkin = kSkin;
@@ -44,78 +47,62 @@ public class KillBannerHud implements HudRenderCallback {
         float popIn = Math.min(1.0f, elapsed / 300.0f); 
         float fadeOut = elapsed > 3500 ? (4000 - elapsed) / 500.0f : 1.0f; 
         
-        int cy = (int) (60 + (30 * (1.0f - popIn))); // Drops from above
+        int cy = (int) (60 + (30 * (1.0f - popIn))); 
         int cx = screenW / 2;
 
         String title = "";
         String subtitle = killerName + " eliminated " + victimName;
         int color = 0xFFFFFF;
 
+        // 6 UNIQUE CUSTOM TEXTS!
         if (wasFriend) {
-            title = "FRIEND DOWN!"; color = 0xFFFF0000; subtitle = "Avenge " + victimName + " immediately!";
+            title = "FRIEND FALLEN!"; color = 0xFFFF0000; subtitle = "Avenge " + victimName + " immediately!";
         } else {
             switch (killStreak) {
-                case 1: title = "INITIAL STRIKE"; color = 0xFFFF3333; break; 
-                case 2: title = "CHAIN KILL"; color = 0xFFFFAA00; subtitle = "Double Down!"; break; 
-                case 3: title = "MASSACRE"; color = 0xFFFF33FF; subtitle = "Unstoppable Force!"; break; 
-                case 4: title = "EXTERMINATION"; color = 0xFF33FFFF; subtitle = "Pure Carnage!"; break; 
-                default: title = "GOD OF WAR!!"; color = 0xFFFF0000; subtitle = "Legendary!"; break; 
+                case 1: title = "FIRST STRIKE"; color = 0xFFFFAA00; break; // Gold
+                case 2: title = "TWIN TAKEDOWN"; color = 0xFFFF5555; subtitle = "Double Down!"; break; // Red
+                case 3: title = "TRINITY SMASH"; color = 0xFFFF33FF; subtitle = "Unstoppable Force!"; break; // Purple
+                case 4: title = "QUADRA CRUSH"; color = 0xFF33FFFF; subtitle = "Total Annihilation!"; break; // Aqua
+                case 5: title = "PENTA WIPE"; color = 0xFFFF0000; subtitle = "Unbelievable!!"; break; // Dark Red
+                default: title = "OBLITERATION!"; color = 0xFFFFD700; subtitle = "LEGENDARY!!"; break; // Deep Gold
             }
         }
 
         int aColor = ((int)(fadeOut * 255) << 24);
         int finalColor = (color & 0x00FFFFFF) | aColor;
-        int subColor = (0xDDDDDD & 0x00FFFFFF) | aColor;
+        int whiteAlpha = 0xFFFFFF | aColor;
 
         context.getMatrices().push();
         
-        // 1. TORN PAPER (TREASURE MAP) BACKGROUND
-        float bgW = 200.0f * popIn;
-        context.fill((int)(cx - bgW), cy - 25, (int)(cx + bgW), cy + 30, aColor | 0x3d2914); // Brown Parchment
-        
-        int segments = 20;
-        float segW = (bgW * 2) / segments;
-        for (int i = 0; i < segments; i++) {
-            float startX = (cx - bgW) + (i * segW);
-            int yTop = (i % 2 == 0) ? -29 : -23;
-            int yBot = (i % 3 == 0) ? 34 : 28;
-            context.fill((int)startX, cy + yTop, (int)(startX + segW), cy - 25, aColor | 0x2b1c0d); // Darker Torn Edges
-            context.fill((int)startX, cy + 30, (int)(startX + segW), cy + yBot, aColor | 0x2b1c0d);
-        }
-        
-        // 2. EPIC TEXT
+        // WIDE MOBA STYLE BANNER BACKGROUND
+        float bgW = 160.0f * popIn;
+        // Base Red Gradient
+        context.fillGradient((int)(cx - bgW), cy - 20, (int)(cx + bgW), cy + 20, aColor | 0x880000, aColor | 0x330000); 
+        // Golden Borders
+        context.fill((int)(cx - bgW), cy - 22, (int)(cx + bgW), cy - 20, aColor | 0xFFD700); 
+        context.fill((int)(cx - bgW), cy + 20, (int)(cx + bgW), cy + 22, aColor | 0xFFD700); 
+
+        // EPIC TEXT
         context.getMatrices().push();
-        context.getMatrices().translate(cx, cy - 18, 0);
-        context.getMatrices().scale(1.8f, 1.8f, 1.0f);
+        context.getMatrices().translate(cx, cy - 14, 0);
+        context.getMatrices().scale(1.5f, 1.5f, 1.0f);
         context.drawTextWithShadow(client.textRenderer, title, -client.textRenderer.getWidth(title) / 2, 0, finalColor);
         context.getMatrices().pop();
         
-        context.drawTextWithShadow(client.textRenderer, subtitle, cx - client.textRenderer.getWidth(subtitle) / 2, cy + 12, subColor);
+        context.drawTextWithShadow(client.textRenderer, subtitle, cx - client.textRenderer.getWidth(subtitle) / 2, cy + 8, whiteAlpha);
 
-        // 3. FULL 3D DOLLS RENDERING ON HUD!
-        VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
-        float dollRot = (System.currentTimeMillis() % 4000) / 4000.0f * 360f; // Spinning dolls
-
+        // RENDER PLAYER FACES ON EDGES
         if (killerSkin != null && victimSkin != null) {
-            // Killer Doll (Left)
-            context.getMatrices().push();
-            context.getMatrices().translate(cx - 150, cy + 15, 50); // Z is 50 to render above HUD
-            context.getMatrices().scale(30f, 30f, -30f); // 30 pixels big
-            context.getMatrices().multiply(RotationAxis.POSITIVE_Y.rotationDegrees(dollRot));
-            RenderUtils3D.drawDoll(context.getMatrices(), immediate, killerSkin, fadeOut, 0, 0, 0, 0);
-            context.getMatrices().pop();
-
-            context.drawTextWithShadow(client.textRenderer, "⚔", cx - 80, cy - 4, finalColor);
-
-            // Victim Doll (Right)
-            context.getMatrices().push();
-            context.getMatrices().translate(cx + 150, cy + 15, 50);
-            context.getMatrices().scale(30f, 30f, -30f);
-            context.getMatrices().multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-dollRot));
-            RenderUtils3D.drawDoll(context.getMatrices(), immediate, victimSkin, fadeOut, 0, 0, 0, 0);
-            context.getMatrices().pop();
+            // Killer Face (Left)
+            context.fill(cx - 162, cy - 18, cx - 128, cy + 18, aColor | 0xFFD700); // Gold Border
+            context.drawTexture(RenderLayer::getGuiTextured, killerSkin, cx - 160, cy - 16, 8f, 8f, 32, 32, 64, 64);
             
-            immediate.draw(); // Flush the 3D buffer to the screen!
+            // VS Text
+            context.drawTextWithShadow(client.textRenderer, "⚔", cx - 90, cy - 4, finalColor);
+
+            // Victim Face (Right)
+            context.fill(cx + 128, cy - 18, cx + 162, cy + 18, aColor | 0xFF0000); // Red Border
+            context.drawTexture(RenderLayer::getGuiTextured, victimSkin, cx + 130, cy - 16, 8f, 8f, 32, 32, 64, 64);
         }
 
         context.getMatrices().pop();
