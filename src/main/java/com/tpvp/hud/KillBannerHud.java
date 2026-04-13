@@ -4,11 +4,9 @@ import com.tpvp.config.ModConfig;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.PlayerSkinDrawer; // 100% Native Head Drawer!
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.util.Identifier;
-
-import java.util.Random;
 
 public class KillBannerHud implements HudRenderCallback {
     
@@ -20,8 +18,6 @@ public class KillBannerHud implements HudRenderCallback {
     public static String victimName = "";
     public static Identifier victimSkin = null;
     public static boolean wasFriend = false; 
-
-    private static final Random random = new Random();
 
     public static void addKill(String kName, Identifier kSkin, String vName, Identifier vSkin, boolean isFriend) {
         long now = System.currentTimeMillis();
@@ -39,7 +35,7 @@ public class KillBannerHud implements HudRenderCallback {
         if (!ModConfig.killBannerEnabled || killStreak == 0) return;
 
         long elapsed = System.currentTimeMillis() - lastKillTime;
-        if (elapsed > 5000) return; // 5 Seconds pop duration
+        if (elapsed > 5000) return; // 5 Seconds duration
 
         MinecraftClient client = MinecraftClient.getInstance();
         int screenW = client.getWindow().getScaledWidth();
@@ -80,7 +76,9 @@ public class KillBannerHud implements HudRenderCallback {
 
         // Apply Custom Theme Colors
         if (!wasFriend) {
-            color = ModConfig.bannerColorTheme == 0 ? 0xFFFF2222 : (ModConfig.bannerColorTheme == 1 ? 0xFFFFD700 : 0xFF00FF22);
+            if (ModConfig.bannerColorTheme == 0) color = 0xFFFF2222;
+            else if (ModConfig.bannerColorTheme == 1) color = 0xFFFFD700;
+            else if (ModConfig.bannerColorTheme == 2) color = 0xFF00FF22;
         }
 
         context.getMatrices().push();
@@ -103,17 +101,19 @@ public class KillBannerHud implements HudRenderCallback {
         context.fill(-2 + eX2, cardH - 1, cardW + 2 + eX1, cardH + 1 + eY2, color); // Bottom Lightning
 
         // ----------------------------------------------------
-        // 3. 100% PERFECT 2D HEAD RENDERING (NO RAW SKIN GLITCH)
+        // 3. EXACT 2D HEAD RENDERING (UV Cutout System)
         // ----------------------------------------------------
         if (killerSkin != null && victimSkin != null) {
             
-            // Draw Killer Head (Left Side) - Using Vanilla PlayerSkinDrawer!
+            // Draw Killer Head (Left Side)
             context.fill(4, 4, 26, 26, color); // Glowing Border behind head
-            PlayerSkinDrawer.draw(context, killerSkin, 5, 5, 20); // Exact 20x20 pixel Face
+            
+            // FIX: Exact mapping! Minecraft Head is at UV X=8, Y=8. Scaled to 20x20 pixels
+            context.drawTexture(RenderLayer::getGuiTextured, killerSkin, 5, 5, 8f, 8f, 20, 20, 64, 64);
             
             // Draw Victim Head (Right Side)
             context.fill(cardW - 26, 4, cardW - 4, 26, 0xFFFF0000); // Red Border
-            PlayerSkinDrawer.draw(context, victimSkin, cardW - 25, 5, 20); // Exact 20x20 pixel Face
+            context.drawTexture(RenderLayer::getGuiTextured, victimSkin, cardW - 25, 5, 8f, 8f, 20, 20, 64, 64);
             
             // 4. TEXT RENDERING
             context.getMatrices().push();
