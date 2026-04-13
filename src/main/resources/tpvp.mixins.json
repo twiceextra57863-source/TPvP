@@ -3,14 +3,15 @@
   "minVersion": "0.8",
   "package": "com.tpvp.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [],
+  "mixins": [
+  ],
   "client": [
     "TitleScreenMixin",
     "GameMenuScreenMixin",
-    "PerformanceMixin",
-    "EntityRenderMixin",
-    "ParticleMixin",
-    "InGameHudMixin"
+    "InGameHudMixin",
+    "PerformanceMixin$EntityRenderMixin",
+    "PerformanceMixin$ParticleMixin",
+    "PerformanceMixin$SmoothCameraMixin"
   ],
   "injectors": {
     "defaultRequire": 1
