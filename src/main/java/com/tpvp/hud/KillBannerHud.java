@@ -85,7 +85,8 @@ public class KillBannerHud implements HudRenderCallback {
         context.getMatrices().translate(cx, baseY, 0);
 
         // 1. DARK CYBER BACKGROUND
-        context.fill(0, 0, cardW, cardH, 0xEE050505);
+        int aColor = ((int)(slideProgress * 255) << 24);
+        context.fill(0, 0, cardW, cardH, aColor | 0x050505);
         
         // 2. ELECTRIC / LIGHTNING BORDER PARTICLES (Top & Bottom)
         long tick = System.currentTimeMillis() / 40;
@@ -96,44 +97,56 @@ public class KillBannerHud implements HudRenderCallback {
         int eX2 = (int)(Math.sin(tick * 3.1) * 4);
         int eY2 = (int)(Math.cos(tick * 2.1) * 2);
 
+        int finalColor = (color & 0x00FFFFFF) | aColor;
+        
         // Draw lightning lines
-        context.fill(-2 + eX1, -1 + eY1, cardW + 2 + eX2, 1, color); // Top Lightning
-        context.fill(-2 + eX2, cardH - 1, cardW + 2 + eX1, cardH + 1 + eY2, color); // Bottom Lightning
+        context.fill(-2 + eX1, -1 + eY1, cardW + 2 + eX2, 1, finalColor); // Top Lightning
+        context.fill(-2 + eX2, cardH - 1, cardW + 2 + eX1, cardH + 1 + eY2, finalColor); // Bottom Lightning
 
         // ----------------------------------------------------
-        // 3. EXACT 2D HEAD RENDERING (UV Cutout System)
+        // 3. FLAWLESS 2D HEAD RENDERING (Radar Style + Scale)
         // ----------------------------------------------------
         if (killerSkin != null && victimSkin != null) {
             
-            // Draw Killer Head (Left Side)
-            context.fill(4, 4, 26, 26, color); // Glowing Border behind head
+            // --- Killer Head (Left Side) ---
+            context.fill(4, 4, 26, 26, finalColor); // Glowing Border behind head
             
-            // FIX: Exact mapping! Minecraft Head is at UV X=8, Y=8. Scaled to 20x20 pixels
-            context.drawTexture(RenderLayer::getGuiTextured, killerSkin, 5, 5, 8f, 8f, 20, 20, 64, 64);
+            context.getMatrices().push();
+            context.getMatrices().translate(5, 5, 0);
+            context.getMatrices().scale(2.5f, 2.5f, 1.0f); // 8x8 pixels ko 2.5x bada kar diya = 20x20 Size!
+            // Radar wala EXACT code: (x=0, y=0 par 8x8 draw karo, texture ka 8,8 part cut karke)
+            context.drawTexture(RenderLayer::getGuiTextured, killerSkin, 0, 0, 8f, 8f, 8, 8, 64, 64);
+            context.getMatrices().pop();
             
-            // Draw Victim Head (Right Side)
-            context.fill(cardW - 26, 4, cardW - 4, 26, 0xFFFF0000); // Red Border
-            context.drawTexture(RenderLayer::getGuiTextured, victimSkin, cardW - 25, 5, 8f, 8f, 20, 20, 64, 64);
+            // --- Victim Head (Right Side) ---
+            context.fill(cardW - 26, 4, cardW - 4, 26, aColor | 0xFF0000); // Red Border
+            
+            context.getMatrices().push();
+            context.getMatrices().translate(cardW - 25, 5, 0);
+            context.getMatrices().scale(2.5f, 2.5f, 1.0f);
+            // Victim ka Face cut!
+            context.drawTexture(RenderLayer::getGuiTextured, victimSkin, 0, 0, 8f, 8f, 8, 8, 64, 64);
+            context.getMatrices().pop();
             
             // 4. TEXT RENDERING
             context.getMatrices().push();
             context.getMatrices().scale(0.85f, 0.85f, 1.0f);
             
             // Killer Name
-            context.drawTextWithShadow(client.textRenderer, killerName, 35, 12, color);
+            context.drawTextWithShadow(client.textRenderer, killerName, 35, 12, finalColor);
             
             // Victim Name (Right Aligned to Head)
             int vW = client.textRenderer.getWidth(victimName);
-            context.drawTextWithShadow(client.textRenderer, victimName, (int)((cardW - 30) / 0.85f) - vW, 12, 0xAAAAAA);
+            context.drawTextWithShadow(client.textRenderer, victimName, (int)((cardW - 30) / 0.85f) - vW, 12, aColor | 0xAAAAAA);
             context.getMatrices().pop();
             
             // Center Sword & Kill Streak Number
-            context.drawCenteredTextWithShadow(client.textRenderer, "⚔" + streakText, cardW / 2, 7, 0xAAAAAA);
+            context.drawCenteredTextWithShadow(client.textRenderer, "⚔" + streakText, cardW / 2, 7, aColor | 0xAAAAAA);
             
             // Epic Title Banner
             context.getMatrices().push();
             context.getMatrices().scale(0.7f, 0.7f, 1.0f);
-            context.drawCenteredTextWithShadow(client.textRenderer, title, (int)((cardW / 2) / 0.7f), 24, color);
+            context.drawCenteredTextWithShadow(client.textRenderer, title, (int)((cardW / 2) / 0.7f), 24, finalColor);
             context.getMatrices().pop();
         }
 
