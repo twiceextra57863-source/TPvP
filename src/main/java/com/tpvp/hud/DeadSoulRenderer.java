@@ -11,10 +11,14 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 public class DeadSoulRenderer {
-    public static final Set<Integer> deadEntities = new HashSet<>();
+    public static final Map<Integer, Float> lastHealthMap = new HashMap<>();
     public static final List<DeadSoul> activeSouls = new ArrayList<>();
 
     private static class DeadSoul {
@@ -24,39 +28,37 @@ public class DeadSoulRenderer {
 
     public static void checkKills(LivingEntity target, PlayerEntity clientPlayer) {
         int id = target.getId();
-        
-        // Agar pehle se dead nahi tha aur ab mar gaya
-        if ((target.getHealth() <= 0 || target.isDead()) && !deadEntities.contains(id)) {
-            deadEntities.add(id);
+        float health = target.getHealth();
 
-            // REAL KILLER DETECTION
-            LivingEntity attacker = target.getAttacker();
-            String killerName = "Environment";
-            Identifier kSkin = Identifier.ofVanilla("textures/entity/steve.png");
+        if (lastHealthMap.containsKey(id)) {
+            float lastHealth = lastHealthMap.get(id);
+            if (lastHealth > 0 && health <= 0) {
+                
+                LivingEntity attacker = target.getAttacker();
+                String killerName = "Environment";
+                Identifier kSkin = Identifier.ofVanilla("textures/entity/steve.png");
 
-            if (attacker instanceof AbstractClientPlayerEntity pk) {
-                killerName = pk.getName().getString();
-                kSkin = pk.getSkinTextures() != null ? pk.getSkinTextures().texture() : kSkin;
-            } else if (target.distanceTo(clientPlayer) < 5.0) {
-                // Agar pas me hai toh player ko default credit do
-                killerName = clientPlayer.getName().getString();
-                kSkin = ((AbstractClientPlayerEntity)clientPlayer).getSkinTextures().texture();
+                if (attacker instanceof AbstractClientPlayerEntity pk) {
+                    killerName = pk.getName().getString();
+                    kSkin = pk.getSkinTextures() != null ? pk.getSkinTextures().texture() : kSkin;
+                } else if (target.distanceTo(clientPlayer) < 10.0) {
+                    killerName = clientPlayer.getName().getString(); 
+                    kSkin = ((AbstractClientPlayerEntity)clientPlayer).getSkinTextures().texture();
+                }
+
+                String vName = target.getName().getString();
+                Identifier vSkin = (target instanceof AbstractClientPlayerEntity pt) ? (pt.getSkinTextures() != null ? pt.getSkinTextures().texture() : kSkin) : kSkin;
+
+                boolean isFriend = vName.equals(ModConfig.taggedFriendName);
+                
+                KillBannerHud.addKill(killerName, kSkin, vName, vSkin, isFriend); 
+                
+                if (target instanceof AbstractClientPlayerEntity) {
+                    activeSouls.add(new DeadSoul(target.getPos(), vSkin)); 
+                }
             }
-
-            String vName = target.getName().getString();
-            Identifier vSkin = (target instanceof AbstractClientPlayerEntity pt) ? pt.getSkinTextures().texture() : Identifier.ofVanilla("textures/entity/steve.png");
-
-            boolean isFriend = vName.equals(ModConfig.taggedFriendName);
-            
-            // BANNER ME BHEJO!
-            KillBannerHud.addKill(killerName, kSkin, vName, vSkin, isFriend); 
-
-            if (target instanceof AbstractClientPlayerEntity) {
-                activeSouls.add(new DeadSoul(target.getPos(), vSkin)); 
-            }
-        } else if (target.getHealth() > 0 && !target.isDead()) {
-            deadEntities.remove(id); // Respawn hone par reset
         }
+        lastHealthMap.put(id, health);
     }
 
     public static void renderSouls(MatrixStack matrices, VertexConsumerProvider.Immediate immediate, Camera camera, Vec3d camPos) {
@@ -77,18 +79,18 @@ public class DeadSoulRenderer {
             matrices.translate(soul.pos.x - camPos.x, soul.pos.y - camPos.y + upY, soul.pos.z - camPos.z);
             matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-camera.getYaw())); 
             
-            // "PK Dance" - Wiggle Left to Right
+            // PK Dance
             float wiggleX = (float) Math.sin(life * 50) * 15f; 
             matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(wiggleX)); 
             
             matrices.scale(0.8F, 0.8F, 0.8F); 
             matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180f)); 
             
-            // Limbs Jhatka Animation
             float armP = (float) Math.sin(life * 60) * 120f + 60f; 
             float legP = (float) Math.cos(life * 60) * 90f; 
             float headP = (float) Math.sin(life * 40) * 30f; 
 
+            // Renders 100% accurate player body!
             RenderUtils3D.drawDoll(matrices, immediate, soul.skin, alpha, armP, legP, headP, 0f);
             matrices.pop();
         }
