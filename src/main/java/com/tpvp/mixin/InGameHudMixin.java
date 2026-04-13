@@ -25,7 +25,10 @@ public class InGameHudMixin {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
 
-        // Exact Pixel Center
+        // --- NAYA: THIRD PERSON FIX ---
+        // Agar First Person (F5 nahi) me nahi ho, toh crosshair mat draw karo!
+        if (!client.options.getPerspective().isFirstPerson()) return;
+
         int cx = client.getWindow().getScaledWidth() / 2;
         int cy = client.getWindow().getScaledHeight() / 2;
 
@@ -35,9 +38,7 @@ public class InGameHudMixin {
             if (target instanceof LivingEntity && client.player.distanceTo(target) <= 3.0f) canHit = true;
         }
 
-        int color = canHit ? 0xFF00FFCC : 0xFFFFFFFF; // Neon Cyan on target
-        
-        // Smooth Cooldown Expansion
+        int color = canHit ? 0xFF00FFCC : 0xFFFFFFFF; 
         float cooldown = client.player.getAttackCooldownProgress(tickCounter.getTickDelta(true));
         float anim = 1.0f - cooldown; 
         float s = ModConfig.crosshairSize;
@@ -46,21 +47,21 @@ public class InGameHudMixin {
         context.getMatrices().translate(cx, cy, 0);
         context.getMatrices().scale(s, s, 1.0f);
 
-        if (ModConfig.crosshairStyle == 0) { // EXACT PRO PLUS
+        if (ModConfig.crosshairStyle == 0) { 
             int gap = 2 + (int)(anim * 5);
-            context.fill(-1, -gap-4, 1, -gap, color); // T
-            context.fill(-1, gap, 1, gap+4, color); // B
-            context.fill(-gap-4, -1, -gap, 1, color); // L
-            context.fill(gap, -1, gap+4, 1, color); // R
-            if (cooldown == 1.0f) context.fill(-1, -1, 1, 1, color); // Center Dot
+            context.fill(-1, -gap-4, 1, -gap, color); 
+            context.fill(-1, gap, 1, gap+4, color); 
+            context.fill(-gap-4, -1, -gap, 1, color); 
+            context.fill(gap, -1, gap+4, 1, color); 
+            if (cooldown == 1.0f) context.fill(-1, -1, 1, 1, color); 
         } 
-        else if (ModConfig.crosshairStyle == 1) { // CRISP HOLLOW DOT
+        else if (ModConfig.crosshairStyle == 1) { 
             int r = 2 + (int)(anim * 3);
-            context.fill(-r, -1, r+1, 1, color); // H
-            context.fill(-1, -r, 1, r+1, color); // V
-            context.fill(-r+1, -r+1, r, r, 0x00000000); // Clear core
+            context.fill(-r, -1, r+1, 1, color); 
+            context.fill(-1, -r, 1, r+1, color); 
+            context.fill(-r+1, -r+1, r, r, 0x00000000); 
         } 
-        else if (ModConfig.crosshairStyle == 2) { // MODERN FPS CHEVRON
+        else if (ModConfig.crosshairStyle == 2) { 
             int gap = 3 + (int)(anim * 5);
             context.fill(-gap-2, -gap-1, -gap, -gap, color);
             context.fill(-gap-1, -gap-2, -gap, -gap, color);
