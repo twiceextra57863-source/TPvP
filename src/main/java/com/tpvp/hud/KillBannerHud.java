@@ -35,61 +35,96 @@ public class KillBannerHud implements HudRenderCallback {
         if (!ModConfig.killBannerEnabled || killStreak == 0) return;
 
         long elapsed = System.currentTimeMillis() - lastKillTime;
-        if (elapsed > 5000) return; // 5 Seconds pop
+        if (elapsed > 5000) return; // 5 Seconds duration
 
         MinecraftClient client = MinecraftClient.getInstance();
         int screenW = client.getWindow().getScaledWidth();
         
-        // SLIDE ANIMATION
-        float popIn = Math.min(1.0f, elapsed / 300.0f); 
-        float fadeOut = elapsed > 4500 ? (5000 - elapsed) / 500.0f : 1.0f; 
+        // SLIDING ANIMATION LOGIC
+        float slideProgress = 1.0f;
+        if (elapsed < 500) slideProgress = elapsed / 500.0f; // Slide In
+        else if (elapsed > 4500) slideProgress = (5000 - elapsed) / 500.0f; // Slide Out
         
-        // Easing function for smooth slide
-        float slide = 1.0f - (float) Math.pow(1.0f - popIn, 3); 
+        // Easing for smooth cinematic slide
+        slideProgress = 1.0f - (float) Math.pow(1.0f - slideProgress, 3); 
 
-        // Movable coordinates from config
-        int cardW = 180;
+        int cardW = 160;
         int cardH = 34;
         int baseX = ModConfig.killFeedX;
         int baseY = ModConfig.killFeedY;
-
-        // Auto direction: Left side slides from left edge, Right side slides from right edge
         boolean isRightSide = baseX > screenW / 2;
-        int renderX = isRightSide ? (int)(screenW + cardW - (screenW - baseX + cardW) * slide) 
-                                  : (int)(-cardW + (baseX + cardW) * slide);
 
-        String streakText = killStreak > 1 ? "x" + killStreak : "";
-        int color = ModConfig.bannerColorTheme == 0 ? 0xFFFF2222 : (ModConfig.bannerColorTheme == 1 ? 0xFFFFD700 : 0xFF00FF22);
-        
-        int aColor = ((int)(fadeOut * 255) << 24);
-        int finalColor = (color & 0x00FFFFFF) | aColor;
-        int whiteAlpha = 0xFFFFFF | aColor;
+        int renderX = isRightSide ? (int)(screenW + cardW - (screenW - baseX + cardW) * slideProgress) 
+                                  : (int)(-cardW + (baseX + cardW) * slideProgress);
+
+        String title = "";
+        String streakText = killStreak > 1 ? " x" + killStreak : "";
+        int color = 0xFFFFFF;
+
+        // EPIC TEXT & COLOR THEMES
+        if (wasFriend) {
+            title = "FRIEND DOWN!"; color = 0xFFFF0000; 
+        } else {
+            switch (killStreak) {
+                case 1: title = "FIRST STRIKE"; color = 0xFFFF5555; break; 
+                case 2: title = "DOUBLE KILL"; color = 0xFFFFAA00; break; 
+                case 3: title = "TRIPLE KILL"; color = 0xFFFF55FF; break; 
+                case 4: title = "QUADRA CRUSH"; color = 0xFF55FFFF; break; 
+                case 5: title = "PENTA WIPE"; color = 0xFFFF0000; break; 
+                default: title = "GODLIKE!!"; color = 0xFFFFD700; break; 
+            }
+        }
+
+        // Apply Banner Theme setting
+        if (!wasFriend) {
+            color = ModConfig.bannerColorTheme == 0 ? 0xFFFF2222 : (ModConfig.bannerColorTheme == 1 ? 0xFFFFD700 : 0xFF00FF22);
+        }
 
         context.getMatrices().push();
         context.getMatrices().translate(renderX, baseY, 0);
-        
-        // --- MODERN NOTIFICATION CARD ---
-        context.fill(0, 0, cardW, cardH, aColor | 0x111111); // Dark Glass Background
-        context.fill(isRightSide ? cardW - 2 : 0, 0, isRightSide ? cardW : 2, cardH, finalColor); // Highlight Border
 
-        // RENDER 2D FACES (Perfect Scale)
+        // 1. CYBER DARK BACKGROUND
+        context.fill(0, 0, cardW, cardH, 0xDD0A0A0A);
+        
+        // 2. ELECTRIC ANIMATION BORDER (VFX)
+        long tick = System.currentTimeMillis() / 50;
+        int elecx1 = (int)(Math.sin(tick) * 2), elecy1 = (int)(Math.cos(tick) * 2);
+        int elecx2 = (int)(Math.cos(tick * 1.5) * 2), elecy2 = (int)(Math.sin(tick * 1.5) * 2);
+        
+        // Animated Lightning Edge
+        context.fill(-1 + elecx1, -1 + elecy1, cardW + 1 + elecx2, 1, color); // Top edge
+        context.fill(-1 + elecx2, cardH - 1, cardW + 1 + elecx1, cardH + 1 + elecy2, color); // Bottom edge
+        
+        // 3. PERFECT 2D HEADS (RADAR MAPPING LOGIC!)
         if (killerSkin != null && victimSkin != null) {
-            context.drawTexture(RenderLayer::getGuiTextured, killerSkin, 8, 7, 8f, 8f, 20, 20, 64, 64);
-            context.drawTexture(RenderLayer::getGuiTextured, victimSkin, cardW - 28, 7, 8f, 8f, 20, 20, 64, 64);
+            // Draw Killer Head (Texture UV 8,8, size 8x8 stretched to 20x20)
+            context.drawTexture(RenderLayer::getGuiTextured, killerSkin, 6, 7, 8f, 8f, 20, 20, 64, 64);
             
-            // Text Scale
+            // Draw Victim Head
+            context.drawTexture(RenderLayer::getGuiTextured, victimSkin, cardW - 26, 7, 8f, 8f, 20, 20, 64, 64);
+            
+            // 4. TEXT RENDERING
             context.getMatrices().push();
             context.getMatrices().scale(0.85f, 0.85f, 1.0f);
-            context.drawTextWithShadow(client.textRenderer, killerName, 36, 12, finalColor);
             
+            // Killer Name
+            context.drawTextWithShadow(client.textRenderer, killerName, 36, 12, color);
+            
+            // Victim Name (Right Aligned)
             int vW = client.textRenderer.getWidth(victimName);
-            context.drawTextWithShadow(client.textRenderer, victimName, (int)((cardW - 32) / 0.85f) - vW, 12, whiteAlpha);
+            context.drawTextWithShadow(client.textRenderer, victimName, (int)((cardW - 32) / 0.85f) - vW, 12, 0xAAAAAA);
             context.getMatrices().pop();
             
-            // Center Kill Icon
-            context.drawCenteredTextWithShadow(client.textRenderer, "⚔" + streakText, cardW / 2, 12, aColor | 0xAAAAAA);
+            // Center Sword Icon & Streak
+            context.drawCenteredTextWithShadow(client.textRenderer, "⚔" + streakText, cardW / 2, 7, 0xAAAAAA);
+            
+            // Epic Title below Sword
+            context.getMatrices().push();
+            context.getMatrices().scale(0.7f, 0.7f, 1.0f);
+            context.drawCenteredTextWithShadow(client.textRenderer, title, (int)((cardW / 2) / 0.7f), 24, color);
+            context.getMatrices().pop();
         }
-
+        
         context.getMatrices().pop();
     }
 }
