@@ -4,9 +4,11 @@ import com.tpvp.config.ModConfig;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.gui.PlayerSkinDrawer; // 100% Native Head Drawer!
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.util.Identifier;
+
+import java.util.Random;
 
 public class KillBannerHud implements HudRenderCallback {
     
@@ -18,6 +20,8 @@ public class KillBannerHud implements HudRenderCallback {
     public static String victimName = "";
     public static Identifier victimSkin = null;
     public static boolean wasFriend = false; 
+
+    private static final Random random = new Random();
 
     public static void addKill(String kName, Identifier kSkin, String vName, Identifier vSkin, boolean isFriend) {
         long now = System.currentTimeMillis();
@@ -35,33 +39,32 @@ public class KillBannerHud implements HudRenderCallback {
         if (!ModConfig.killBannerEnabled || killStreak == 0) return;
 
         long elapsed = System.currentTimeMillis() - lastKillTime;
-        if (elapsed > 5000) return; // 5 Seconds duration
+        if (elapsed > 5000) return; // 5 Seconds pop duration
 
         MinecraftClient client = MinecraftClient.getInstance();
         int screenW = client.getWindow().getScaledWidth();
         
-        // SLIDING ANIMATION LOGIC
+        // --- SMOOTH SLIDE ANIMATION ---
         float slideProgress = 1.0f;
         if (elapsed < 500) slideProgress = elapsed / 500.0f; // Slide In
         else if (elapsed > 4500) slideProgress = (5000 - elapsed) / 500.0f; // Slide Out
-        
-        // Easing for smooth cinematic slide
-        slideProgress = 1.0f - (float) Math.pow(1.0f - slideProgress, 3); 
+        slideProgress = 1.0f - (float) Math.pow(1.0f - slideProgress, 3); // Cubic Easing
 
-        int cardW = 160;
+        int cardW = 180;
         int cardH = 34;
         int baseX = ModConfig.killFeedX;
         int baseY = ModConfig.killFeedY;
-        boolean isRightSide = baseX > screenW / 2;
 
-        int renderX = isRightSide ? (int)(screenW + cardW - (screenW - baseX + cardW) * slideProgress) 
-                                  : (int)(-cardW + (baseX + cardW) * slideProgress);
+        // Auto direction logic based on screen position
+        boolean isRightSide = baseX > screenW / 2;
+        int cx = isRightSide ? (int)(screenW + cardW - (screenW - baseX + cardW) * slideProgress) 
+                             : (int)(-cardW + (baseX + cardW) * slideProgress);
 
         String title = "";
         String streakText = killStreak > 1 ? " x" + killStreak : "";
         int color = 0xFFFFFF;
 
-        // EPIC TEXT & COLOR THEMES
+        // --- EPIC TEXTS ---
         if (wasFriend) {
             title = "FRIEND DOWN!"; color = 0xFFFF0000; 
         } else {
@@ -75,56 +78,65 @@ public class KillBannerHud implements HudRenderCallback {
             }
         }
 
-        // Apply Banner Theme setting
+        // Apply Custom Theme Colors
         if (!wasFriend) {
             color = ModConfig.bannerColorTheme == 0 ? 0xFFFF2222 : (ModConfig.bannerColorTheme == 1 ? 0xFFFFD700 : 0xFF00FF22);
         }
 
         context.getMatrices().push();
-        context.getMatrices().translate(renderX, baseY, 0);
+        context.getMatrices().translate(cx, baseY, 0);
 
-        // 1. CYBER DARK BACKGROUND
-        context.fill(0, 0, cardW, cardH, 0xDD0A0A0A);
+        // 1. DARK CYBER BACKGROUND
+        context.fill(0, 0, cardW, cardH, 0xEE050505);
         
-        // 2. ELECTRIC ANIMATION BORDER (VFX)
-        long tick = System.currentTimeMillis() / 50;
-        int elecx1 = (int)(Math.sin(tick) * 2), elecy1 = (int)(Math.cos(tick) * 2);
-        int elecx2 = (int)(Math.cos(tick * 1.5) * 2), elecy2 = (int)(Math.sin(tick * 1.5) * 2);
+        // 2. ELECTRIC / LIGHTNING BORDER PARTICLES (Top & Bottom)
+        long tick = System.currentTimeMillis() / 40;
         
-        // Animated Lightning Edge
-        context.fill(-1 + elecx1, -1 + elecy1, cardW + 1 + elecx2, 1, color); // Top edge
-        context.fill(-1 + elecx2, cardH - 1, cardW + 1 + elecx1, cardH + 1 + elecy2, color); // Bottom edge
-        
-        // 3. PERFECT 2D HEADS (RADAR MAPPING LOGIC!)
+        // Chaotic electric offsets
+        int eX1 = (int)(Math.sin(tick * 2.3) * 4);
+        int eY1 = (int)(Math.cos(tick * 1.7) * 2);
+        int eX2 = (int)(Math.sin(tick * 3.1) * 4);
+        int eY2 = (int)(Math.cos(tick * 2.1) * 2);
+
+        // Draw lightning lines
+        context.fill(-2 + eX1, -1 + eY1, cardW + 2 + eX2, 1, color); // Top Lightning
+        context.fill(-2 + eX2, cardH - 1, cardW + 2 + eX1, cardH + 1 + eY2, color); // Bottom Lightning
+
+        // ----------------------------------------------------
+        // 3. 100% PERFECT 2D HEAD RENDERING (NO RAW SKIN GLITCH)
+        // ----------------------------------------------------
         if (killerSkin != null && victimSkin != null) {
-            // Draw Killer Head (Texture UV 8,8, size 8x8 stretched to 20x20)
-            context.drawTexture(RenderLayer::getGuiTextured, killerSkin, 6, 7, 8f, 8f, 20, 20, 64, 64);
             
-            // Draw Victim Head
-            context.drawTexture(RenderLayer::getGuiTextured, victimSkin, cardW - 26, 7, 8f, 8f, 20, 20, 64, 64);
+            // Draw Killer Head (Left Side) - Using Vanilla PlayerSkinDrawer!
+            context.fill(4, 4, 26, 26, color); // Glowing Border behind head
+            PlayerSkinDrawer.draw(context, killerSkin, 5, 5, 20); // Exact 20x20 pixel Face
+            
+            // Draw Victim Head (Right Side)
+            context.fill(cardW - 26, 4, cardW - 4, 26, 0xFFFF0000); // Red Border
+            PlayerSkinDrawer.draw(context, victimSkin, cardW - 25, 5, 20); // Exact 20x20 pixel Face
             
             // 4. TEXT RENDERING
             context.getMatrices().push();
             context.getMatrices().scale(0.85f, 0.85f, 1.0f);
             
             // Killer Name
-            context.drawTextWithShadow(client.textRenderer, killerName, 36, 12, color);
+            context.drawTextWithShadow(client.textRenderer, killerName, 35, 12, color);
             
-            // Victim Name (Right Aligned)
+            // Victim Name (Right Aligned to Head)
             int vW = client.textRenderer.getWidth(victimName);
-            context.drawTextWithShadow(client.textRenderer, victimName, (int)((cardW - 32) / 0.85f) - vW, 12, 0xAAAAAA);
+            context.drawTextWithShadow(client.textRenderer, victimName, (int)((cardW - 30) / 0.85f) - vW, 12, 0xAAAAAA);
             context.getMatrices().pop();
             
-            // Center Sword Icon & Streak
+            // Center Sword & Kill Streak Number
             context.drawCenteredTextWithShadow(client.textRenderer, "⚔" + streakText, cardW / 2, 7, 0xAAAAAA);
             
-            // Epic Title below Sword
+            // Epic Title Banner
             context.getMatrices().push();
             context.getMatrices().scale(0.7f, 0.7f, 1.0f);
             context.drawCenteredTextWithShadow(client.textRenderer, title, (int)((cardW / 2) / 0.7f), 24, color);
             context.getMatrices().pop();
         }
-        
+
         context.getMatrices().pop();
     }
 }
