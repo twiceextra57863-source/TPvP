@@ -7,23 +7,26 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.util.Identifier;
-import java.util.Random;
 
 public class KillBannerHud implements HudRenderCallback {
     
     public static int killStreak = 0;
     public static long lastKillTime = 0;
+    
     public static String killerName = "";
     public static Identifier killerSkin = null;
     public static String victimName = "";
     public static Identifier victimSkin = null;
-    private static final Random random = new Random();
+    public static boolean wasFriend = false; 
 
     public static void addKill(String kName, Identifier kSkin, String vName, Identifier vSkin, boolean isFriend) {
         long now = System.currentTimeMillis();
         if (now - lastKillTime < 15000 && killerName.equals(kName)) killStreak++; 
         else killStreak = 1;
-        killerName = kName; killerSkin = kSkin; victimName = vName; victimSkin = vSkin;
+        
+        killerName = kName; killerSkin = kSkin;
+        victimName = vName; victimSkin = vSkin;
+        wasFriend = isFriend;
         lastKillTime = now;
     }
 
@@ -32,64 +35,61 @@ public class KillBannerHud implements HudRenderCallback {
         if (!ModConfig.killBannerEnabled || killStreak == 0) return;
 
         long elapsed = System.currentTimeMillis() - lastKillTime;
-        if (elapsed > 5000) return; // 5 Seconds duration
+        if (elapsed > 5000) return; // 5 Seconds pop
 
         MinecraftClient client = MinecraftClient.getInstance();
         int screenW = client.getWindow().getScaledWidth();
         
-        // --- SLIDING ANIMATION LOGIC ---
-        float slideProgress = 1.0f;
-        if (elapsed < 500) slideProgress = elapsed / 500.0f; // Slide In
-        else if (elapsed > 4500) slideProgress = (5000 - elapsed) / 500.0f; // Slide Out
+        // SLIDE ANIMATION
+        float popIn = Math.min(1.0f, elapsed / 300.0f); 
+        float fadeOut = elapsed > 4500 ? (5000 - elapsed) / 500.0f : 1.0f; 
         
-        // Easing for smooth slide
-        slideProgress = 1.0f - (float) Math.pow(1.0f - slideProgress, 3); 
+        // Easing function for smooth slide
+        float slide = 1.0f - (float) Math.pow(1.0f - popIn, 3); 
 
-        int cardW = 160;
-        int cardH = 30;
+        // Movable coordinates from config
+        int cardW = 180;
+        int cardH = 34;
         int baseX = ModConfig.killFeedX;
         int baseY = ModConfig.killFeedY;
+
+        // Auto direction: Left side slides from left edge, Right side slides from right edge
         boolean isRightSide = baseX > screenW / 2;
+        int renderX = isRightSide ? (int)(screenW + cardW - (screenW - baseX + cardW) * slide) 
+                                  : (int)(-cardW + (baseX + cardW) * slide);
 
-        // Auto direction: Slide from outside the screen
-        int renderX = isRightSide ? (int)(screenW + cardW - (screenW - baseX + cardW) * slideProgress) 
-                                  : (int)(-cardW + (baseX + cardW) * slideProgress);
-
-        // Colors
-        int themeColor = ModConfig.bannerColorTheme == 0 ? 0xFFFF2222 : (ModConfig.bannerColorTheme == 1 ? 0xFFFFAA00 : 0xFF22FF22);
-        String streakText = killStreak > 1 ? " x" + killStreak : "";
+        String streakText = killStreak > 1 ? "x" + killStreak : "";
+        int color = ModConfig.bannerColorTheme == 0 ? 0xFFFF2222 : (ModConfig.bannerColorTheme == 1 ? 0xFFFFD700 : 0xFF00FF22);
         
+        int aColor = ((int)(fadeOut * 255) << 24);
+        int finalColor = (color & 0x00FFFFFF) | aColor;
+        int whiteAlpha = 0xFFFFFF | aColor;
+
         context.getMatrices().push();
         context.getMatrices().translate(renderX, baseY, 0);
+        
+        // --- MODERN NOTIFICATION CARD ---
+        context.fill(0, 0, cardW, cardH, aColor | 0x111111); // Dark Glass Background
+        context.fill(isRightSide ? cardW - 2 : 0, 0, isRightSide ? cardW : 2, cardH, finalColor); // Highlight Border
 
-        // 1. Dark Cyber Background
-        context.fill(0, 0, cardW, cardH, 0xDD0A0A0A);
-        
-        // 2. ELECTRIC ANIMATION BORDER
-        long tick = System.currentTimeMillis() / 50;
-        int elecx1 = (int)(Math.sin(tick) * 2), elecy1 = (int)(Math.cos(tick) * 2);
-        int elecx2 = (int)(Math.cos(tick * 1.5) * 2), elecy2 = (int)(Math.sin(tick * 1.5) * 2);
-        
-        // Electric jagged lines
-        context.fill(-1 + elecx1, -1 + elecy1, cardW + 1 + elecx2, 1, themeColor); // Top
-        context.fill(-1 + elecx2, cardH - 1, cardW + 1 + elecx1, cardH + 1 + elecy2, themeColor); // Bottom
-        
-        // 3. PERFECT 2D FACES (8x8 UV to 20x20 size)
+        // RENDER 2D FACES (Perfect Scale)
         if (killerSkin != null && victimSkin != null) {
-            context.drawTexture(RenderLayer::getGuiTextured, killerSkin, 5, 5, 8f, 8f, 20, 20, 64, 64);
-            context.drawTexture(RenderLayer::getGuiTextured, victimSkin, cardW - 25, 5, 8f, 8f, 20, 20, 64, 64);
+            context.drawTexture(RenderLayer::getGuiTextured, killerSkin, 8, 7, 8f, 8f, 20, 20, 64, 64);
+            context.drawTexture(RenderLayer::getGuiTextured, victimSkin, cardW - 28, 7, 8f, 8f, 20, 20, 64, 64);
             
-            // Texts
+            // Text Scale
             context.getMatrices().push();
-            context.getMatrices().scale(0.8f, 0.8f, 1.0f);
-            context.drawTextWithShadow(client.textRenderer, killerName, 35, 10, 0xFFFFFF);
-            context.drawTextWithShadow(client.textRenderer, victimName, (int)((cardW - 30) / 0.8f) - client.textRenderer.getWidth(victimName), 10, 0xAAAAAA);
+            context.getMatrices().scale(0.85f, 0.85f, 1.0f);
+            context.drawTextWithShadow(client.textRenderer, killerName, 36, 12, finalColor);
+            
+            int vW = client.textRenderer.getWidth(victimName);
+            context.drawTextWithShadow(client.textRenderer, victimName, (int)((cardW - 32) / 0.85f) - vW, 12, whiteAlpha);
             context.getMatrices().pop();
             
-            // Center Sword/Streak
-            context.drawCenteredTextWithShadow(client.textRenderer, "⚔" + streakText, cardW / 2, 10, themeColor);
+            // Center Kill Icon
+            context.drawCenteredTextWithShadow(client.textRenderer, "⚔" + streakText, cardW / 2, 12, aColor | 0xAAAAAA);
         }
-        
+
         context.getMatrices().pop();
     }
 }
