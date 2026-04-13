@@ -6,10 +6,10 @@ import net.minecraft.client.gui.DrawContext;
 public class EffectsTabRenderer {
     public static void render(TPvPDashboardScreen screen, DrawContext context, int setX, int setY, int mx, int my) {
         screen.drawToggle(context, "MOBA Kill Banners", setX, setY, ModConfig.killBannerEnabled);
-        screen.drawToggle(context, "Skull Soul Animation", setX + 150, setY, ModConfig.soulAnimationEnabled);
+        screen.drawToggle(context, "JJK Curse Execution", setX + 150, setY, ModConfig.soulAnimationEnabled);
         
         context.drawTextWithShadow(screen.getTextRenderer(), "§7Get an epic screen banner when YOU kill players!", setX, setY + 25, 0xAAAAAA);
-        context.drawTextWithShadow(screen.getTextRenderer(), "§7Dead bodies emit a wavy glowing skull.", setX, setY + 40, 0xAAAAAA);
+        context.drawTextWithShadow(screen.getTextRenderer(), "§7A terrifying 3D monster will emerge and eat dead players.", setX, setY + 40, 0xAAAAAA);
         
         String[] colors = {"Blood Red", "Royal Gold", "Toxic Green"};
         context.drawTextWithShadow(screen.getTextRenderer(), "Banner Theme: §e" + colors[ModConfig.bannerColorTheme], setX, setY + 65, 0xFFFFFF);
