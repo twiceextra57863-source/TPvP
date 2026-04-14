@@ -362,7 +362,19 @@ public class TPvPDashboardScreen extends Screen {
         return super.mouseDragged(mx, my, b, dx, dY); 
     }
     
-    @Override public boolean mouseReleased(double mx, double my, int b) { isDraggingScroll = false; return super.mouseReleased(mx, my, b); }
-    @Override public boolean mouseScrolled(double mx, double my, double h, double s) { if (currentTab.equals("💀 Targets")) { scrollOffset = Math.max(0, scrollOffset - (int) s); return true; } return super.mouseScrolled(mx, my, h, s); }
-    @Override public void close() { ModConfig.save(); if (this.client != null) this.client.setScreen(this.parent); }
+    @Override 
+    public boolean mouseReleased(double mx, double my, int b) { 
+        TargetsTabRenderer.isDraggingScroll = false; 
+        PerformanceTabRenderer.isDraggingSlider = false; // Reset slider
+        return super.mouseReleased(mx, my, b); 
+    }
+    
+    @Override 
+    public boolean mouseScrolled(double mx, double my, double h, double s) { 
+        if (currentTab.equals("💀 Targets")) { TargetsTabRenderer.mouseScrolled(s); return true; } 
+        return super.mouseScrolled(mx, my, h, s); 
+    }
+    
+    @Override 
+    public void close() { ModConfig.save(); if (this.client != null) this.client.setScreen(this.parent); }
 }
