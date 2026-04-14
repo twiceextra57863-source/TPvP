@@ -4,9 +4,9 @@ import com.tpvp.config.ModConfig;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.util.math.MathHelper;
 
 import java.util.Collection;
 
@@ -83,16 +83,22 @@ public class PotionHud implements HudRenderCallback {
                 context.fill(px - 1, py - 1, px + 1, py + 1, flameColor);
             }
 
-            // 3. Render Potion Icon (Sprite)
-            // Fix: We use the vanilla status effect icon rendering.
+            // ----------------------------------------------------
+            // 3. RENDER CRASH-PROOF POTION ICON
+            // ----------------------------------------------------
             net.minecraft.client.texture.Sprite sprite = client.getStatusEffectSpriteManager().getSprite(effect.getEffectType());
             if (sprite != null) {
-                context.drawSprite(iconCx - 9, iconCy - 9, 0, 18, 18, sprite);
+                // FIXED: Minecraft 1.21.2+ uses 'drawSprite' differently or removes it for 'drawTexture'
+                // Safely drawing the sprite's texture ID using exact UV mappings
+                context.drawTexture(RenderLayer::getGuiTextured, sprite.getAtlasId(), 
+                    iconCx - 9, iconCy - 9, 0, 18, 18, sprite);
             }
 
-            // 4. Texts
+            // ----------------------------------------------------
+            // 4. TEXTS (Name and Timer)
+            // ----------------------------------------------------
             String name = effect.getEffectType().value().getName().getString();
-            // Shorten name if too long
+            // Shorten name if too long to prevent overflowing out of the box
             if (name.length() > 12) name = name.substring(0, 10) + "..";
             
             String timeStr = String.format("%d:%02d", seconds / 60, seconds % 60);
