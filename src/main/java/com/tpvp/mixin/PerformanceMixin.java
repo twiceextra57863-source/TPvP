@@ -9,9 +9,9 @@ import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -39,11 +39,11 @@ public class PerformanceMixin {
             }
         }
 
-        // SAFE FIRE OPTIMIZATION (Fixes 1.21.4 Crash by using empty parameters!)
+        // SAFE FIRE OPTIMIZATION
         @Inject(method = "renderFire", at = @At("HEAD"), cancellable = true)
         private void removeOtherPlayersFire(CallbackInfo ci) {
             if (ModConfig.fpsBoostEnabled) {
-                // Stops rendering the ugly fire overlay on OTHER players, which lags mobile devices heavily in PvP.
+                // Stops rendering the ugly fire overlay on OTHER players, saving massive FPS in team fights.
                 ci.cancel(); 
             }
         }
@@ -57,7 +57,7 @@ public class PerformanceMixin {
 
         @Inject(method = "addParticle(Lnet/minecraft/particle/ParticleEffect;DDDDDD)Lnet/minecraft/client/particle/Particle;", at = @At("HEAD"), cancellable = true)
         private void reduceLagParticles(CallbackInfoReturnable<?> cir) {
-            // Removes 85% of useless particles (splash potions, explosions, water drops) to save FPS during heavy PvP
+            // Removes 85% of useless particles (splash potions, explosions, water drops) to save FPS
             if (ModConfig.fpsBoostEnabled && Math.random() > 0.15) {
                 cir.setReturnValue(null); 
             }
@@ -96,27 +96,25 @@ public class PerformanceMixin {
     }
 
     // =========================================================
-    // 4. COTTON CAMERA SENSITIVITY CONTROLLER
+    // 4. COTTON CAMERA SENSITIVITY CONTROLLER (CRASH FIXED!)
     // =========================================================
     @Mixin(net.minecraft.client.Mouse.class)
     public static class MouseSensitivityMixin {
-
-        // Modifies the X-axis mouse movement before Minecraft processes it
-        @ModifyVariable(method = "updateMouse", at = @At("STORE"), ordinal = 0)
-        private double applyCottonSensitivityX(double cursorDeltaX) {
-            if (ModConfig.smoothGameEnabled) {
-                return cursorDeltaX * (ModConfig.cottonSensitivity / 100.0);
-            }
-            return cursorDeltaX;
-        }
         
-        // Modifies the Y-axis mouse movement before Minecraft processes it
-        @ModifyVariable(method = "updateMouse", at = @At("STORE"), ordinal = 1)
-        private double applyCottonSensitivityY(double cursorDeltaY) {
+        // Use @Shadow to directly access Minecraft's raw mouse data without fragile @ModifyVariable injections
+        @Shadow private double cursorDeltaX;
+        @Shadow private double cursorDeltaY;
+
+        @Inject(method = "updateMouse", at = @At("HEAD"))
+        private void applyCottonSensitivity(CallbackInfo ci) {
             if (ModConfig.smoothGameEnabled) {
-                return cursorDeltaY * (ModConfig.cottonSensitivity / 100.0);
+                // Fetch our slider value from the Dashboard (e.g., 150 = 1.5x speed)
+                double multiplier = ModConfig.cottonSensitivity / 100.0;
+                
+                // Directly multiply the raw mouse movement before Minecraft processes it!
+                this.cursorDeltaX *= multiplier;
+                this.cursorDeltaY *= multiplier;
             }
-            return cursorDeltaY;
         }
     }
 }
