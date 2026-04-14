@@ -4,8 +4,8 @@ import com.tpvp.config.ModConfig;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.texture.Sprite;
 import net.minecraft.entity.effect.StatusEffectInstance;
 
 import java.util.Collection;
@@ -86,12 +86,10 @@ public class PotionHud implements HudRenderCallback {
             // ----------------------------------------------------
             // 3. RENDER CRASH-PROOF POTION ICON
             // ----------------------------------------------------
-            net.minecraft.client.texture.Sprite sprite = client.getStatusEffectSpriteManager().getSprite(effect.getEffectType());
+            Sprite sprite = client.getStatusEffectSpriteManager().getSprite(effect.getEffectType());
             if (sprite != null) {
-                // FIXED: Minecraft 1.21.2+ uses 'drawSprite' differently or removes it for 'drawTexture'
-                // Safely drawing the sprite's texture ID using exact UV mappings
-                context.drawTexture(RenderLayer::getGuiTextured, sprite.getAtlasId(), 
-                    iconCx - 9, iconCy - 9, 0, 18, 18, sprite);
+                // FLAWLESS 1.21.4 FIX: Draws the exact UI Sprite using the GUI textured atlas!
+                context.drawSprite(iconCx - 9, iconCy - 9, 0, 18, 18, sprite);
             }
 
             // ----------------------------------------------------
