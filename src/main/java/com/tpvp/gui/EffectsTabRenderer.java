@@ -6,10 +6,10 @@ import net.minecraft.client.gui.DrawContext;
 public class EffectsTabRenderer {
     public static void render(TPvPDashboardScreen screen, DrawContext context, int setX, int setY, int mx, int my) {
         screen.drawToggle(context, "MOBA Kill Banners", setX, setY, ModConfig.killBannerEnabled);
-        screen.drawToggle(context, "JJK Curse Execution", setX + 150, setY, ModConfig.soulAnimationEnabled);
+        screen.drawToggle(context, "Abyssal Void Execution", setX + 150, setY, ModConfig.soulAnimationEnabled);
         
         context.drawTextWithShadow(screen.getTextRenderer(), "§7Get an epic screen banner when YOU kill players!", setX, setY + 25, 0xAAAAAA);
-        context.drawTextWithShadow(screen.getTextRenderer(), "§7A terrifying 3D monster will emerge and eat dead players.", setX, setY + 40, 0xAAAAAA);
+        context.drawTextWithShadow(screen.getTextRenderer(), "§7A terrifying 3D shadow beast will emerge & eat dead bodies.", setX, setY + 40, 0xAAAAAA);
         
         String[] colors = {"Blood Red", "Royal Gold", "Toxic Green"};
         context.drawTextWithShadow(screen.getTextRenderer(), "Banner Theme: §e" + colors[ModConfig.bannerColorTheme], setX, setY + 65, 0xFFFFFF);
@@ -19,7 +19,7 @@ public class EffectsTabRenderer {
 
     public static boolean mouseClicked(double mx, double my, int setX, int setY) {
         if (mx >= setX+110 && mx <= setX+140 && my >= setY && my <= setY+12) { ModConfig.killBannerEnabled = !ModConfig.killBannerEnabled; return true; }
-        if (mx >= setX+260 && mx <= setX+290 && my >= setY && my <= setY+12) { ModConfig.soulAnimationEnabled = !ModConfig.soulAnimationEnabled; return true; }
+        if (mx >= setX+290 && mx <= setX+320 && my >= setY && my <= setY+12) { ModConfig.soulAnimationEnabled = !ModConfig.soulAnimationEnabled; return true; }
         if (mx >= setX+150 && mx <= setX+220 && my >= setY+61 && my <= setY+77) {
             ModConfig.bannerColorTheme = (ModConfig.bannerColorTheme + 1) % 3;
             return true;
