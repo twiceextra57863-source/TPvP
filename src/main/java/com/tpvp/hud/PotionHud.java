@@ -21,108 +21,139 @@ public class PotionHud implements HudRenderCallback {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null) return;
 
-        // Get active potion effects
         Collection<StatusEffectInstance> effects = client.player.getStatusEffects();
         if (effects.isEmpty()) return;
 
-        int startX = ModConfig.potionHudX;
-        int startY = ModConfig.potionHudY;
+        int screenW = client.getWindow().getScaledWidth();
+        int baseX = ModConfig.potionHudX;
+        int baseY = ModConfig.potionHudY;
+        boolean isRightSide = baseX > screenW / 2;
         
         long time = System.currentTimeMillis();
+        int boxW = 140;
+        int boxH = 26;
+        int yOffset = 0;
 
         for (StatusEffectInstance effect : effects) {
             int durationTicks = effect.getDuration();
+            int totalTicks = effect.getDuration(); // Approximation for slide-in if just applied (Vanilla doesn't store start time easily, so we use max duration logic if it's very high)
             int seconds = durationTicks / 20;
 
-            // --- CINEMATIC BLAST / STRETCH LOGIC (When dying out) ---
-            float scaleX = 1.0f, scaleY = 1.0f;
+            float slideProgress = 1.0f;
             float alpha = 1.0f;
             int shakeX = 0, shakeY = 0;
 
+            // --- 1. SLIDE IN ANIMATION (If just applied, e.g., duration is very high or infinite) ---
+            // Fake slide-in based on tick modulo or high duration to simulate entrance
+            if (durationTicks % 200 > 180) { 
+                slideProgress = (200 - (durationTicks % 200)) / 20.0f; 
+                slideProgress = 1.0f - (float) Math.pow(1.0f - slideProgress, 3); // Cubic Ease-out
+            }
+
+            // --- 2. BURNING ASH / FADE OUT ANIMATION (Last 3 seconds) ---
             if (seconds <= 3) {
-                // Stretching and Blasting Out in the last 3 seconds
                 float deathProgress = (3.0f - (durationTicks / 20.0f)); // 0.0 to 3.0
+                alpha = Math.max(0f, 1.0f - (deathProgress / 3.0f)); // Smooth Fade Out
                 
-                scaleX = 1.0f + (deathProgress * 1.5f); // Stretch Horizontally
-                scaleY = 1.0f - (deathProgress * 0.2f); // Squish Vertically
-                alpha = Math.max(0f, 1.0f - (deathProgress / 3.0f)); // Fade Out
-                
-                // Intense Shake before blast
-                shakeX = (int) (Math.sin(time / 20.0) * (deathProgress * 5));
-                shakeY = (int) (Math.cos(time / 20.0) * (deathProgress * 5));
+                // Intense Burning Shake
+                shakeX = (int) (Math.sin(time / 20.0) * (deathProgress * 2));
+                shakeY = (int) (Math.cos(time / 20.0) * (deathProgress * 2));
             } else if (seconds <= 10) {
                 // Gentle pulse for warning (10 sec left)
-                scaleX = scaleY = 1.0f + (float) Math.sin(time / 100.0) * 0.05f;
                 shakeX = (int) (Math.sin(time / 50.0) * 1);
             }
 
-            if (alpha <= 0.01f) continue; // Fully blasted away
+            if (alpha <= 0.01f) continue; // Fully burned away
+
+            // Auto direction: Slide from outside the screen
+            int renderX = isRightSide ? (int)(screenW + boxW - (screenW - baseX + boxW) * slideProgress) 
+                                      : (int)(-boxW + (baseX + boxW) * slideProgress);
+
+            // DYNAMIC COLOR MATCHING
+            int potionColor = effect.getEffectType().value().getColor();
+            int aColor = ((int)(alpha * 255) << 24);
+            int finalColor = (potionColor & 0x00FFFFFF) | aColor;
 
             context.getMatrices().push();
-            context.getMatrices().translate(startX + shakeX, startY + shakeY, 0);
-            context.getMatrices().scale(scaleX, scaleY, 1.0f);
+            context.getMatrices().translate(renderX + shakeX, baseY + yOffset + shakeY, 0);
 
-            int aColor = ((int)(alpha * 255) << 24);
             Matrix4f pM = context.getMatrices().peek().getPositionMatrix();
             net.minecraft.client.render.VertexConsumerProvider.Immediate imm = client.getBufferBuilders().getEntityVertexConsumers();
             net.minecraft.client.render.VertexConsumer bgBuf = imm.getBuffer(RenderLayer.getGui());
 
-            // 1. Sleek Glass Background Box (Drawn via RenderUtils3D)
-            RenderUtils3D.drawColorQuad(pM, bgBuf, 0f, 0f, 120f, 24f, aColor | 0x111111, 15728880); // Dark inner
-            RenderUtils3D.drawColorQuad(pM, bgBuf, -1f, -1f, 122f, 1f, aColor | 0x555555, 15728880); // Top Border
-            RenderUtils3D.drawColorQuad(pM, bgBuf, -1f, 24f, 122f, 1f, aColor | 0x222222, 15728880); // Bottom Border
-
-            // 2. FIRE SPIRAL VFX (Circling the Icon)
-            float iconCx = 12f, iconCy = 12f;
-            float radius = 10f;
-            for (int i = 0; i < 3; i++) {
-                float rot = (time % 2000) / 2000.0f * (float) Math.PI * 2;
-                float offset = i * ((float) Math.PI * 2 / 3);
-                
-                float px = iconCx + (float) Math.cos(rot + offset) * radius;
-                float py = iconCy + (float) Math.sin(rot + offset) * radius;
-                
-                int flameColor = aColor | (i == 0 ? 0xFF5500 : (i == 1 ? 0xFFFF00 : 0xFF0000));
-                RenderUtils3D.drawColorQuad(pM, bgBuf, px - 1f, py - 1f, 2f, 2f, flameColor, 15728880);
+            // ----------------------------------------------------
+            // 3. BURNING ASH PARTICLES (VFX) - If dying out
+            // ----------------------------------------------------
+            if (seconds <= 3) {
+                float deathProgress = (3.0f - (durationTicks / 20.0f)); // 0.0 to 3.0
+                for (int p = 0; p < 5; p++) {
+                    float pLife = ((time + p * 150) % 1000) / 1000.0f; // 0 to 1
+                    float px = (float)(Math.sin(time * 0.01 + p) * boxW) + (boxW / 2f);
+                    float py = boxH - (pLife * boxH * 2.0f); // Ash flies upward
+                    float pSize = 3f * (1.0f - pLife); // Shrinks as it burns
+                    int pColor = (potionColor & 0x00FFFFFF) | ((int)((1.0f - pLife) * 200 * alpha) << 24); 
+                    
+                    RenderUtils3D.drawColorQuad(pM, bgBuf, px, py, pSize, pSize, pColor, 15728880);
+                }
             }
 
             // ----------------------------------------------------
-            // 3. FLAWLESS CRASH-PROOF POTION ICON RENDERER (Using RenderUtils3D)
+            // 4. SLEEK MODERN BACKGROUND (Cyberpunk Slanted Edges)
+            // ----------------------------------------------------
+            RenderUtils3D.drawColorQuad(pM, bgBuf, 0f, 0f, 3f, (float)boxH, finalColor, 15728880); // Thick Left Accent
+            
+            float r = 0.05f, g = 0.05f, b = 0.05f, bgAlpha = alpha * 0.8f;
+            RenderUtils3D.drawQuad(pM, bgBuf, 
+                3f, 0f, 0f,           
+                boxW, 0f, 0f,         
+                boxW - 8f, boxH, 0f,  // Slanted Right Edge
+                3f, boxH, 0f,         
+                r, g, b, bgAlpha, 15728880);
+                
+            RenderUtils3D.drawColorQuad(pM, bgBuf, 3f, 0f, boxW - 3f, 1f, finalColor, 15728880); // Top Border
+            RenderUtils3D.drawColorQuad(pM, bgBuf, 3f, boxH - 1f, boxW - 11f, 1f, finalColor, 15728880); // Bottom Border
+
+            // ----------------------------------------------------
+            // 5. GLOWING PULSE AURA BEHIND ICON
+            // ----------------------------------------------------
+            float pulse = (float) Math.sin(time / 200.0) * 0.5f + 0.5f; 
+            int pulseColor = (potionColor & 0x00FFFFFF) | ((int)(alpha * pulse * 120) << 24);
+            RenderUtils3D.drawColorQuad(pM, bgBuf, 6f, 4f, 18f, 18f, pulseColor, 15728880);
+
+            // ----------------------------------------------------
+            // 6. FLAWLESS 1.21.4 CRASH-PROOF POTION ICON RENDERER
             // ----------------------------------------------------
             Sprite sprite = client.getStatusEffectSpriteManager().getSprite(effect.getEffectType());
             if (sprite != null) {
-                // Gets the exact transparent sprite layer
                 net.minecraft.client.render.VertexConsumer iconBuf = imm.getBuffer(RenderLayer.getTextSeeThrough(sprite.getAtlasId()));
-                
-                // Directly maps the sprite UV to our screen using math instead of Minecraft's broken methods!
                 RenderUtils3D.drawTextureQuad(
                     pM, iconBuf, 
-                    iconCx - 9f, iconCy - 9f, 18f, 18f, // Screen X, Y, Width, Height
-                    sprite.getMinU(), sprite.getMinV(), sprite.getMaxU(), sprite.getMaxV(), // Texture UVs
-                    1f, 1f, 1f, alpha, 15728880 // Colors and Light
+                    7f, 5f, 16f, 16f, 
+                    sprite.getMinU(), sprite.getMinV(), sprite.getMaxU(), sprite.getMaxV(), 
+                    1f, 1f, 1f, alpha, 15728880
                 );
             }
-            imm.draw(); // Flush the buffers to render the quads & sprites to screen
+            imm.draw(); // Flush geometry to screen
 
             // ----------------------------------------------------
-            // 4. TEXTS (Name and Timer)
+            // 7. TEXTS (Name, Level, and Timer)
             // ----------------------------------------------------
             String name = effect.getEffectType().value().getName().getString();
-            if (name.length() > 12) name = name.substring(0, 10) + "..";
-            
-            String timeStr = String.format("%d:%02d", seconds / 60, seconds % 60);
-            if (seconds <= 10) timeStr = "§c" + timeStr; // Red warning text
+            if (name.length() > 14) name = name.substring(0, 12) + ".."; 
             
             int lvl = effect.getAmplifier() + 1;
             String lvlStr = lvl > 1 ? " " + lvl : "";
+            
+            String timeStr = String.format("%d:%02d", seconds / 60, seconds % 60);
+            int timeColor = seconds <= 10 ? (aColor | 0xFF5555) : (aColor | 0xAAAAAA);
 
-            context.drawTextWithShadow(client.textRenderer, name + lvlStr, 30, 4, aColor | 0xFFFFFF);
-            context.drawTextWithShadow(client.textRenderer, timeStr, 30, 14, aColor | 0xAAAAAA);
+            context.drawTextWithShadow(client.textRenderer, name + lvlStr, 32, 4, finalColor); // Title gets Potion Color
+            context.drawTextWithShadow(client.textRenderer, timeStr, 32, 14, timeColor);
 
             context.getMatrices().pop();
 
-            // Stack vertically
-            startY += (int)(28 * scaleY); 
+            // Stack vertically for next potion
+            yOffset += (boxH + 6); 
         }
     }
 }
