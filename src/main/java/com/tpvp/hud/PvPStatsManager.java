@@ -14,14 +14,18 @@ public class PvPStatsManager {
     public static int totalKills = 0;
     public static int totalDeaths = 0;
     
-    // Matches History
+    // MATCH HISTORY TRACKER
     public static class MatchRecord {
-        public String opponent; public String mode; public boolean won;
-        public MatchRecord(String o, String m, boolean w) { opponent = o; mode = m; won = w; }
+        public String opponent; 
+        public String mode; 
+        public boolean won;
+        public MatchRecord(String o, String m, boolean w) { 
+            opponent = o; mode = m; won = w; 
+        }
     }
     public static List<MatchRecord> matchHistory = new ArrayList<>();
     
-    // Mode Stats
+    // INDIVIDUAL KIT STATS
     public static Map<String, Integer> modeKills = new HashMap<>();
     public static Map<String, Integer> modeDeaths = new HashMap<>();
 
@@ -32,7 +36,9 @@ public class PvPStatsManager {
         boolean hasAxe = false, hasShield = false;
         boolean hasCobwebs = false;
 
-        for (ItemStack item : player.getInventory().main) {
+        // Scans the entire inventory to figure out the game mode
+        for (int i = 0; i < player.getInventory().size(); i++) {
+            ItemStack item = player.getInventory().getStack(i);
             if (item.isOf(Items.END_CRYSTAL)) hasCrystals = true;
             if (item.isOf(Items.OBSIDIAN)) hasObsidian = true;
             if (item.isOf(Items.SPLASH_POTION)) hasPots = true;
@@ -45,20 +51,21 @@ public class PvPStatsManager {
         if (hasCrystals && hasObsidian) return "Crystal PvP";
         if (hasPots && hasPearl) return "Nodebuff (Pots)";
         if (hasAxe && hasShield) return "Axe PvP";
-        if (hasCobwebs) return "UHC / Nethpot";
+        if (hasCobwebs) return "UHC / Classic";
         return "Sword / Classic";
     }
 
-    // --- TIER CALCULATION ALGORITHM ---
+    // --- TIER MATH ALGORITHM ---
     public static float calculateSkillPercentage(String mode) {
-        int k = modeKills.getOrDefault(mode, totalKills);
-        int d = modeDeaths.getOrDefault(mode, totalDeaths);
-        if (k + d == 0) return 0f; // Unranked
+        int k = mode.equals("Overall") ? totalKills : modeKills.getOrDefault(mode, 0);
+        int d = mode.equals("Overall") ? totalDeaths : modeDeaths.getOrDefault(mode, 0);
+        
+        if (k + d == 0) return 0f; // Unranked (0 matches played)
         
         float winrate = (float) k / (k + d);
         float kdaBonus = Math.min(2.0f, (float) k / Math.max(1, d)) / 2.0f; // Max bonus if KDA is 2.0+
         
-        return Math.min(100f, (winrate * 60f) + (kdaBonus * 40f)); // 100% max
+        return Math.min(100f, (winrate * 60f) + (kdaBonus * 40f)); // Max 100%
     }
 
     public static String getTierFromPercent(float percent) {
@@ -68,13 +75,20 @@ public class PvPStatsManager {
         if (percent >= 65) return "§d§lHT2 (Expert)";
         if (percent >= 50) return "§b§lLT2 (Skilled)";
         if (percent >= 35) return "§a§lHT3 (Average)";
-        return "§c§lTier 4 (Noob)";
+        if (percent >= 20) return "§c§lLT3 (Beginner)";
+        return "§8§lTier 4 (Noob)";
     }
     
-    public static void addKill(String victim) {
+    // --- ADDING KILLS AND DEATHS TO SYSTEM ---
+    public static void addKill(String victim, String mode) {
         totalKills++;
-        String mode = "Crystal PvP"; // Default fallback
         modeKills.put(mode, modeKills.getOrDefault(mode, 0) + 1);
-        matchHistory.add(0, new MatchRecord(victim, mode, true)); // Add to top of history
+        matchHistory.add(0, new MatchRecord(victim, mode, true)); // Add to top
+    }
+
+    public static void addDeath(String killer, String mode) {
+        totalDeaths++;
+        modeDeaths.put(mode, modeDeaths.getOrDefault(mode, 0) + 1);
+        matchHistory.add(0, new MatchRecord(killer, mode, false)); // Add to top
     }
 }
