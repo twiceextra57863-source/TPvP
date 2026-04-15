@@ -52,7 +52,7 @@ public class HyperEngineMixin {
 
                 // HYPER CULLING: If an object/chunk is beyond 64 blocks and not directly in front of the camera, KILL IT!
                 // This allows 13+ chunk render distances because the sides and back are unloaded instantly.
-                if (distSq > 4096.0) { // 64^2
+                if (distSq > 4096.0) { // 64 squared
                     cir.setReturnValue(false);
                 }
             }
@@ -61,7 +61,7 @@ public class HyperEngineMixin {
 
     // =========================================================================
     // 3. CHUNK BUILDER THROTTLER (PREVENTS LAG SPIKES WHEN MOVING FAST)
-    // =========================================================
+    // =========================================================================
     @Mixin(ChunkBuilder.class)
     public static class ChunkOptimizerMixin {
         @Inject(method = "getChunksToUpload", at = @At("HEAD"), cancellable = true)
@@ -94,22 +94,6 @@ public class HyperEngineMixin {
             }
             this.lastYaw = this.yaw;
             this.lastPitch = this.pitch;
-        }
-    }
-
-    // =========================================================================
-    // 5. RESOURCE PACK & ANIMATION OPTIMIZER
-    // =========================================================================
-    @Mixin(net.minecraft.client.texture.Sprite.class)
-    public static class TextureOptimizerMixin {
-        @Inject(method = "tickAnimation", at = @At("HEAD"), cancellable = true)
-        private void stopHiddenAnimations(CallbackInfo ci) {
-            // Skip ticking heavy animated textures (Fire, Lava, Water, Portals) 
-            // if the game is struggling, acting like a dynamic resolution scaler!
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.getCurrentFps() < 40) { // If FPS drops below 40
-                ci.cancel(); // Stop animating textures to instantly save GPU cycles!
-            }
         }
     }
 }
