@@ -1,8 +1,6 @@
 package com.tpvp.hud;
 
 import com.tpvp.config.ModConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.LightmapTextureManager;
@@ -37,11 +35,11 @@ public class DeadSoulRenderer {
         int id = target.getId();
         float health = target.getHealth();
 
-        // --- CHECK IF CLIENT PLAYER DIED (To update Tracker) ---
+        // 1. TRACK IF CLIENT DIES! (For Stats Manager)
         boolean isClientDead = clientPlayer.getHealth() <= 0;
         if (isClientDead && !clientWasDead) {
             String mode = PvPStatsManager.detectCurrentMode(clientPlayer);
-            PvPStatsManager.addDeath("Enemy", mode); // Registered Death in Tracker!
+            PvPStatsManager.addDeath("Enemy", clientPlayer.getName().getString(), mode); 
         }
         clientWasDead = isClientDead;
 
@@ -67,10 +65,10 @@ public class DeadSoulRenderer {
                 Identifier vSkin = (target instanceof AbstractClientPlayerEntity pt) ? 
                         (pt.getSkinTextures() != null ? pt.getSkinTextures().texture() : kSkin) : kSkin;
 
-                // --- IF WE KILLED THEM, UPDATE TRACKER! ---
+                // 2. TRACK IF CLIENT GETS A KILL! (For Stats Manager)
                 if (attacker == clientPlayer || killerName.equals(clientPlayer.getName().getString())) {
                     String mode = PvPStatsManager.detectCurrentMode(clientPlayer);
-                    PvPStatsManager.addKill(vName, mode); // Registered Kill in Tracker!
+                    PvPStatsManager.addKill(killerName, vName, mode);
                 }
 
                 KillBannerHud.addKill(killerName, kSkin, vName, vSkin, isFriend); 
@@ -94,7 +92,7 @@ public class DeadSoulRenderer {
             long age = now - soul.startTime;
             if (age > 4000) { iter.remove(); continue; } 
 
-            float life = age / 4000.0f; 
+            float life = age / 4000.0f; // 0 to 1
             float upY = life * 5.0f; 
             float alpha = life > 0.7f ? (1.0f - life) / 0.3f : 1.0f; 
             
