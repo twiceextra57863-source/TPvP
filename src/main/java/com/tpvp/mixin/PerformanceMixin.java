@@ -4,6 +4,7 @@ import com.tpvp.config.ModConfig;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.particle.ParticleManager;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.LightmapTextureManager; // FIX: Added missing import!
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.WorldRenderer;
@@ -95,6 +96,17 @@ public class PerformanceMixin {
             MinecraftClient client = MinecraftClient.getInstance();
             GameRenderer renderer = (GameRenderer)(Object)this;
 
+            // --- DEVICE COOLER FIX (100% CRASH FREE METHOD) ---
+            // If game is in background, pause the thread for 100ms. Instantly cools CPU!
+            if (ModConfig.deviceCooler && !client.isWindowFocused()) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+            // --- COTTON CAMERA ---
             if (ModConfig.smoothGameEnabled && client.options != null) {
                 client.options.smoothCameraEnabled = true; 
                 Identifier blurShader = Identifier.ofVanilla("shaders/post/phosphor.json");
@@ -104,17 +116,6 @@ public class PerformanceMixin {
             } else if (!ModConfig.smoothGameEnabled && client.options != null) {
                 if (client.options.smoothCameraEnabled) client.options.smoothCameraEnabled = false; 
                 try { renderer.disablePostProcessor(); } catch (Exception e) {}
-            }
-        }
-    }
-
-    @Mixin(MinecraftClient.class)
-    public static class BackgroundFPSMixin {
-        @Inject(method = "getFramerateLimit", at = @At("HEAD"), cancellable = true)
-        private void backgroundCooler(CallbackInfoReturnable<Integer> cir) {
-            MinecraftClient client = (MinecraftClient)(Object)this;
-            if (ModConfig.deviceCooler && !client.isWindowFocused()) {
-                cir.setReturnValue(10); // Throttle FPS when multitasking (Listening to music, etc.)
             }
         }
     }
