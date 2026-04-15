@@ -1,6 +1,9 @@
 package com.tpvp.hud;
 
 import com.tpvp.config.ModConfig;
+// FIX: Added missing imports that caused the crash!
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.LightmapTextureManager;
@@ -35,7 +38,7 @@ public class DeadSoulRenderer {
         int id = target.getId();
         float health = target.getHealth();
 
-        // 1. TRACK IF CLIENT DIES! (For Stats Manager)
+        // Check if CLIENT died
         boolean isClientDead = clientPlayer.getHealth() <= 0;
         if (isClientDead && !clientWasDead) {
             String mode = PvPStatsManager.detectCurrentMode(clientPlayer);
@@ -65,7 +68,7 @@ public class DeadSoulRenderer {
                 Identifier vSkin = (target instanceof AbstractClientPlayerEntity pt) ? 
                         (pt.getSkinTextures() != null ? pt.getSkinTextures().texture() : kSkin) : kSkin;
 
-                // 2. TRACK IF CLIENT GETS A KILL! (For Stats Manager)
+                // Check if CLIENT got a kill
                 if (attacker == clientPlayer || killerName.equals(clientPlayer.getName().getString())) {
                     String mode = PvPStatsManager.detectCurrentMode(clientPlayer);
                     PvPStatsManager.addKill(killerName, vName, mode);
@@ -83,7 +86,7 @@ public class DeadSoulRenderer {
 
     public static void renderSouls(MatrixStack matrices, VertexConsumerProvider.Immediate immediate, Camera camera, Vec3d camPos) {
         if (!ModConfig.soulAnimationEnabled) return;
-        MinecraftClient client = MinecraftClient.getInstance();
+        MinecraftClient client = MinecraftClient.getInstance(); // Import fixed!
         long now = System.currentTimeMillis();
         Iterator<DeadSoul> iter = activeSouls.iterator();
         
@@ -92,10 +95,10 @@ public class DeadSoulRenderer {
             long age = now - soul.startTime;
             if (age > 4000) { iter.remove(); continue; } 
 
-            float life = age / 4000.0f; // 0 to 1
-            float upY = life * 5.0f; 
+            float life = age / 4000.0f; 
             float alpha = life > 0.7f ? (1.0f - life) / 0.3f : 1.0f; 
             
+            // ABYSSAL VOID SHOCKWAVE RING
             if (life < 0.3f) {
                 matrices.push();
                 matrices.translate(soul.pos.x - camPos.x, soul.pos.y - camPos.y + 0.1, soul.pos.z - camPos.z);
@@ -112,6 +115,7 @@ public class DeadSoulRenderer {
                 matrices.pop();
             }
 
+            // BOUNCING K.O. TEXT ANIMATION
             float bounceY = 2.0f; 
             if (life < 0.2f) bounceY += (life / 0.2f) * 2.0f; 
             else bounceY += 2.0f + (float) Math.sin((life - 0.2f) * 15) * 0.3f;
@@ -132,6 +136,8 @@ public class DeadSoulRenderer {
 
             String text = "K.O.";
             float stX = -client.textRenderer.getWidth(text) / 2f;
+            
+            // TextRenderer imports are fixed and work flawlessly now!
             client.textRenderer.draw(text, stX + 2, 2, outlineColor, true, mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, l);
             client.textRenderer.draw(text, stX, 0, koColor, true, mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, l);
             matrices.pop();
