@@ -13,7 +13,6 @@
     "PerformanceMixin$WorldOptimizeMixin",
     "PerformanceMixin$ParticleMixin",
     "PerformanceMixin$SmoothCameraMixin",
-    "PerformanceMixin$BackgroundFPSMixin",
     "PerformanceMixin$MouseSensitivityMixin"
   ],
   "injectors": {
