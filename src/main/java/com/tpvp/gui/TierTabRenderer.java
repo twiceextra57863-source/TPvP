@@ -6,6 +6,8 @@ import com.tpvp.hud.RenderUtils3D;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import org.joml.Matrix4f;
 
 public class TierTabRenderer {
@@ -19,8 +21,6 @@ public class TierTabRenderer {
 
     public static void onOpen() { 
         openTime = System.currentTimeMillis(); 
-        
-        // Check if evaluation just finished!
         if (ModConfig.evalActive && ModConfig.evalCurrentMatches >= ModConfig.evalTotalMatches) {
             viewState = 4; // Show Results Screen!
             ModConfig.evalActive = false;
@@ -29,21 +29,37 @@ public class TierTabRenderer {
         }
     }
 
+    // Helper to return the correct Minecraft item for each PvP mode
+    public static ItemStack getIconForMode(String mode) {
+        switch(mode) {
+            case "Crystal PvP": return new ItemStack(Items.END_CRYSTAL);
+            case "Nodebuff": return new ItemStack(Items.SPLASH_POTION);
+            case "Axe PvP": return new ItemStack(Items.NETHERITE_AXE);
+            case "UHC / Classic": return new ItemStack(Items.COBWEB);
+            case "Cart PvP": return new ItemStack(Items.MINECART); // Minecart added!
+            case "Mace PvP": return new ItemStack(Items.MACE); // Mace added! (Assuming 1.21)
+            case "Nethpot": return new ItemStack(Items.NETHERITE_CHESTPLATE);
+            case "Spear/Trident": return new ItemStack(Items.TRIDENT);
+            case "Beast PvP": return new ItemStack(Items.TOTEM_OF_UNDYING);
+            case "Iron Pots": return new ItemStack(Items.IRON_CHESTPLATE);
+            case "Dia SMP": return new ItemStack(Items.DIAMOND_CHESTPLATE);
+            default: return new ItemStack(Items.DIAMOND_SWORD);
+        }
+    }
+
     public static void render(TPvPDashboardScreen screen, DrawContext context, int setX, int setY, int mx, int my, int winW, int winH) {
         long elapsed = System.currentTimeMillis() - openTime;
-        float animProgress = Math.min(1.0f, elapsed / 1500.0f); // 1.5s slow animation
-        animProgress = 1.0f - (float)Math.pow(1.0f - animProgress, 4); // Extremely smooth deceleration
+        float animProgress = Math.min(1.0f, elapsed / 1500.0f); 
+        animProgress = 1.0f - (float)Math.pow(1.0f - animProgress, 4); 
 
         Matrix4f mat = context.getMatrices().peek().getPositionMatrix();
         VertexConsumer buf = screen.getMinecraftClient().getBufferBuilders().getEntityVertexConsumers().getBuffer(RenderLayer.getGui());
 
         // ---------------------------------------------------------
-        // STATE 0: ANIMATED SHRINKING CIRCLE
+        // STATE 0: CIRCULAR TIER TRACKER
         // ---------------------------------------------------------
         if (viewState == 0) {
             float skillPct = PvPStatsManager.calculateSkillPercentage("Overall");
-            
-            // THE FIX: Circle starts at 100% and shrinks to the real percentage!
             float currentShowPct = 100f - ((100f - skillPct) * animProgress); 
             if (skillPct == 0 && animProgress > 0.99f) currentShowPct = 0f;
 
@@ -51,7 +67,7 @@ public class TierTabRenderer {
             int cy = setY + 60;
             float radius = 55f;
 
-            RenderUtils3D.drawThickArc(mat, buf, cx, cy, radius, 8f, 0, 360, 0x55FFFFFF, 15728880); // Gray Track
+            RenderUtils3D.drawThickArc(mat, buf, cx, cy, radius, 8f, 0, 360, 0x55FFFFFF, 15728880); 
             
             int ringColor = currentShowPct > 80 ? 0xFFFFD700 : (currentShowPct > 50 ? 0xFF00FFCC : 0xFFFF3333);
             RenderUtils3D.drawThickArc(mat, buf, cx, cy, radius, 8f, 0, 360 * (currentShowPct / 100f), ringColor, 15728880);
@@ -63,12 +79,10 @@ public class TierTabRenderer {
             
             context.drawCenteredTextWithShadow(screen.getTextRenderer(), "Overall Tier: " + PvPStatsManager.getTierFromPercent(skillPct), cx, cy + 20, 0xFFFFFF);
 
-            // EVALUATION ACTIVE ALERT
             if (ModConfig.evalActive) {
                 context.drawCenteredTextWithShadow(screen.getTextRenderer(), "§a[EVALUATION ACTIVE: " + ModConfig.evalCurrentMatches + "/" + ModConfig.evalTotalMatches + "]", cx, cy - 70, 0xFFFFFF);
             }
 
-            // Buttons
             context.fill(setX + 40, setY + 150, setX + 140, setY + 175, 0xFF00FFCC);
             context.drawCenteredTextWithShadow(screen.getTextRenderer(), "§lVIEW MODES", setX + 90, setY + 158, 0x000000);
 
@@ -76,19 +90,29 @@ public class TierTabRenderer {
             context.drawCenteredTextWithShadow(screen.getTextRenderer(), "§lSTART EVAL", setX + 230, setY + 158, 0xFFFFFF);
         }
         // ---------------------------------------------------------
-        // STATE 1: MODES GRID
+        // STATE 1: MODES GRID (Now with Dynamic Minecraft Items!)
         // ---------------------------------------------------------
         else if (viewState == 1) {
             context.drawTextWithShadow(screen.getTextRenderer(), "§lSELECT A PVP MODE", setX, setY - 10, 0xFFFFFF);
             
+            // Loop through 4 visible cards
             int bX = setX, bY = setY + 10;
             for (int i = 0; i < 4; i++) {
                 int index = modeScrollIndex + i;
                 if (index < PvPStatsManager.ALL_MODES.length) {
                     String mode = PvPStatsManager.ALL_MODES[index];
+                    ItemStack icon = getIconForMode(mode); // Fetch correct item
+                    
                     boolean hov = mx >= bX && mx <= bX + 140 && my >= bY && my <= bY + 30;
                     context.fill(bX, bY, bX + 140, bY + 30, hov ? 0xAA00FFCC : 0x55000000);
-                    context.drawTextWithShadow(screen.getTextRenderer(), mode, bX + 10, bY + 10, 0xFFFFFF);
+                    
+                    context.getMatrices().push();
+                    context.getMatrices().translate(bX + 5, bY + 6, 0);
+                    context.getMatrices().scale(1.2f, 1.2f, 1.0f); // Render item
+                    context.drawItem(icon, 0, 0);
+                    context.getMatrices().pop();
+                    
+                    context.drawTextWithShadow(screen.getTextRenderer(), mode, bX + 35, bY + 10, 0xFFFFFF);
                     bY += 35;
                 }
             }
@@ -100,7 +124,7 @@ public class TierTabRenderer {
             context.drawCenteredTextWithShadow(screen.getTextRenderer(), "← Back", setX + 260, setY + 156, 0xFFFFFF);
         }
         // ---------------------------------------------------------
-        // STATE 2: MODE STATS & HISTORY (With Killer/Victim names)
+        // STATE 2: MODE STATS & HISTORY
         // ---------------------------------------------------------
         else if (viewState == 2) {
             context.drawTextWithShadow(screen.getTextRenderer(), "§l" + selectedMode.toUpperCase() + " STATS", setX, setY - 10, 0xFFFFFF);
@@ -113,7 +137,6 @@ public class TierTabRenderer {
             context.drawTextWithShadow(screen.getTextRenderer(), "Deaths: §c" + PvPStatsManager.modeDeaths.getOrDefault(selectedMode, 0), setX + 5, setY + 55, 0xFFFFFF);
             context.drawTextWithShadow(screen.getTextRenderer(), "Win: §e" + String.format("%.1f%%", pMode), setX + 5, setY + 75, 0xFFFFFF);
 
-            // Detailed History
             context.drawTextWithShadow(screen.getTextRenderer(), "§c⚔ Match History ⚔", setX + 130, setY - 10, 0xFFFFFF);
             context.fill(setX + 130, setY + 10, setX + 320, setY + 130, 0x55000000);
             
@@ -199,21 +222,18 @@ public class TierTabRenderer {
                 }
             }
         } else if (viewState == 2) {
-            if (mx >= setX && mx <= setX + 80 && my >= setY + 150 && my <= setY + 170) { viewState = 1; return true; }
+            if (mx >= setX && mx <= setX + 80 && my >= setY + 150 && my <= setY + 170) { viewState = 1; openTime = System.currentTimeMillis(); return true; }
         } else if (viewState == 3) {
             if (mx >= setX && mx <= setX + 80 && my >= setY + 150 && my <= setY + 170) { viewState = 0; return true; }
             
-            // Change Mode in Eval
             if (mx >= setX + 150 && mx <= setX + 220 && my >= setY + 15 && my <= setY + 30) {
                 modeScrollIndex = (modeScrollIndex + 1) % PvPStatsManager.ALL_MODES.length;
                 selectedMode = PvPStatsManager.ALL_MODES[modeScrollIndex];
                 return true;
             }
-            // Add Matches
             if (mx >= setX + 150 && mx <= setX + 220 && my >= setY + 45 && my <= setY + 60) {
                 evalTargetMatches += 5; if(evalTargetMatches > 30) evalTargetMatches = 5; return true;
             }
-            // Start Eval Button
             if (mx >= setX + 80 && mx <= setX + 220 && my >= setY + 90 && my <= setY + 120) {
                 ModConfig.evalActive = true;
                 ModConfig.evalMode = selectedMode;
@@ -225,11 +245,11 @@ public class TierTabRenderer {
                 viewState = 0; openTime = System.currentTimeMillis();
                 return true;
             }
-        } else if (viewState == 4) { // Final Result Screen
+        } else if (viewState == 4) { 
             if (mx >= setX + 100 && mx <= setX + 200 && my >= setY + 150 && my <= setY + 170) {
-                viewState = 0; openTime = System.currentTimeMillis(); return true; // Close
+                viewState = 0; openTime = System.currentTimeMillis(); return true; 
             }
         }
         return false;
     }
-                                               }
+}
