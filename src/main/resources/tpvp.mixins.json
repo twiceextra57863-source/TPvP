@@ -17,8 +17,7 @@
     "HyperEngineMixin$ThreadOptimizerMixin",
     "HyperEngineMixin$AggressiveCullingMixin",
     "HyperEngineMixin$ChunkOptimizerMixin",
-    "HyperEngineMixin$CameraInterpolationMixin",
-    "HyperEngineMixin$TextureOptimizerMixin"
+    "HyperEngineMixin$CameraInterpolationMixin"
   ],
   "injectors": {
     "defaultRequire": 1
