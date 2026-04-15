@@ -4,7 +4,6 @@ import com.tpvp.config.ModConfig;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.particle.ParticleManager;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.WorldRenderer;
@@ -53,7 +52,6 @@ public class PerformanceMixin {
             if (ModConfig.fpsBoostEnabled) {
                 MinecraftClient client = MinecraftClient.getInstance();
                 if (client.player != null) {
-                    // Culls heavy block models (like chests) further than 24 blocks
                     if (client.player.squaredDistanceTo(blockEntity.getPos().toCenterPos()) > 576.0) { // 24 squared
                         ci.cancel();
                     }
@@ -63,13 +61,14 @@ public class PerformanceMixin {
     }
 
     // =========================================================
-    // 3. WEATHER / FOG / WORLD OPTIMIZATIONS
+    // 3. WEATHER / FOG / WORLD OPTIMIZATIONS (CRASH FIXED!)
     // =========================================================
     @Mixin(WorldRenderer.class)
     public static class WorldOptimizeMixin {
+        
+        // FIX: Removed internal parameters! We just use simple 'CallbackInfo ci' to cancel rendering safely
         @Inject(method = "renderWeather", at = @At("HEAD"), cancellable = true)
-        private void stopRainLag(LightmapTextureManager manager, float tickDelta, double cameraX, double cameraY, double cameraZ, CallbackInfo ci) {
-            // Disables heavy Rain and Snow rendering to save GPU fill-rate
+        private void stopRainLag(CallbackInfo ci) {
             if (ModConfig.fpsBoostEnabled) ci.cancel();
         }
     }
@@ -94,8 +93,7 @@ public class PerformanceMixin {
         private void smoothAndCool(RenderTickCounter tickCounter, boolean tick, CallbackInfo ci) {
             MinecraftClient client = MinecraftClient.getInstance();
 
-            // --- DEVICE COOLER FIX ---
-            // Throttles the CPU exactly when unfocused (WhatsApp/multitasking mode)
+            // Device Cooler logic
             if (ModConfig.deviceCooler && !client.isWindowFocused()) {
                 try {
                     Thread.sleep(100);
@@ -104,7 +102,7 @@ public class PerformanceMixin {
                 }
             }
 
-            // --- COTTON CAMERA ---
+            // Cotton Camera Enable
             if (ModConfig.smoothGameEnabled && client.options != null) {
                 client.options.smoothCameraEnabled = true; 
             } else if (!ModConfig.smoothGameEnabled && client.options != null) {
