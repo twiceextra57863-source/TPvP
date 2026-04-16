@@ -56,6 +56,7 @@ public class ModConfig {
     public static boolean smoothGameEnabled = true; 
     public static boolean deviceCooler = true; 
     public static int cottonSensitivity = 100; 
+    public static boolean motionBlurEnabled = true; // FIX: Restored this missing variable!
 
     // Ranked Evaluation System
     public static boolean evalActive = false;
@@ -120,6 +121,7 @@ public class ModConfig {
             if (json.has("smoothGameEnabled")) smoothGameEnabled = json.get("smoothGameEnabled").getAsBoolean();
             if (json.has("deviceCooler")) deviceCooler = json.get("deviceCooler").getAsBoolean();
             if (json.has("cottonSensitivity")) cottonSensitivity = json.get("cottonSensitivity").getAsInt();
+            if (json.has("motionBlurEnabled")) motionBlurEnabled = json.get("motionBlurEnabled").getAsBoolean(); // FIX: Added load
 
             if (json.has("evalActive")) evalActive = json.get("evalActive").getAsBoolean();
             if (json.has("evalMode")) evalMode = json.get("evalMode").getAsString();
@@ -181,6 +183,7 @@ public class ModConfig {
             json.addProperty("smoothGameEnabled", smoothGameEnabled);
             json.addProperty("deviceCooler", deviceCooler);
             json.addProperty("cottonSensitivity", cottonSensitivity);
+            json.addProperty("motionBlurEnabled", motionBlurEnabled); // FIX: Added save
 
             json.addProperty("evalActive", evalActive);
             json.addProperty("evalMode", evalMode);
@@ -195,4 +198,4 @@ public class ModConfig {
             e.printStackTrace();
         }
     }
-        }
+}
