@@ -132,6 +132,23 @@ public class TPvPDashboardScreen extends Screen {
     
     @Override public boolean mouseDragged(double mx, double my, int b, double dx, double dY) { int wy = (this.height - winH) / 2; if (currentTab.equals("💀 Targets") && TargetsTabRenderer.mouseDragged(this, mx, my, wy)) return true; return super.mouseDragged(mx, my, b, dx, dY); }
     @Override public boolean mouseReleased(double mx, double my, int b) { TargetsTabRenderer.isDraggingScroll = false; return super.mouseReleased(mx, my, b); }
-    @Override public boolean mouseScrolled(double mx, double my, double h, double s) { if (currentTab.equals("💀 Targets")) { TargetsTabRenderer.mouseScrolled(s); return true; } return super.mouseScrolled(mx, my, h, s); }
+    @Override 
+    public boolean mouseScrolled(double mx, double my, double horizontalAmount, double scrollAmount) { 
+        int winY = (this.height - winH) / 2;
+        int setX = (this.width - winW) / 2 + sideW + 20;
+        int setY = winY + 40;
+
+        if (currentTab.equals("💀 Targets")) { 
+            TargetsTabRenderer.mouseScrolled(scrollAmount); 
+            return true; 
+        } 
+        // Delegate scroll to Performance Tab for Sensitivity Slider
+        else if (currentTab.equals("🚀 Performance")) {
+            if (PerformanceTabRenderer.mouseScrolled(mx, my, setX, setY, scrollAmount)) {
+                return true;
+            }
+        }
+        return super.mouseScrolled(mx, my, horizontalAmount, scrollAmount); 
+    }
     @Override public void close() { ModConfig.save(); if (this.client != null) this.client.setScreen(this.parent); }
 }
