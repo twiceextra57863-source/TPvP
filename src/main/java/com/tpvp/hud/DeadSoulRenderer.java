@@ -1,7 +1,6 @@
 package com.tpvp.hud;
 
 import com.tpvp.config.ModConfig;
-// FIX: Added missing imports that caused the crash!
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -38,16 +37,27 @@ public class DeadSoulRenderer {
         int id = target.getId();
         float health = target.getHealth();
 
-        // Check if CLIENT died
+        // 1. --- CHECK IF CLIENT DIED ---
         boolean isClientDead = clientPlayer.getHealth() <= 0;
         if (isClientDead && !clientWasDead) {
             String mode = PvPStatsManager.detectCurrentMode(clientPlayer);
-            PvPStatsManager.addDeath("Enemy", clientPlayer.getName().getString(), mode); 
+            
+            // IF CLIENT DIES, ONLY ADD DEATH IF THE ATTACKER WAS A REAL PLAYER
+            LivingEntity clientAttacker = clientPlayer.getAttacker();
+            if (clientAttacker instanceof PlayerEntity) {
+                String enemyName = clientAttacker.getName().getString();
+                PvPStatsManager.addDeath(enemyName, clientPlayer.getName().getString(), mode); 
+            } else {
+                // Died to environment or mob (Still adds death but lists as Environment)
+                PvPStatsManager.addDeath("Environment", clientPlayer.getName().getString(), mode); 
+            }
         }
         clientWasDead = isClientDead;
 
+        // 2. --- CHECK IF ANY OTHER ENTITY DIED ---
         if (lastHealthMap.containsKey(id)) {
             float lastHealth = lastHealthMap.get(id);
+            
             if (lastHealth > 0 && health <= 0) { 
                 
                 LivingEntity attacker = target.getAttacker();
@@ -61,6 +71,7 @@ public class DeadSoulRenderer {
                     killerName = pk.getName().getString();
                     kSkin = pk.getSkinTextures() != null ? pk.getSkinTextures().texture() : kSkin;
                 } else if (target.distanceTo(clientPlayer) < 5.0) { 
+                    // Fallback to client player if killed nearby (assuming sweep/fire)
                     killerName = clientPlayer.getName().getString();
                     kSkin = ((AbstractClientPlayerEntity)clientPlayer).getSkinTextures().texture();
                 }
@@ -68,14 +79,20 @@ public class DeadSoulRenderer {
                 Identifier vSkin = (target instanceof AbstractClientPlayerEntity pt) ? 
                         (pt.getSkinTextures() != null ? pt.getSkinTextures().texture() : kSkin) : kSkin;
 
-                // Check if CLIENT got a kill
-                if (attacker == clientPlayer || killerName.equals(clientPlayer.getName().getString())) {
-                    String mode = PvPStatsManager.detectCurrentMode(clientPlayer);
-                    PvPStatsManager.addKill(killerName, vName, mode);
-                }
+                // --- STRICT PVP FILTER: ONLY RECORD IF VICTIM IS A REAL PLAYER ---
+                if (target instanceof PlayerEntity) {
+                    
+                    // If Client Player got the kill, add to Tier Progress!
+                    if (attacker == clientPlayer || killerName.equals(clientPlayer.getName().getString())) {
+                        String mode = PvPStatsManager.detectCurrentMode(clientPlayer);
+                        PvPStatsManager.addKill(killerName, vName, mode);
+                    }
 
-                KillBannerHud.addKill(killerName, kSkin, vName, vSkin, isFriend); 
+                    // Trigger Kill Banner ONLY for Real Players
+                    KillBannerHud.addKill(killerName, kSkin, vName, vSkin, isFriend); 
+                }
                 
+                // Spawn K.O Hologram Marker (Only for Real Players)
                 if (target instanceof AbstractClientPlayerEntity) {
                     activeSouls.add(new DeadSoul(target.getPos())); 
                 }
@@ -86,7 +103,7 @@ public class DeadSoulRenderer {
 
     public static void renderSouls(MatrixStack matrices, VertexConsumerProvider.Immediate immediate, Camera camera, Vec3d camPos) {
         if (!ModConfig.soulAnimationEnabled) return;
-        MinecraftClient client = MinecraftClient.getInstance(); // Import fixed!
+        MinecraftClient client = MinecraftClient.getInstance();
         long now = System.currentTimeMillis();
         Iterator<DeadSoul> iter = activeSouls.iterator();
         
@@ -95,10 +112,11 @@ public class DeadSoulRenderer {
             long age = now - soul.startTime;
             if (age > 4000) { iter.remove(); continue; } 
 
-            float life = age / 4000.0f; 
+            float life = age / 4000.0f; // 0 to 1
+            float upY = life * 5.0f; 
             float alpha = life > 0.7f ? (1.0f - life) / 0.3f : 1.0f; 
             
-            // ABYSSAL VOID SHOCKWAVE RING
+            // EPIC ABYSSAL VOID SHOCKWAVE RING
             if (life < 0.3f) {
                 matrices.push();
                 matrices.translate(soul.pos.x - camPos.x, soul.pos.y - camPos.y + 0.1, soul.pos.z - camPos.z);
@@ -137,7 +155,6 @@ public class DeadSoulRenderer {
             String text = "K.O.";
             float stX = -client.textRenderer.getWidth(text) / 2f;
             
-            // TextRenderer imports are fixed and work flawlessly now!
             client.textRenderer.draw(text, stX + 2, 2, outlineColor, true, mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, l);
             client.textRenderer.draw(text, stX, 0, koColor, true, mat, immediate, TextRenderer.TextLayerType.SEE_THROUGH, 0, l);
             matrices.pop();
