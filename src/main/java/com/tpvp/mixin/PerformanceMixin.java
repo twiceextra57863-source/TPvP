@@ -59,7 +59,7 @@ public class PerformanceMixin {
 
                     // 2. DIRECTIONAL BLIND CULLING (Non-Vanilla)
                     // If entity is within 10-32 blocks, do a fast Dot Product check
-                    // If the entity is behind the player's camera field of view, drop it before frustum checks it!
+                    // If the entity is behind the player's camera field of view, drop it!
                     if (distSq > 100.0) { 
                         Vec3d look = client.player.getRotationVec(1.0F);
                         double dot = (dx * look.x) + (dy * look.y) + (dz * look.z);
@@ -155,11 +155,11 @@ public class PerformanceMixin {
         private void smoothAndCool(RenderTickCounter tickCounter, boolean tick, CallbackInfo ci) {
             MinecraftClient client = MinecraftClient.getInstance();
 
-            // LTW TRANSLATION FIX: By forcing the target FPS to maximum, 
-            // JVM stops sleeping threads and feeds OpenGL/LTW constantly!
-            if (ModConfig.fpsBoostEnabled && client.getWindow() != null) {
-                if (client.getWindow().getFramerateLimit() < 260) {
-                    client.getWindow().setFramerateLimit(260); 
+            // LTW TRANSLATION FIX (CRASH FIXED: 1.21.4 uses 'options.getMaxFps()')
+            // Force the game engine to uncap framerate bounds internally!
+            if (ModConfig.fpsBoostEnabled && client.options != null) {
+                if (client.options.getMaxFps().getValue() < 260) {
+                    client.options.getMaxFps().setValue(260); // Forces JVM to push frames to LTW
                 }
             }
 
@@ -179,7 +179,6 @@ public class PerformanceMixin {
         @ModifyVariable(method = "draw(Ljava/lang/String;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/render/VertexConsumerProvider;Lnet/minecraft/client/font/TextRenderer$TextLayerType;II)I", at = @At("HEAD"), ordinal = 0, argsOnly = true)
         private boolean disableShadows(boolean shadow) {
             // Disables all text shadows in the world (Nametags, Scoreboards, Holograms)
-            // Cuts 2D rendering draw calls exactly by 50%!
             if (ModConfig.fpsBoostEnabled) return false;
             return shadow;
         }
