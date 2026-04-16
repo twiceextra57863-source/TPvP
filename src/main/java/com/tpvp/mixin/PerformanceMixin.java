@@ -23,27 +23,43 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class PerformanceMixin {
 
     // =========================================================
-    // 1. ADVANCED ENTITY CULLING (PLAYERS, MOBS, FIRE)
+    // 1. GHOST ENTITY CULLING & NO-FIRE (Massive FPS in Team Fights)
     // =========================================================
     @Mixin(net.minecraft.client.render.entity.EntityRenderDispatcher.class)
     public static class EntityRenderMixin {
+        
         @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
         private void optimizeEntities(Entity entity, net.minecraft.client.render.Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> cir) {
             if (ModConfig.fpsBoostEnabled && entity instanceof LivingEntity) {
                 MinecraftClient client = MinecraftClient.getInstance();
+                
                 if (client.player != null && entity != client.player) {
-                    if (entity.distanceTo(client.player) > 32.0) cir.setReturnValue(false); 
+                    double dist = entity.distanceTo(client.player);
+                    
+                    // If target is far away, immediately drop it
+                    if (dist > 32.0) {
+                        cir.setReturnValue(false); 
+                    } 
+                    // If there are too many players around, aggressively cull those that are not in direct line of sight (Dot Product > 0)
+                    else if (dist > 10.0 && client.world != null && client.world.getPlayers().size() > 15) {
+                        Vec3d lookVec = client.player.getRotationVec(1.0F);
+                        Vec3d dirToTarget = entity.getPos().subtract(client.player.getPos()).normalize();
+                        if (lookVec.dotProduct(dirToTarget) < 0.2) { // 0.2 threshold = Not looking directly at them
+                            cir.setReturnValue(false);
+                        }
+                    }
                 }
             }
         }
+        
         @Inject(method = "renderFire", at = @At("HEAD"), cancellable = true)
         private void removeOtherPlayersFire(CallbackInfo ci) {
-            if (ModConfig.fpsBoostEnabled) ci.cancel(); 
+            if (ModConfig.fpsBoostEnabled) ci.cancel(); // Stops rendering laggy fire on others!
         }
     }
 
     // =========================================================
-    // 2. BLOCK ENTITY CULLING (CHESTS, BEDS, SIGNS - MASSIVE FPS)
+    // 2. BLOCK ENTITY CULLING (Hides Chests/Signs out of sight)
     // =========================================================
     @Mixin(BlockEntityRenderDispatcher.class)
     public static class BlockEntityCullingMixin {
@@ -52,7 +68,7 @@ public class PerformanceMixin {
             if (ModConfig.fpsBoostEnabled) {
                 MinecraftClient client = MinecraftClient.getInstance();
                 if (client.player != null) {
-                    if (client.player.squaredDistanceTo(blockEntity.getPos().toCenterPos()) > 576.0) { // 24 squared
+                    if (client.player.squaredDistanceTo(blockEntity.getPos().toCenterPos()) > 576.0) { // 24 blocks
                         ci.cancel();
                     }
                 }
@@ -61,31 +77,38 @@ public class PerformanceMixin {
     }
 
     // =========================================================
-    // 3. WEATHER / FOG / WORLD OPTIMIZATIONS (CRASH FIXED!)
+    // 3. WEATHER / FOG / WORLD OPTIMIZATIONS
     // =========================================================
     @Mixin(WorldRenderer.class)
     public static class WorldOptimizeMixin {
-        
-        // FIX: Removed internal parameters! We just use simple 'CallbackInfo ci' to cancel rendering safely
         @Inject(method = "renderWeather", at = @At("HEAD"), cancellable = true)
         private void stopRainLag(CallbackInfo ci) {
-            if (ModConfig.fpsBoostEnabled) ci.cancel();
+            if (ModConfig.fpsBoostEnabled) ci.cancel(); // Completely kills rain/snow lag
         }
     }
 
     // =========================================================
-    // 4. PARTICLES LIMITER
+    // 4. TNT BLAST & PARTICLE THROTTLER
     // =========================================================
     @Mixin(ParticleManager.class)
     public static class ParticleMixin {
+        private int particleCount = 0;
+
         @Inject(method = "addParticle(Lnet/minecraft/particle/ParticleEffect;DDDDDD)Lnet/minecraft/client/particle/Particle;", at = @At("HEAD"), cancellable = true)
         private void reduceLagParticles(CallbackInfoReturnable<?> cir) {
-            if (ModConfig.fpsBoostEnabled && Math.random() > 0.15) cir.setReturnValue(null); 
+            if (ModConfig.fpsBoostEnabled) {
+                particleCount++;
+                // Strict throttling: Only renders 1 out of every 5 particles (80% drop)
+                // This completely prevents FPS drops during massive TNT/Crystal explosions!
+                if (particleCount % 5 != 0) {
+                    cir.setReturnValue(null); 
+                }
+            }
         }
     }
 
     // =========================================================
-    // 5. COTTON CAMERA & MULTITASKING COOLER
+    // 5. BACKGROUND FPS THROTTLE (Anti-Heat)
     // =========================================================
     @Mixin(GameRenderer.class)
     public static class SmoothCameraMixin {
@@ -93,16 +116,10 @@ public class PerformanceMixin {
         private void smoothAndCool(RenderTickCounter tickCounter, boolean tick, CallbackInfo ci) {
             MinecraftClient client = MinecraftClient.getInstance();
 
-            // Device Cooler logic
             if (ModConfig.deviceCooler && !client.isWindowFocused()) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+                try { Thread.sleep(100); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             }
 
-            // Cotton Camera Enable
             if (ModConfig.smoothGameEnabled && client.options != null) {
                 client.options.smoothCameraEnabled = true; 
             } else if (!ModConfig.smoothGameEnabled && client.options != null) {
