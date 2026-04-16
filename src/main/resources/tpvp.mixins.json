@@ -9,11 +9,13 @@
     "GameMenuScreenMixin",
     "InGameHudMixin",
     "PerformanceMixin$EntityRenderMixin",
+    "PerformanceMixin$ItemEntityOptimizer",
     "PerformanceMixin$BlockEntityCullingMixin",
     "PerformanceMixin$WorldOptimizeMixin",
     "PerformanceMixin$ParticleMixin",
-    "PerformanceMixin$MouseSensitivityMixin",
-    "PerformanceMixin$MotionBlurMixin"
+    "PerformanceMixin$SmoothCameraMixin",
+    "PerformanceMixin$TextShadowCullingMixin",
+    "PerformanceMixin$MouseSensitivityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
