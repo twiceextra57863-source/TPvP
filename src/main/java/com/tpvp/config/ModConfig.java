@@ -35,11 +35,11 @@ public class ModConfig {
     public static int bannerColorTheme = 0; 
     public static boolean soulAnimationEnabled = true;
 
-    // --- AUTO-ENABLED HYPER PERFORMANCE ENGINE ---
-    public static boolean fpsBoostEnabled = true; // DEFAULT ON
-    public static boolean smoothGameEnabled = true; // DEFAULT ON
-    public static boolean deviceCooler = true; // DEFAULT ON
+    // --- PURE PERFORMANCE ENGINE ---
+    public static boolean fpsBoostEnabled = true; 
+    public static boolean smoothGameEnabled = true; 
     public static int cottonSensitivity = 100; 
+    public static boolean motionBlurEnabled = true; // NAYA FEATURE!
 
     // Ranked Eval
     public static boolean evalActive = false;
