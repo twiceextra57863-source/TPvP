@@ -1,9 +1,18 @@
 package com.tpvp.hud;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.tpvp.config.ModConfig;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +41,80 @@ public class PvPStatsManager {
         "Crystal PvP", "Axe PvP", "Nodebuff", "UHC / Classic", 
         "Cart PvP", "Nethpot", "Mace PvP", "Spear/Trident", "Beast PvP", "Iron Pots", "Dia SMP"
     };
+
+    // --- JSON SAVE & LOAD SYSTEM FOR STATS ---
+    private static final File STATS_FILE = FabricLoader.getInstance().getConfigDir().resolve("tpvp_stats.json").toFile();
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+    public static void load() {
+        if (!STATS_FILE.exists()) {
+            save(); 
+            return;
+        }
+        try (FileReader reader = new FileReader(STATS_FILE)) {
+            JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
+            
+            if (json.has("totalKills")) totalKills = json.get("totalKills").getAsInt();
+            if (json.has("totalDeaths")) totalDeaths = json.get("totalDeaths").getAsInt();
+
+            if (json.has("modeKills")) {
+                JsonObject mk = json.getAsJsonObject("modeKills");
+                for (String key : mk.keySet()) modeKills.put(key, mk.get(key).getAsInt());
+            }
+            if (json.has("modeDeaths")) {
+                JsonObject md = json.getAsJsonObject("modeDeaths");
+                for (String key : md.keySet()) modeDeaths.put(key, md.get(key).getAsInt());
+            }
+
+            if (json.has("matchHistory")) {
+                JsonArray historyArray = json.getAsJsonArray("matchHistory");
+                matchHistory.clear();
+                for (int i = 0; i < historyArray.size(); i++) {
+                    JsonObject obj = historyArray.get(i).getAsJsonObject();
+                    matchHistory.add(new MatchRecord(
+                        obj.get("killer").getAsString(),
+                        obj.get("victim").getAsString(),
+                        obj.get("mode").getAsString(),
+                        obj.get("won").getAsBoolean()
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Failed to load TPvP Stats!");
+        }
+    }
+
+    public static void save() {
+        try (FileWriter writer = new FileWriter(STATS_FILE)) {
+            JsonObject json = new JsonObject();
+            
+            json.addProperty("totalKills", totalKills);
+            json.addProperty("totalDeaths", totalDeaths);
+
+            JsonObject mk = new JsonObject();
+            for (Map.Entry<String, Integer> entry : modeKills.entrySet()) mk.addProperty(entry.getKey(), entry.getValue());
+            json.add("modeKills", mk);
+
+            JsonObject md = new JsonObject();
+            for (Map.Entry<String, Integer> entry : modeDeaths.entrySet()) md.addProperty(entry.getKey(), entry.getValue());
+            json.add("modeDeaths", md);
+
+            JsonArray historyArray = new JsonArray();
+            for (MatchRecord r : matchHistory) {
+                JsonObject obj = new JsonObject();
+                obj.addProperty("killer", r.killer);
+                obj.addProperty("victim", r.victim);
+                obj.addProperty("mode", r.mode);
+                obj.addProperty("won", r.won);
+                historyArray.add(obj);
+            }
+            json.add("matchHistory", historyArray);
+
+            GSON.toJson(json, writer);
+        } catch (Exception e) {
+            System.out.println("Failed to save TPvP Stats!");
+        }
+    }
 
     // --- SUPER SHARP MIND KIT DETECTOR ---
     public static String detectCurrentMode(PlayerEntity player) {
@@ -62,7 +145,6 @@ public class PvPStatsManager {
             if (name.contains("diamond")) diaArmor = true;
         }
 
-        // Extremely accurate kit deduction
         if (minecart) return "Cart PvP";
         if (mace) return "Mace PvP";
         if (trident) return "Spear/Trident";
@@ -81,12 +163,9 @@ public class PvPStatsManager {
     public static float calculateSkillPercentage(String mode) {
         int k = mode.equals("Overall") ? totalKills : modeKills.getOrDefault(mode, 0);
         int d = mode.equals("Overall") ? totalDeaths : modeDeaths.getOrDefault(mode, 0);
-        
         if (k + d == 0) return 0f; 
-        
         float winrate = (float) k / (k + d);
         float kdaBonus = Math.min(2.0f, (float) k / Math.max(1, d)) / 2.0f; 
-        
         return Math.min(100f, (winrate * 60f) + (kdaBonus * 40f)); 
     }
 
@@ -108,23 +187,25 @@ public class PvPStatsManager {
         totalKills++;
         modeKills.put(mode, modeKills.getOrDefault(mode, 0) + 1);
         matchHistory.add(0, new MatchRecord(killer, victim, mode, true)); 
+        if (matchHistory.size() > 50) matchHistory.remove(50); // Keep max 50 history
         
-        // Ranked Eval Logic
         if (ModConfig.evalActive && ModConfig.evalMode.equals(mode)) {
             ModConfig.evalKills++;
             ModConfig.evalCurrentMatches++;
         }
+        save(); // Save progress
     }
 
     public static void addDeath(String killer, String victim, String mode) {
         totalDeaths++;
         modeDeaths.put(mode, modeDeaths.getOrDefault(mode, 0) + 1);
         matchHistory.add(0, new MatchRecord(killer, victim, mode, false)); 
+        if (matchHistory.size() > 50) matchHistory.remove(50);
         
-        // Ranked Eval Logic
         if (ModConfig.evalActive && ModConfig.evalMode.equals(mode)) {
             ModConfig.evalDeaths++;
             ModConfig.evalCurrentMatches++;
         }
+        save(); // Save progress
     }
-}
+    }
