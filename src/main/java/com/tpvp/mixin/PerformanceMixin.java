@@ -59,7 +59,6 @@ public class PerformanceMixin {
 
                     // 2. DIRECTIONAL BLIND CULLING (Non-Vanilla)
                     // If entity is within 10-32 blocks, do a fast Dot Product check
-                    // If the entity is behind the player's camera field of view, drop it!
                     if (distSq > 100.0) { 
                         Vec3d look = client.player.getRotationVec(1.0F);
                         double dot = (dx * look.x) + (dy * look.y) + (dz * look.z);
@@ -116,13 +115,16 @@ public class PerformanceMixin {
     // =========================================================
     @Mixin(WorldRenderer.class)
     public static class WorldOptimizeMixin {
+        
+        // FIX: Parameterless Injection. Safe from ANY future updates!
         @Inject(method = "renderWeather", at = @At("HEAD"), cancellable = true)
         private void stopRainLag(CallbackInfo ci) {
             if (ModConfig.fpsBoostEnabled) ci.cancel(); 
         }
         
+        // FIX: Removed parameter list from here too!
         @Inject(method = "renderClouds", at = @At("HEAD"), cancellable = true)
-        private void stopCloudLag(MatrixStack matrices, org.joml.Matrix4f projectionMatrix, float tickDelta, double cameraX, double cameraY, double cameraZ, CallbackInfo ci) {
+        private void stopCloudLag(CallbackInfo ci) {
             if (ModConfig.fpsBoostEnabled) ci.cancel(); 
         }
     }
@@ -138,7 +140,7 @@ public class PerformanceMixin {
         private void reduceLagParticles(CallbackInfoReturnable<?> cir) {
             if (ModConfig.fpsBoostEnabled) {
                 dropCounter++;
-                // Drops 80% of useless particles (Renders 1 out of 5)
+                // Renders 1 out of 5 particles (80% drop)
                 if (dropCounter % 5 != 0) {
                     cir.setReturnValue(null); 
                 }
@@ -155,11 +157,10 @@ public class PerformanceMixin {
         private void smoothAndCool(RenderTickCounter tickCounter, boolean tick, CallbackInfo ci) {
             MinecraftClient client = MinecraftClient.getInstance();
 
-            // LTW TRANSLATION FIX (CRASH FIXED: 1.21.4 uses 'options.getMaxFps()')
-            // Force the game engine to uncap framerate bounds internally!
+            // LTW TRANSLATION FIX
             if (ModConfig.fpsBoostEnabled && client.options != null) {
                 if (client.options.getMaxFps().getValue() < 260) {
-                    client.options.getMaxFps().setValue(260); // Forces JVM to push frames to LTW
+                    client.options.getMaxFps().setValue(260); 
                 }
             }
 
@@ -178,7 +179,7 @@ public class PerformanceMixin {
     public static class TextShadowCullingMixin {
         @ModifyVariable(method = "draw(Ljava/lang/String;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/render/VertexConsumerProvider;Lnet/minecraft/client/font/TextRenderer$TextLayerType;II)I", at = @At("HEAD"), ordinal = 0, argsOnly = true)
         private boolean disableShadows(boolean shadow) {
-            // Disables all text shadows in the world (Nametags, Scoreboards, Holograms)
+            // Disables all text shadows
             if (ModConfig.fpsBoostEnabled) return false;
             return shadow;
         }
