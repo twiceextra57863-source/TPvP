@@ -12,6 +12,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.math.Vec3d; // FIX: Added missing Vec3d import!
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -40,11 +41,13 @@ public class PerformanceMixin {
                     if (dist > 32.0) {
                         cir.setReturnValue(false); 
                     } 
-                    // If there are too many players around, aggressively cull those that are not in direct line of sight (Dot Product > 0)
+                    // If there are too many players around, aggressively cull those that are not in direct line of sight
                     else if (dist > 10.0 && client.world != null && client.world.getPlayers().size() > 15) {
                         Vec3d lookVec = client.player.getRotationVec(1.0F);
                         Vec3d dirToTarget = entity.getPos().subtract(client.player.getPos()).normalize();
-                        if (lookVec.dotProduct(dirToTarget) < 0.2) { // 0.2 threshold = Not looking directly at them
+                        
+                        // Dot Product Math: Hides entities behind the player's camera to save extreme GPU power
+                        if (lookVec.dotProduct(dirToTarget) < 0.2) { 
                             cir.setReturnValue(false);
                         }
                     }
@@ -68,7 +71,8 @@ public class PerformanceMixin {
             if (ModConfig.fpsBoostEnabled) {
                 MinecraftClient client = MinecraftClient.getInstance();
                 if (client.player != null) {
-                    if (client.player.squaredDistanceTo(blockEntity.getPos().toCenterPos()) > 576.0) { // 24 blocks
+                    // Cull heavy block models beyond 24 blocks (576 squared)
+                    if (client.player.squaredDistanceTo(blockEntity.getPos().toCenterPos()) > 576.0) { 
                         ci.cancel();
                     }
                 }
@@ -83,7 +87,8 @@ public class PerformanceMixin {
     public static class WorldOptimizeMixin {
         @Inject(method = "renderWeather", at = @At("HEAD"), cancellable = true)
         private void stopRainLag(CallbackInfo ci) {
-            if (ModConfig.fpsBoostEnabled) ci.cancel(); // Completely kills rain/snow lag
+            // Completely kills rain/snow geometry rendering
+            if (ModConfig.fpsBoostEnabled) ci.cancel(); 
         }
     }
 
@@ -108,7 +113,7 @@ public class PerformanceMixin {
     }
 
     // =========================================================
-    // 5. BACKGROUND FPS THROTTLE (Anti-Heat)
+    // 5. BACKGROUND FPS THROTTLE (Anti-Heat) & SMOOTH CAMERA
     // =========================================================
     @Mixin(GameRenderer.class)
     public static class SmoothCameraMixin {
@@ -116,10 +121,16 @@ public class PerformanceMixin {
         private void smoothAndCool(RenderTickCounter tickCounter, boolean tick, CallbackInfo ci) {
             MinecraftClient client = MinecraftClient.getInstance();
 
+            // Device Cooler: Cools down phone/CPU when switching to other apps
             if (ModConfig.deviceCooler && !client.isWindowFocused()) {
-                try { Thread.sleep(100); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+                try { 
+                    Thread.sleep(100); 
+                } catch (InterruptedException e) { 
+                    Thread.currentThread().interrupt(); 
+                }
             }
 
+            // Cinematic Camera Enabler
             if (ModConfig.smoothGameEnabled && client.options != null) {
                 client.options.smoothCameraEnabled = true; 
             } else if (!ModConfig.smoothGameEnabled && client.options != null) {
@@ -139,6 +150,7 @@ public class PerformanceMixin {
         @Inject(method = "updateMouse", at = @At("HEAD"))
         private void applyCottonSensitivity(CallbackInfo ci) {
             if (ModConfig.smoothGameEnabled) {
+                // Multiplies raw mouse inputs smoothly
                 double multiplier = ModConfig.cottonSensitivity / 100.0;
                 this.cursorDeltaX *= multiplier;
                 this.cursorDeltaY *= multiplier;
