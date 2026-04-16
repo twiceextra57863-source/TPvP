@@ -12,12 +12,8 @@
     "PerformanceMixin$BlockEntityCullingMixin",
     "PerformanceMixin$WorldOptimizeMixin",
     "PerformanceMixin$ParticleMixin",
-    "PerformanceMixin$SmoothCameraMixin",
     "PerformanceMixin$MouseSensitivityMixin",
-    "HyperEngineMixin$ThreadOptimizerMixin",
-    "HyperEngineMixin$AggressiveCullingMixin",
-    "HyperEngineMixin$ChunkOptimizerMixin",
-    "HyperEngineMixin$CameraInterpolationMixin"
+    "PerformanceMixin$MotionBlurMixin"
   ],
   "injectors": {
     "defaultRequire": 1
