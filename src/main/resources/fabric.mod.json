@@ -1,13 +1,16 @@
 {
   "schemaVersion": 1,
   "id": "tpvp",
-  "version": "${version}",
-  "name": "TPvP",
-  "description": "Best PvP Mod with Custom Dashboard & Radar",
+  "version": "1.0.0",
+  "name": "TPvP Reborn",
+  "description": "The Ultimate E-Sports PvP Client! Features a built-in Hyper-Engine for 200+ FPS, Dynamic MOBA Kill Banners, 3D Soul Animations, Smart Target Tracker, and a Custom Cyber-Neon Dashboard. Dominate every server with zero lag!",
   "authors": [
     "Twicefear"
   ],
-  "contact": {},
+  "contact": {
+    "discord": "https://discord.gg/s4r7eSqzQ",
+    "sources": "https://youtube.com/@twicefear3?si=YffW-onbEvwSSbgr"
+  },
   "license": "MIT",
   "icon": "assets/tpvp/icon.png",
   "environment": "*",
