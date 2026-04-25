@@ -35,7 +35,9 @@ java {
     withSourcesJar()
 }
 
-// --- YE BLOCK ADD KARNA ZAROORI HAI ---
+// ---------------------------------------------------------
+// --- RESOURCE PROCESSING (FIXED DUPLICATE ICON ERROR) ---
+// ---------------------------------------------------------
 processResources {
     inputs.property "version", project.version
 
@@ -43,10 +45,8 @@ processResources {
         expand "version": project.version
     }
     
-    // Forces gradle to copy the icon file!
-    from("src/main/resources") {
-        include "icon.png" 
-    }
+    // FIX: Tells Gradle to safely ignore duplicates instead of crashing!
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 jar {
