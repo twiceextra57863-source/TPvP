@@ -27,13 +27,26 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-    annotationProcessor 'net.fabricmc:sponge-mixin:0.12.5+mixin.0.8.5'
 }
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
     withSourcesJar()
+}
+
+// --- YE BLOCK ADD KARNA ZAROORI HAI ---
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+    
+    // Forces gradle to copy the icon file!
+    from("src/main/resources") {
+        include "icon.png" 
+    }
 }
 
 jar {
