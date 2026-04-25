@@ -3,18 +3,18 @@
   "id": "tpvp",
   "version": "1.0.0",
   "name": "TPvP Reborn",
-  "description": "§b✦ 💎 ✦§r The Ultimate E-Sports PvP Client! Built-in Hyper-Engine for 200+ FPS, Dynamic MOBA Kill Banners, 3D Soul Animations, Smart Target Tracker, and a Custom Cyber-Neon Dashboard. Dominate every server with zero lag!",
+  "description": "\u00A7d\u00A7l🧪 THE ULTIMATE PVP & POTION CLIENT 🧪\n\n\u00A77Transform your gameplay into a cinematic E-Sports experience!\n\n\u00A7b\u00A7l✨ CORE FEATURES:\n\u00A78\u25B6 \u00A7cHyper-Engine \u00A77(200+ FPS, Zero Drops & Anti-Heat)\n\u00A78\u25B6 \u00A7eMOBA Kill Banners & 3D Ascension Souls\n\u00A78\u25B6 \u00A7aSmart Target Tracker & JJK Void Executions\n\u00A78\u25B6 \u00A76Cinematic Camera & Custom Dynamic Crosshairs\n\n\u00A7e\u00A7oDominate every server with absolute zero lag!",
   "authors": [
     "Twicefear"
   ],
   "contact": {
-    "issues": "https://discord.gg/s4r7eSqzQ",
-    "homepage": "https://modrinth.com/user/MineTwice",
-    "sources": "https://youtube.com/@twicefear3?si=Mab7fuPRQqBJQah7"
+    "homepage": "https://modrinth.com/mod/your-mod-link",
+    "issues": "https://discord.gg/YOUR_DISCORD",
+    "sources": "https://github.com/Twicefear/TPvP"
   },
   "license": "MIT",
   "icon": "icon.png",
-  "environment": "*",
+  "environment": "client",
   "entrypoints": {
     "main": [
       "com.tpvp.TPvP"
