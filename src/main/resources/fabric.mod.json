@@ -3,16 +3,17 @@
   "id": "tpvp",
   "version": "1.0.0",
   "name": "TPvP Reborn",
-  "description": "The Ultimate E-Sports PvP Client! Features a built-in Hyper-Engine for 200+ FPS, Dynamic MOBA Kill Banners, 3D Soul Animations, Smart Target Tracker, and a Custom Cyber-Neon Dashboard. Dominate every server with zero lag!",
+  "description": "§b✦ 💎 ✦§r The Ultimate E-Sports PvP Client! Built-in Hyper-Engine for 200+ FPS, Dynamic MOBA Kill Banners, 3D Soul Animations, Smart Target Tracker, and a Custom Cyber-Neon Dashboard. Dominate every server with zero lag!",
   "authors": [
     "Twicefear"
   ],
   "contact": {
-    "discord": "https://discord.gg/s4r7eSqzQ",
-    "sources": "https://youtube.com/@twicefear3?si=YffW-onbEvwSSbgr"
+    "issues": "https://discord.gg/s4r7eSqzQ",
+    "homepage": "https://modrinth.com/user/MineTwice",
+    "sources": "https://youtube.com/@twicefear3?si=Mab7fuPRQqBJQah7"
   },
   "license": "MIT",
-  "icon": "assets/tpvp/icon.png",
+  "icon": "icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
